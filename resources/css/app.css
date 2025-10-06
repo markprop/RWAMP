@@ -1,0 +1,145 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Roboto:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-montserrat: 'Montserrat', sans-serif;
+  --font-roboto: 'Roboto', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* Alpine helper */
+[x-cloak] { display: none !important; }
+
+/* end helpers */
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-roboto);
+  line-height: 1.6;
+  color: #333;
+}
+
+.font-montserrat {
+  font-family: var(--font-montserrat);
+}
+
+.font-roboto {
+  font-family: var(--font-roboto);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #E30613;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #c0050f;
+}
+
+/* Smooth animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.animate-pulse-slow {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Button hover effects */
+.btn-primary {
+  @apply bg-primary text-white px-8 py-4 rounded-lg font-montserrat font-bold text-lg transition-all duration-300 hover:bg-red-700 hover:scale-105 hover:shadow-lg;
+}
+
+.btn-secondary {
+  @apply border-2 border-accent text-accent px-8 py-4 rounded-lg font-montserrat font-bold text-lg transition-all duration-300 hover:bg-accent hover:text-black hover:scale-105 hover:shadow-lg;
+}
+
+/* Form styles */
+.form-input {
+  @apply w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all duration-300;
+}
+
+/* Dark variant for inputs used on dark sections */
+.form-input-dark {
+  @apply w-full px-4 py-3 rounded-lg bg-gray-800 text-white placeholder-gray-400 border border-gray-700 focus:border-accent focus:ring-2 focus:ring-accent/20 focus:outline-none transition-all duration-300;
+}
+
+/* Consistent invalid state (browser required validation) */
+.form-input-dark:invalid {
+  @apply border-red-500 focus:ring-red-500/20;
+}
+
+/* Card hover effects */
+.card-hover {
+  @apply transition-all duration-300 hover:scale-105 hover:shadow-xl;
+}
+
+/* Countdown timer styles */
+.countdown-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .countdown-container {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.countdown-item {
+  @apply bg-black/50 backdrop-blur-sm rounded-lg p-4 text-center;
+}
+
+.countdown-number {
+  @apply text-4xl md:text-6xl font-mono font-bold text-white;
+}
+
+.countdown-label {
+  @apply text-sm md:text-lg text-gray-300;
+}

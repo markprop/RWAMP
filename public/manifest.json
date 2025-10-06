@@ -1,0 +1,21 @@
+{
+  "name": "RWAMP - The Currency of Real Estate Investments",
+  "short_name": "RWAMP",
+  "description": "RWAMP is the official token for investing in real estate projects across Dubai, Pakistan, and Saudi Arabia. Powered by Mark Properties.",
+  "icons": [
+    {
+      "src": "/logo.jpeg",
+      "sizes": "any",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "16x16 32x32 48x48",
+      "type": "image/x-icon"
+    }
+  ],
+  "theme_color": "#E30613",
+  "background_color": "#000000",
+  "display": "standalone",
+  "start_url": "/"
+}
