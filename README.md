@@ -1,56 +1,182 @@
 <div align="center">
 
-# 🏢 RWAMP
-## The Currency of Real Estate Investments
+<!-- Animated Header with ASCII Art -->
+<img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=35&duration=3000&pause=1000&color=FF6B6B&center=true&vCenter=true&width=600&lines=RWAMP;The+Currency+of+Real+Estate+Investments" alt="RWAMP Typing Animation" />
 
-**A modern, secure, and feature-rich Laravel application for real estate tokenization and investment management**
+<!-- Animated Badges -->
+<p align="center">
+  <img src="https://img.shields.io/badge/Laravel-10.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white&labelColor=FF2D20&color=FF2D20" alt="Laravel" />
+  <img src="https://img.shields.io/badge/PHP-8.1+-777BB4?style=for-the-badge&logo=php&logoColor=white&labelColor=777BB4&color=777BB4" alt="PHP" />
+  <img src="https://img.shields.io/badge/TailwindCSS-3.3+-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white&labelColor=38B2AC&color=38B2AC" alt="TailwindCSS" />
+  <img src="https://img.shields.io/badge/Alpine.js-3.13+-8BC0D0?style=for-the-badge&logo=alpine.js&logoColor=white&labelColor=8BC0D0&color=8BC0D0" alt="Alpine.js" />
+</p>
 
-[![Laravel](https://img.shields.io/badge/Laravel-10.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)](https://laravel.com)
-[![PHP](https://img.shields.io/badge/PHP-8.1+-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://www.php.net/)
-[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.3+-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
-[![Alpine.js](https://img.shields.io/badge/Alpine.js-3.13+-8BC0D0?style=for-the-badge&logo=alpine.js&logoColor=white)](https://alpinejs.dev)
-[![License](https://img.shields.io/badge/License-Proprietary-red?style=for-the-badge)](LICENSE)
+<p align="center">
+  <img src="https://img.shields.io/badge/License-Proprietary-red?style=for-the-badge" alt="License" />
+  <img src="https://img.shields.io/github/stars/markprop/RWAMP?style=for-the-badge&logo=github&color=yellow&labelColor=black" alt="GitHub Stars" />
+  <img src="https://img.shields.io/github/forks/markprop/RWAMP?style=for-the-badge&logo=github&color=blue&labelColor=black" alt="GitHub Forks" />
+  <img src="https://img.shields.io/github/issues/markprop/RWAMP?style=for-the-badge&logo=github&color=green&labelColor=black" alt="GitHub Issues" />
+</p>
 
-[Website](https://rwamp.net) • [Documentation](#-documentation) • [Support](#-support)
+<!-- Animated Description -->
+<p align="center">
+  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=18&duration=2000&pause=500&color=4ECDC4&center=true&vCenter=true&width=800&lines=A+modern%2C+secure%2C+and+feature-rich+Laravel+application;for+real+estate+tokenization+and+investment+management" alt="Description Animation" />
+</p>
+
+<!-- Quick Links with Icons -->
+<p align="center">
+  <a href="https://rwamp.net">
+    <img src="https://img.shields.io/badge/🌐_Website-FF6B6B?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Website" />
+  </a>
+  <a href="#-documentation">
+    <img src="https://img.shields.io/badge/📚_Documentation-4ECDC4?style=for-the-badge&logo=read-the-docs&logoColor=white" alt="Documentation" />
+  </a>
+  <a href="#-support">
+    <img src="https://img.shields.io/badge/🆘_Support-95E1D3?style=for-the-badge&logo=support&logoColor=white" alt="Support" />
+  </a>
+</p>
+
+<!-- Animated Divider -->
+<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&height=100&section=header&text=RWAMP&fontSize=42&fontColor=fff&animation=twinkling&fontAlignY=30" alt="Animated Header" />
 
 ---
 
 </div>
 
+<!-- Animated Table of Contents -->
+<div align="center">
+
 ## ✨ Table of Contents
+
+</div>
+
+<table align="center">
+<tr>
+<td align="center" width="50%">
+  
+### 🎯 Quick Navigation
 
 - [🌟 Features](#-features)
 - [🛠️ Tech Stack](#️-tech-stack)
 - [📦 Installation](#-installation)
 - [⚙️ Configuration](#️-configuration)
 - [🏗️ Project Structure](#️-project-structure)
+
+</td>
+<td align="center" width="50%">
+
+### 📚 More Sections
+
 - [🔐 Authentication & Security](#-authentication--security)
 - [💳 Crypto Payments](#-crypto-payments)
 - [👥 User Roles](#-user-roles)
-- [📚 Documentation](#-documentation)
 - [🚀 Deployment](#-deployment)
 - [🤝 Contributing](#-contributing)
 
+</td>
+</tr>
+</table>
+
 ---
+
+<!-- Features Section with Animated Cards -->
+<div align="center">
 
 ## 🌟 Features
 
-<div align="center">
-
-### 🎯 Core Features
+<p align="center">
+  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=25&duration=1500&pause=500&color=FF6B6B&center=true&vCenter=true&width=500&lines=Core+Features" alt="Features Animation" />
+</p>
 
 </div>
 
-| Category | Features |
-|----------|----------|
-| 🎨 **Frontend** | Server-side rendered Blade templates • Modern UI with TailwindCSS • Reactive components with Alpine.js • Fully responsive design • Smooth animations |
-| 🔐 **Security** | Admin 2FA (Laravel Fortify) • CSRF protection • Rate limiting • Honeypot fields • Security headers (CSP) • Input validation • SQL injection prevention |
-| 💰 **Payments** | Crypto payment integration (USDT, BTC) • WalletConnect support • QR code generation • Automated transaction monitoring • Manual admin approval |
-| 👤 **User Management** | Role-based access control • KYC verification • Email verification • Password reset • Profile management |
-| 📊 **Dashboards** | Investor dashboard • Reseller dashboard • Admin dashboard • Real-time metrics • Transaction history |
-| 📧 **Communication** | Email notifications • Contact forms • Newsletter subscriptions • Reseller applications • OTP verification |
-| 🔍 **SEO** | Dynamic sitemap • Meta tags • Open Graph • Twitter cards • JSON-LD structured data • robots.txt |
-| 📱 **Mobile** | Fully responsive • Touch-friendly • Progressive Web App ready • Optimized performance |
+<table align="center">
+<tr>
+<td width="50%" valign="top">
+
+### 🎨 Frontend Features
+
+<div align="center">
+
+| Feature | Status |
+|---------|--------|
+| 🎭 Server-side Blade templates | ✅ |
+| 🎨 TailwindCSS styling | ✅ |
+| ⚡ Alpine.js reactivity | ✅ |
+| 📱 Fully responsive | ✅ |
+| ✨ Smooth animations | ✅ |
+| 🎯 Component-based UI | ✅ |
+
+</div>
+
+</td>
+<td width="50%" valign="top">
+
+### 🔐 Security Features
+
+<div align="center">
+
+| Feature | Status |
+|---------|--------|
+| 🔒 Admin 2FA (Fortify) | ✅ |
+| 🛡️ CSRF protection | ✅ |
+| ⏱️ Rate limiting | ✅ |
+| 🍯 Honeypot fields | ✅ |
+| 🔐 Security headers | ✅ |
+| ✅ Input validation | ✅ |
+
+</div>
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### 💰 Payment Features
+
+<div align="center">
+
+| Feature | Status |
+|---------|--------|
+| 💳 Crypto payments (USDT/BTC) | ✅ |
+| 🔗 WalletConnect support | ✅ |
+| 📱 QR code generation | ✅ |
+| 🤖 Auto transaction monitoring | ✅ |
+| ✅ Manual admin approval | ✅ |
+| 📊 Transaction history | ✅ |
+
+</div>
+
+</td>
+<td width="50%" valign="top">
+
+### 👥 User Management
+
+<div align="center">
+
+| Feature | Status |
+|---------|--------|
+| 🎭 Role-based access | ✅ |
+| 🆔 KYC verification | ✅ |
+| 📧 Email verification | ✅ |
+| 🔑 Password reset | ✅ |
+| 👤 Profile management | ✅ |
+| 📊 User dashboards | ✅ |
+
+</div>
+
+</td>
+</tr>
+</table>
+
+<!-- Animated Stats -->
+<div align="center">
+
+<p align="center">
+  <img src="https://github-readme-stats.vercel.app/api?username=markprop&show_icons=true&theme=radical&hide_border=true&bg_color=0D1117&title_color=FF6B6B&icon_color=4ECDC4" alt="GitHub Stats" width="400" />
+</p>
+
+</div>
 
 ---
 
@@ -62,12 +188,34 @@
 
 </div>
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Blade** | Laravel 10+ | Server-side templating |
-| **TailwindCSS** | 3.3+ | Utility-first CSS framework |
-| **Alpine.js** | 3.13+ | Lightweight JavaScript framework |
-| **Vite** | 4.0+ | Next-generation frontend tooling |
+<table align="center">
+<tr>
+<td align="center" width="25%">
+  
+<img src="https://img.shields.io/badge/Blade-Laravel_10+-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Blade" />
+<p><b>Server-side Templating</b></p>
+
+</td>
+<td align="center" width="25%">
+
+<img src="https://img.shields.io/badge/TailwindCSS-3.3+-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="TailwindCSS" />
+<p><b>Utility-first CSS</b></p>
+
+</td>
+<td align="center" width="25%">
+
+<img src="https://img.shields.io/badge/Alpine.js-3.13+-8BC0D0?style=for-the-badge&logo=alpine.js&logoColor=white" alt="Alpine.js" />
+<p><b>Lightweight JS Framework</b></p>
+
+</td>
+<td align="center" width="25%">
+
+<img src="https://img.shields.io/badge/Vite-4.0+-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
+<p><b>Build Tool</b></p>
+
+</td>
+</tr>
+</table>
 
 <div align="center">
 
@@ -75,15 +223,34 @@
 
 </div>
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Laravel** | 10.x | PHP framework |
-| **PHP** | 8.1+ | Programming language |
-| **MySQL/SQLite** | Latest | Database |
-| **Laravel Fortify** | 1.31+ | Authentication & 2FA |
-| **Laravel Sanctum** | 3.2+ | API authentication |
-| **Guzzle HTTP** | 7.10+ | HTTP client for APIs |
-| **QR Code** | 6.0+ | QR code generation |
+<table align="center">
+<tr>
+<td align="center" width="25%">
+  
+<img src="https://img.shields.io/badge/Laravel-10.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel" />
+<p><b>PHP Framework</b></p>
+
+</td>
+<td align="center" width="25%">
+
+<img src="https://img.shields.io/badge/PHP-8.1+-777BB4?style=for-the-badge&logo=php&logoColor=white" alt="PHP" />
+<p><b>Programming Language</b></p>
+
+</td>
+<td align="center" width="25%">
+
+<img src="https://img.shields.io/badge/MySQL-Latest-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL" />
+<p><b>Database</b></p>
+
+</td>
+<td align="center" width="25%">
+
+<img src="https://img.shields.io/badge/Fortify-1.31+-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Fortify" />
+<p><b>Authentication & 2FA</b></p>
+
+</td>
+</tr>
+</table>
 
 ---
 
@@ -93,14 +260,22 @@
 
 ### 🚀 Quick Start Guide
 
+<img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=20&duration=2000&pause=500&color=4ECDC4&center=true&vCenter=true&width=600&lines=Get+started+in+5+simple+steps" alt="Installation Animation" />
+
 </div>
 
 ### Prerequisites
 
-- **PHP** >= 8.1 with extensions: `openssl`, `pdo`, `mbstring`, `tokenizer`, `xml`, `ctype`, `json`, `bcmath`
-- **Composer** >= 2.0
-- **Node.js** >= 16.x and **npm** >= 8.x
-- **MySQL** >= 5.7 or **SQLite** >= 3.8
+<div align="center">
+
+| Requirement | Version | Status |
+|-------------|---------|--------|
+| **PHP** | >= 8.1 | ✅ Required |
+| **Composer** | >= 2.0 | ✅ Required |
+| **Node.js** | >= 16.x | ✅ Required |
+| **MySQL** | >= 5.7 | ✅ Required |
+
+</div>
 
 ### Step-by-Step Installation
 
@@ -111,6 +286,10 @@
 git clone https://github.com/markprop/RWAMP.git
 cd RWAMP
 ```
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Status-Ready-4ECDC4?style=for-the-badge" alt="Status" />
+</p>
 
 </details>
 
@@ -125,6 +304,10 @@ composer install
 npm install
 ```
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Status-Ready-4ECDC4?style=for-the-badge" alt="Status" />
+</p>
+
 </details>
 
 <details>
@@ -137,6 +320,10 @@ cp .env.example .env
 # Generate application key
 php artisan key:generate
 ```
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Status-Ready-4ECDC4?style=for-the-badge" alt="Status" />
+</p>
 
 </details>
 
@@ -151,6 +338,10 @@ php artisan migrate
 php artisan db:seed
 ```
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Status-Ready-4ECDC4?style=for-the-badge" alt="Status" />
+</p>
+
 </details>
 
 <details>
@@ -164,6 +355,10 @@ npm run dev
 npm run build
 ```
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Status-Ready-4ECDC4?style=for-the-badge" alt="Status" />
+</p>
+
 </details>
 
 <details>
@@ -173,7 +368,9 @@ npm run build
 php artisan serve
 ```
 
-Visit `http://localhost:8000` in your browser.
+<p align="center">
+  <img src="https://img.shields.io/badge/Visit-http://localhost:8000-FF6B6B?style=for-the-badge" alt="Local Server" />
+</p>
 
 </details>
 
@@ -181,7 +378,13 @@ Visit `http://localhost:8000` in your browser.
 
 ## ⚙️ Configuration
 
+<div align="center">
+
 ### 🔑 Environment Variables
+
+<img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=18&duration=2000&pause=500&color=FF6B6B&center=true&vCenter=true&width=600&lines=Configure+your+application+settings" alt="Configuration Animation" />
+
+</div>
 
 Create a `.env` file from `.env.example` and configure the following:
 
@@ -270,136 +473,78 @@ ADMIN_EMAIL=admin@rwamp.com
 
 ### 📊 Database Tables
 
-The application includes the following database tables:
+<div align="center">
 
-| Table | Description |
-|-------|-------------|
-| `users` | User accounts with roles, 2FA, KYC, and wallet information |
-| `contacts` | Contact form submissions |
-| `reseller_applications` | Reseller program applications |
-| `newsletter_subscriptions` | Newsletter subscribers |
-| `crypto_payments` | Crypto payment records |
-| `transactions` | Transaction history |
-| `buy_from_reseller_requests` | Buy-from-reseller requests |
-| `withdraw_requests` | Withdrawal requests |
-| `processed_crypto_transactions` | Processed blockchain transactions |
+| Table | Description | Status |
+|-------|-------------|--------|
+| `users` | User accounts with roles, 2FA, KYC | ✅ |
+| `contacts` | Contact form submissions | ✅ |
+| `reseller_applications` | Reseller program applications | ✅ |
+| `newsletter_subscriptions` | Newsletter subscribers | ✅ |
+| `crypto_payments` | Crypto payment records | ✅ |
+| `transactions` | Transaction history | ✅ |
+| `buy_from_reseller_requests` | Buy-from-reseller requests | ✅ |
+| `withdraw_requests` | Withdrawal requests | ✅ |
+| `processed_crypto_transactions` | Processed blockchain transactions | ✅ |
+
+</div>
 
 ---
 
 ## 🏗️ Project Structure
 
+<div align="center">
+
 ```
 rwamp-laravel/
 ├── 📁 app/
-│   ├── 📁 Actions/
-│   │   └── 📁 Fortify/          # Fortify authentication actions
-│   ├── 📁 Console/
-│   │   └── 📁 Commands/         # Artisan commands
+│   ├── 📁 Actions/Fortify/          # Fortify authentication actions
+│   ├── 📁 Console/Commands/         # Artisan commands
 │   ├── 📁 Http/
-│   │   ├── 📁 Controllers/      # Application controllers
-│   │   └── 📁 Middleware/       # Custom middleware
-│   ├── 📁 Mail/                 # Mail classes
-│   ├── 📁 Models/               # Eloquent models
-│   ├── 📁 Providers/            # Service providers
-│   └── 📁 Services/             # Business logic services
-├── 📁 config/                   # Configuration files
+│   │   ├── 📁 Controllers/          # Application controllers
+│   │   └── 📁 Middleware/           # Custom middleware
+│   ├── 📁 Mail/                     # Mail classes
+│   ├── 📁 Models/                   # Eloquent models
+│   ├── 📁 Providers/                # Service providers
+│   └── 📁 Services/                 # Business logic services
+├── 📁 config/                       # Configuration files
 ├── 📁 database/
-│   ├── 📁 migrations/           # Database migrations
-│   └── 📁 seeders/              # Database seeders
-├── 📁 public/                   # Public assets
+│   ├── 📁 migrations/               # Database migrations
+│   └── 📁 seeders/                  # Database seeders
+├── 📁 public/                       # Public assets
 ├── 📁 resources/
-│   ├── 📁 css/                  # Stylesheets
-│   ├── 📁 js/                   # JavaScript files
-│   └── 📁 views/                # Blade templates
-│       ├── 📁 auth/             # Authentication views
-│       ├── 📁 components/       # Reusable components
-│       ├── 📁 dashboard/        # Dashboard views
-│       ├── 📁 emails/           # Email templates
-│       └── 📁 pages/            # Page views
-├── 📁 routes/                   # Route definitions
-├── 📁 storage/                  # Storage files
-└── 📁 tests/                    # Test files
+│   ├── 📁 css/                      # Stylesheets
+│   ├── 📁 js/                       # JavaScript files
+│   └── 📁 views/                    # Blade templates
+│       ├── 📁 auth/                 # Authentication views
+│       ├── 📁 components/           # Reusable components
+│       ├── 📁 dashboard/            # Dashboard views
+│       ├── 📁 emails/               # Email templates
+│       └── 📁 pages/                # Page views
+├── 📁 routes/                       # Route definitions
+├── 📁 storage/                      # Storage files
+└── 📁 tests/                        # Test files
 ```
+
+</div>
 
 ---
 
 ## 🔐 Authentication & Security
 
-### 🔒 Role-Based Access Control
-
-| Role | Access Level | Dashboard |
-|------|--------------|-----------|
-| **Investor** | Basic user access | `/dashboard/investor` |
-| **Reseller** | Reseller features + investor access | `/dashboard/reseller` |
-| **Admin** | Full system access (2FA required) | `/dashboard/admin` |
-
-### 🛡️ Security Features
-
 <div align="center">
 
-| Feature | Implementation |
-|---------|----------------|
-| **2FA Authentication** | Laravel Fortify with TOTP |
-| **CSRF Protection** | Laravel built-in CSRF tokens |
-| **Rate Limiting** | Login (5/min), Forms (3-6/hour) |
-| **Honeypot Fields** | Bot protection on forms |
-| **Security Headers** | CSP, X-Frame-Options, Referrer-Policy |
-| **Input Validation** | Server-side validation on all inputs |
-| **SQL Injection Prevention** | Eloquent ORM parameter binding |
-| **XSS Protection** | Blade automatic escaping |
+### 🔒 Role-Based Access Control
 
 </div>
 
-### 🔐 Admin 2FA Setup
-
-1. Login as admin user
-2. Navigate to `/admin/2fa/setup`
-3. Scan QR code with authenticator app
-4. Save recovery codes securely
-5. 2FA is now enforced for admin dashboard access
-
----
-
-## 💳 Crypto Payments
-
-### Supported Payment Methods
-
-| Method | Networks | Status |
-|--------|----------|--------|
-| **USDT** | TRC20, ERC20, BEP20 | ✅ Active |
-| **BTC** | Bitcoin Network | ✅ Active |
-| **WalletConnect** | All networks | ✅ Active |
-
-### Payment Flow
-
-```
-1. User initiates purchase
-   ↓
-2. System generates payment QR code
-   ↓
-3. User sends crypto payment
-   ↓
-4. System monitors blockchain
-   ↓
-5. Admin approves transaction
-   ↓
-6. Tokens credited to user wallet
-```
-
-### Features
-
-- ✅ Automated transaction monitoring
-- ✅ QR code generation for payments
-- ✅ WalletConnect integration
-- ✅ Multi-network support
-- ✅ Manual admin approval
-- ✅ Transaction history tracking
-
----
-
-## 👥 User Roles
+<table align="center">
+<tr>
+<td align="center" width="33%">
 
 ### 👤 Investor
+
+<img src="https://img.shields.io/badge/Role-Investor-4ECDC4?style=for-the-badge" alt="Investor" />
 
 **Features:**
 - Purchase RWAMP tokens
@@ -410,7 +555,12 @@ rwamp-laravel/
 
 **Dashboard:** `/dashboard/investor`
 
+</td>
+<td align="center" width="33%">
+
 ### 🤝 Reseller
+
+<img src="https://img.shields.io/badge/Role-Reseller-FF6B6B?style=for-the-badge" alt="Reseller" />
 
 **Features:**
 - All investor features
@@ -421,7 +571,12 @@ rwamp-laravel/
 
 **Dashboard:** `/dashboard/reseller`
 
+</td>
+<td align="center" width="33%">
+
 ### 👨‍💼 Admin
+
+<img src="https://img.shields.io/badge/Role-Admin-95E1D3?style=for-the-badge" alt="Admin" />
 
 **Features:**
 - Full system access
@@ -430,9 +585,155 @@ rwamp-laravel/
 - Crypto payment approval
 - Price management
 - System analytics
-- 2FA required
+- **2FA Required** 🔒
 
 **Dashboard:** `/dashboard/admin`
+
+</td>
+</tr>
+</table>
+
+### 🛡️ Security Features
+
+<div align="center">
+
+| Feature | Implementation | Status |
+|---------|----------------|--------|
+| **2FA Authentication** | Laravel Fortify with TOTP | ✅ |
+| **CSRF Protection** | Laravel built-in CSRF tokens | ✅ |
+| **Rate Limiting** | Login (5/min), Forms (3-6/hour) | ✅ |
+| **Honeypot Fields** | Bot protection on forms | ✅ |
+| **Security Headers** | CSP, X-Frame-Options, Referrer-Policy | ✅ |
+| **Input Validation** | Server-side validation on all inputs | ✅ |
+| **SQL Injection Prevention** | Eloquent ORM parameter binding | ✅ |
+| **XSS Protection** | Blade automatic escaping | ✅ |
+
+</div>
+
+### 🔐 Admin 2FA Setup
+
+<div align="center">
+
+```
+1. Login as admin user
+   ↓
+2. Navigate to /admin/2fa/setup
+   ↓
+3. Scan QR code with authenticator app
+   ↓
+4. Save recovery codes securely
+   ↓
+5. 2FA is now enforced for admin dashboard access
+```
+
+</div>
+
+---
+
+## 💳 Crypto Payments
+
+<div align="center">
+
+### Supported Payment Methods
+
+</div>
+
+<table align="center">
+<tr>
+<td align="center" width="33%">
+
+### 💵 USDT
+
+<img src="https://img.shields.io/badge/USDT-Active-4ECDC4?style=for-the-badge" alt="USDT" />
+
+**Networks:**
+- TRC20 ✅
+- ERC20 ✅
+- BEP20 ✅
+
+</td>
+<td align="center" width="33%">
+
+### ₿ Bitcoin
+
+<img src="https://img.shields.io/badge/BTC-Active-FF6B6B?style=for-the-badge" alt="BTC" />
+
+**Network:**
+- Bitcoin Network ✅
+
+</td>
+<td align="center" width="33%">
+
+### 🔗 WalletConnect
+
+<img src="https://img.shields.io/badge/WalletConnect-Active-95E1D3?style=for-the-badge" alt="WalletConnect" />
+
+**Support:**
+- All networks ✅
+- MetaMask ✅
+- Trust Wallet ✅
+
+</td>
+</tr>
+</table>
+
+### Payment Flow
+
+<div align="center">
+
+```
+┌─────────────────┐
+│  User initiates │
+│    purchase     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ System generates│
+│  payment QR code│
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ User sends crypto│
+│    payment      │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ System monitors │
+│   blockchain    │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Admin approves  │
+│   transaction   │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Tokens credited │
+│  to user wallet │
+└─────────────────┘
+```
+
+</div>
+
+### Features
+
+<div align="center">
+
+| Feature | Status |
+|---------|--------|
+| ✅ Automated transaction monitoring | Active |
+| ✅ QR code generation for payments | Active |
+| ✅ WalletConnect integration | Active |
+| ✅ Multi-network support | Active |
+| ✅ Manual admin approval | Active |
+| ✅ Transaction history tracking | Active |
+
+</div>
 
 ---
 
@@ -444,24 +745,42 @@ rwamp-laravel/
 
 </div>
 
-| Document | Description | Link |
-|----------|-------------|------|
-| **Admin 2FA** | Two-factor authentication setup guide | [`docs/admin-2fa.md`](docs/admin-2fa.md) |
-| **Auth & Roles** | Authentication and role management | [`docs/auth-roles.md`](docs/auth-roles.md) |
-| **Crypto Setup** | Crypto payment configuration | [`docs/crypto-setup.md`](docs/crypto-setup.md) |
-| **Auto Crypto System** | Automated crypto monitoring | [`docs/auto-crypto-system.md`](docs/auto-crypto-system.md) |
-| **Security** | Security best practices | [`docs/security.md`](docs/security.md) |
-| **SEO** | SEO optimization guide | [`docs/seo.md`](docs/seo.md) |
-| **Forms & Services** | Form handling and services | [`docs/forms.md`](docs/forms.md) |
-| **Database Setup** | Database configuration guide | [`DATABASE_SETUP_GUIDE.md`](DATABASE_SETUP_GUIDE.md) |
-| **Migration Guide** | Migration instructions | [`MIGRATION_GUIDE.md`](MIGRATION_GUIDE.md) |
-| **Reseller System** | Reseller implementation guide | [`RESELLER_SYSTEM_IMPLEMENTATION.md`](RESELLER_SYSTEM_IMPLEMENTATION.md) |
+<table align="center">
+<tr>
+<td width="50%" valign="top">
+
+| Document | Link |
+|----------|------|
+| **Admin 2FA** | [`docs/admin-2fa.md`](docs/admin-2fa.md) |
+| **Auth & Roles** | [`docs/auth-roles.md`](docs/auth-roles.md) |
+| **Crypto Setup** | [`docs/crypto-setup.md`](docs/crypto-setup.md) |
+| **Auto Crypto System** | [`docs/auto-crypto-system.md`](docs/auto-crypto-system.md) |
+| **Security** | [`docs/security.md`](docs/security.md) |
+
+</td>
+<td width="50%" valign="top">
+
+| Document | Link |
+|----------|------|
+| **SEO** | [`docs/seo.md`](docs/seo.md) |
+| **Forms & Services** | [`docs/forms.md`](docs/forms.md) |
+| **Database Setup** | [`DATABASE_SETUP_GUIDE.md`](DATABASE_SETUP_GUIDE.md) |
+| **Migration Guide** | [`MIGRATION_GUIDE.md`](MIGRATION_GUIDE.md) |
+| **Reseller System** | [`RESELLER_SYSTEM_IMPLEMENTATION.md`](RESELLER_SYSTEM_IMPLEMENTATION.md) |
+
+</td>
+</tr>
+</table>
 
 ---
 
 ## 🚀 Deployment
 
+<div align="center">
+
 ### 🌐 Hostinger Shared Hosting
+
+</div>
 
 <details>
 <summary><b>Click to expand deployment steps</b></summary>
@@ -475,7 +794,11 @@ rwamp-laravel/
 
 </details>
 
+<div align="center">
+
 ### 🖥️ VPS/Dedicated Server
+
+</div>
 
 <details>
 <summary><b>Click to expand deployment steps</b></summary>
@@ -492,105 +815,104 @@ rwamp-laravel/
 
 ### 📋 Production Checklist
 
-- [ ] Set `APP_ENV=production`
-- [ ] Set `APP_DEBUG=false`
-- [ ] Generate new `APP_KEY`
-- [ ] Configure production database
-- [ ] Setup SSL certificate
-- [ ] Configure mail settings
-- [ ] Run `php artisan optimize`
-- [ ] Run `npm run build`
-- [ ] Setup queue workers
-- [ ] Configure cron jobs
-- [ ] Setup backups
-- [ ] Enable monitoring
+<div align="center">
+
+| Task | Status |
+|------|--------|
+| Set `APP_ENV=production` | ⬜ |
+| Set `APP_DEBUG=false` | ⬜ |
+| Generate new `APP_KEY` | ⬜ |
+| Configure production database | ⬜ |
+| Setup SSL certificate | ⬜ |
+| Configure mail settings | ⬜ |
+| Run `php artisan optimize` | ⬜ |
+| Run `npm run build` | ⬜ |
+| Setup queue workers | ⬜ |
+| Configure cron jobs | ⬜ |
+| Setup backups | ⬜ |
+| Enable monitoring | ⬜ |
+
+</div>
 
 ---
 
 ## 🔧 Development
 
+<div align="center">
+
 ### 📝 Available Commands
 
-<details>
-<summary><b>Development Commands</b></summary>
+</div>
+
+<table align="center">
+<tr>
+<td width="50%" valign="top">
+
+### Development
 
 ```bash
-# Start development servers
 npm run dev          # Start Vite dev server
 php artisan serve    # Start Laravel server
 ```
 
-</details>
+</td>
+<td width="50%" valign="top">
 
-<details>
-<summary><b>Production Commands</b></summary>
+### Production
 
 ```bash
-# Build and optimize
 npm run build        # Build assets for production
 php artisan optimize # Optimize for production
 ```
 
-</details>
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
 
-<details>
-<summary><b>Database Commands</b></summary>
+### Database
 
 ```bash
-# Migrations
 php artisan migrate        # Run migrations
-php artisan migrate:fresh  # Fresh migration with seeders
-php artisan migrate:rollback  # Rollback last migration
-
-# Seeders
+php artisan migrate:fresh  # Fresh migration
 php artisan db:seed        # Run seeders
-php artisan db:seed --class=AdminUserSeeder  # Run specific seeder
 ```
 
-</details>
+</td>
+<td width="50%" valign="top">
 
-<details>
-<summary><b>Cache Commands</b></summary>
+### Cache
 
 ```bash
-# Clear caches
-php artisan cache:clear    # Clear application cache
-php artisan config:clear   # Clear configuration cache
-php artisan view:clear     # Clear view cache
-php artisan route:clear    # Clear route cache
-
-# Optimize (Windows PowerShell)
-php artisan config:clear; php artisan cache:clear; php artisan optimize:clear
+php artisan cache:clear    # Clear cache
+php artisan config:clear   # Clear config
+php artisan view:clear     # Clear views
 ```
 
-</details>
-
-### 🧪 Testing
-
-```bash
-# Run tests
-php artisan test
-
-# Run specific test
-php artisan test --filter TestClassName
-```
+</td>
+</tr>
+</table>
 
 ---
 
 ## 📄 Public Pages
 
+<div align="center">
+
 | Page | Route | Description |
 |------|-------|-------------|
-| **Home** | `/` | Landing page with hero, about, features |
-| **About** | `/about` | About RWAMP |
-| **Contact** | `/contact` | Contact form |
-| **Become Partner** | `/become-partner` | Reseller application |
-| **How to Buy** | `/how-to-buy` | Purchase guide |
-| **Whitepaper** | `/whitepaper` | Project whitepaper |
-| **Privacy Policy** | `/privacy-policy` | Privacy policy |
-| **Terms of Service** | `/terms-of-service` | Terms and conditions |
-| **Disclaimer** | `/disclaimer` | Legal disclaimer |
-| **Purchase** | `/purchase` | Token purchase (auth required) |
+| 🏠 **Home** | `/` | Landing page with hero, about, features |
+| 📖 **About** | `/about` | About RWAMP |
+| 📧 **Contact** | `/contact` | Contact form |
+| 🤝 **Become Partner** | `/become-partner` | Reseller application |
+| 💰 **How to Buy** | `/how-to-buy` | Purchase guide |
+| 📄 **Whitepaper** | `/whitepaper` | Project whitepaper |
+| 🔒 **Privacy Policy** | `/privacy-policy` | Privacy policy |
+| 📋 **Terms of Service** | `/terms-of-service` | Terms and conditions |
+| ⚠️ **Disclaimer** | `/disclaimer` | Legal disclaimer |
+| 💳 **Purchase** | `/purchase` | Token purchase (auth required) |
+
+</div>
 
 ---
 
@@ -598,17 +920,31 @@ php artisan test --filter TestClassName
 
 <div align="center">
 
-We welcome contributions! Please follow these steps:
+### We welcome contributions! 🎉
+
+<img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=18&duration=2000&pause=500&color=4ECDC4&center=true&vCenter=true&width=600&lines=Follow+these+steps+to+contribute" alt="Contributing Animation" />
 
 </div>
 
-1. 🍴 **Fork** the repository
-2. 🌿 **Create** a feature branch (`git checkout -b feature/AmazingFeature`)
-3. 💻 **Make** your changes
-4. ✅ **Test** thoroughly
-5. 📝 **Commit** your changes (`git commit -m 'Add some AmazingFeature'`)
-6. 📤 **Push** to the branch (`git push origin feature/AmazingFeature`)
-7. 🔄 **Open** a Pull Request
+<div align="center">
+
+```
+1. 🍴 Fork the repository
+   ↓
+2. 🌿 Create a feature branch
+   ↓
+3. 💻 Make your changes
+   ↓
+4. ✅ Test thoroughly
+   ↓
+5. 📝 Commit your changes
+   ↓
+6. 📤 Push to the branch
+   ↓
+7. 🔄 Open a Pull Request
+```
+
+</div>
 
 ---
 
@@ -616,9 +952,11 @@ We welcome contributions! Please follow these steps:
 
 <div align="center">
 
-This project is **proprietary software** owned by **RWAMP**.
+### This project is **proprietary software** owned by **RWAMP**.
 
-All rights reserved. © 2024 RWAMP
+<img src="https://img.shields.io/badge/License-Proprietary-red?style=for-the-badge" alt="License" />
+
+**All rights reserved. © 2024 RWAMP**
 
 </div>
 
@@ -630,11 +968,31 @@ All rights reserved. © 2024 RWAMP
 
 ### 📞 Get Help
 
-| Method | Contact |
-|--------|---------|
-| 📧 **Email** | [info@rwamp.net](mailto:info@rwamp.net) |
-| 📱 **Phone** | +92 300 1234567 |
-| 🌐 **Website** | [https://rwamp.net](https://rwamp.net) |
+<table align="center">
+<tr>
+<td align="center" width="33%">
+
+### 📧 Email
+
+[info@rwamp.net](mailto:info@rwamp.net)
+
+</td>
+<td align="center" width="33%">
+
+### 📱 Phone
+
++92 300 1234567
+
+</td>
+<td align="center" width="33%">
+
+### 🌐 Website
+
+[rwamp.net](https://rwamp.net)
+
+</td>
+</tr>
+</table>
 
 ---
 
@@ -642,7 +1000,11 @@ All rights reserved. © 2024 RWAMP
 
 ### ⭐ Star us on GitHub if you find this project helpful!
 
+<img src="https://img.shields.io/github/stars/markprop/RWAMP?style=for-the-badge&logo=github&color=yellow&labelColor=black" alt="GitHub Stars" />
+
 **Made with ❤️ by the RWAMP Team**
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&height=100&section=footer&text=Thank+You&fontSize=42&fontColor=fff&animation=twinkling&fontAlignY=30" alt="Animated Footer" />
 
 [⬆ Back to Top](#-rwamp)
 
