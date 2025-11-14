@@ -8,9 +8,14 @@
                 Get exclusive updates about RWAMP launch, presale opportunities, and investment insights
             </p>
             
-            <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-8 md:p-12" x-data="newsletterForm">
-                <div x-show="!success">
+            <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-8 md:p-12" x-data="newsletterForm" x-cloak>
+                <div x-show="!success" x-cloak>
                     <form @submit.prevent="submitForm" class="space-y-6">
+                        <!-- Honeypot field to trap bots -->
+                        <div class="hidden" aria-hidden="true">
+                            <label class="block text-sm">Leave this field empty</label>
+                            <input type="text" x-model="hp" tabindex="-1" autocomplete="off" class="w-full px-4 py-2 rounded-md border border-white/30 bg-white/10" />
+                        </div>
                         <div class="grid md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-sm font-medium text-white mb-2 text-left">
@@ -43,9 +48,9 @@
                             type="submit"
                             :disabled="loading"
                             class="w-full md:w-auto bg-accent text-black py-4 px-12 rounded-lg font-montserrat font-bold text-lg hover:bg-yellow-400 transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                        >
+                        aria-live="polite">
                             <span x-show="!loading">Subscribe Now</span>
-                            <span x-show="loading" class="flex items-center justify-center space-x-2">
+                            <span x-show="loading" x-cloak class="flex items-center justify-center space-x-2">
                                 <div class="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
                                 <span>Subscribing...</span>
                             </span>
@@ -54,7 +59,7 @@
                 </div>
                 
                 <!-- Success Message -->
-                <div x-show="success" class="text-center animate-fadeInUp">
+                <div x-show="success" x-cloak class="text-center animate-fadeInUp" style="display: none;">
                     <div class="w-20 h-20 bg-success rounded-full flex items-center justify-center mx-auto mb-6">
                         <span class="text-4xl text-white">✓</span>
                     </div>
@@ -67,7 +72,7 @@
                 </div>
                 
                 <!-- Error Message -->
-                <div x-show="error" class="text-center p-4 bg-red-600/20 rounded-lg">
+                <div x-show="error" x-cloak class="text-center p-4 bg-red-600/20 rounded-lg" style="display: none;">
                     <p class="text-white">Something went wrong. Please try again later.</p>
                 </div>
                 

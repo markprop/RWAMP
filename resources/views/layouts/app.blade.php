@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ $title ?? 'RWAMP - The Currency of Real Estate Investments' }}</title>
-    <meta name="description" content="{{ $description ?? 'RWAMP is the official token for investing in real estate projects across Dubai, Pakistan, and Saudi Arabia. Powered by Mark Properties.' }}">
-    <meta name="keywords" content="{{ $keywords ?? 'RWAMP, real estate, token, investment, Dubai, Pakistan, Saudi Arabia, Mark Properties' }}">
-    <meta name="author" content="Mark Properties">
+    <title>{{ $title ?? 'RWAMP – The Currency of Real Estate Investments' }}</title>
+    <meta name="description" content="{{ $description ?? 'Invest in Dubai, Pakistan & Saudi Arabia real estate with RWAMP tokens. Secure, transparent, and globally accessible.' }}">
+    <meta name="keywords" content="{{ $keywords ?? 'RWAMP, real estate, token, investment, Dubai, Pakistan, Saudi Arabia' }}">
+    <meta name="author" content="RWAMP">
+    <link rel="canonical" href="{{ url()->current() }}">
+    <meta name="robots" content="index,follow">
 
     <!-- Favicon -->
     <link rel="icon" href="{{ asset('favicon.ico') }}?v=2" type="image/x-icon">
@@ -18,16 +20,18 @@
     <link rel="manifest" href="{{ asset('manifest.json') }}">
 
     <!-- Open Graph -->
-    <meta property="og:title" content="{{ $ogTitle ?? 'RWAMP - The Currency of Real Estate Investments' }}">
-    <meta property="og:description" content="{{ $ogDescription ?? 'RWAMP is the official token for investing in real estate projects across Dubai, Pakistan, and Saudi Arabia.' }}">
+    <meta property="og:title" content="{{ $ogTitle ?? ($title ?? 'RWAMP') }}">
+    <meta property="og:description" content="{{ $ogDescription ?? ($description ?? 'RWAMP – Real estate investment token.') }}">
     <meta property="og:image" content="{{ $ogImage ?? asset('images/logo.jpeg') }}">
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:site_name" content="RWAMP">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{{ $twitterTitle ?? 'RWAMP - The Currency of Real Estate Investments' }}">
-    <meta name="twitter:description" content="{{ $twitterDescription ?? 'RWAMP is the official token for investing in real estate projects across Dubai, Pakistan, and Saudi Arabia.' }}">
+    <meta name="twitter:site" content="@rwamp">
+    <meta name="twitter:title" content="{{ $twitterTitle ?? ($title ?? 'RWAMP') }}">
+    <meta name="twitter:description" content="{{ $twitterDescription ?? ($description ?? 'RWAMP – Real estate investment token.') }}">
     <meta name="twitter:image" content="{{ $twitterImage ?? asset('images/logo.jpeg') }}">
 
     <!-- Fonts -->
@@ -35,8 +39,20 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Roboto:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
-    <!-- Styles -->
-    @vite(['resources/css/app.css'])
+    <!-- Styles & Scripts via Vite -->
+    @vite(['resources/css/app.css','resources/js/app.js'])
+
+    <!-- Structured Data: Organization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "RWAMP",
+      "url": "{{ url('/') }}",
+      "logo": "{{ asset('images/logo.jpeg') }}",
+      "sameAs": []
+    }
+    </script>
 
     <!-- Google Analytics -->
     @if(config('app.google_analytics_id'))
@@ -72,11 +88,14 @@
 
     @stack('head')
 </head>
-<body class="font-roboto antialiased" x-data>
-    @yield('content')
+<body class="font-roboto antialiased">
+    @include('components.navbar')
+    
+    <main class="pt-16">
+        @yield('content')
+    </main>
 
     <!-- Scripts -->
-    @vite(['resources/js/app.js'])
     @stack('scripts')
 </body>
 </html>

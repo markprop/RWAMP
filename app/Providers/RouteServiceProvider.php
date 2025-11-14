@@ -28,6 +28,18 @@ class RouteServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
 
+        // Rate limiter for OTP verification attempts (max 3 per 15 minutes per email)
+        RateLimiter::for('otp-verification', function (Request $request) {
+            $email = $request->input('email') ?: $request->ip();
+            return Limit::perMinutes(15, 3)->by($email);
+        });
+
+        // Rate limiter for OTP resend (max 1 per minute per email)
+        RateLimiter::for('otp-resend', function (Request $request) {
+            $email = $request->input('email') ?: $request->ip();
+            return Limit::perMinute(1)->by($email);
+        });
+
         $this->routes(function () {
             Route::middleware('api')
                 ->prefix('api')

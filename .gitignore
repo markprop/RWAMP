@@ -1,50 +1,91 @@
-# --- Laravel core ---
-/vendor/
-/bootstrap/cache/
+# Laravel Framework
+/node_modules
+/public/hot
+/public/storage
 /storage/*.key
-/storage/logs/*
-/storage/framework/cache/*
-/storage/framework/sessions/*
-/storage/framework/views/*
-/storage/framework/testing/*
-
-# Environment
-/.env
-.env.*
-!.env.example
-
-# PHPUnit
-/.phpunit.result.cache
-/.phpunit.cache
-
-# Laravel Valet / Homestead
+/vendor
+.env
+.env.backup
+.env.production
+.phpunit.result.cache
 Homestead.json
 Homestead.yaml
+auth.json
+npm-debug.log
+yarn-error.log
+/.fleet
+/.idea
+/.vscode
 
-# --- Node / Vite build output ---
-/node_modules/
+# Laravel specific
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
+/storage/app/*
+!/storage/app/.gitignore
+/storage/framework/cache/*
+!/storage/framework/cache/.gitignore
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
+/storage/framework/testing/*
+!/storage/framework/testing/.gitignore
+/storage/framework/views/*
+!/storage/framework/views/.gitignore
+/storage/logs/*
+!/storage/logs/.gitignore
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+/database/*.sqlite
+/database/*.sqlite-journal
+
+# Build assets (keep source, ignore built files)
+/public/build
+/public/mix-manifest.json
 /public/hot
-/public/build/
-/.vite
 
-# Frontend caches (optional)
-/.cache
-
-# --- Public storage & uploads (generated content) ---
-/public/storage
-/public/uploads/**
-!/public/uploads/.gitkeep
-
-# --- OS/Editor junk ---
+# IDE & Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
 .DS_Store
 Thumbs.db
-desktop.ini
-/.idea/
-/.vscode/
-/.fleet/
-/.history/
 
-# --- Root-level logs/artifacts ---
-/*.log
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 
+# Testing
+/coverage
+.phpunit.result.cache
 
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.cache
+*.bak
+*.backup
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.rar
+
+# Compiled assets (if using Laravel Mix)
+/public/js
+/public/css
+/public/mix-manifest.json
+
+# Optional: Keep .env.example
+!.env.example

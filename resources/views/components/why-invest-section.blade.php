@@ -27,7 +27,7 @@ $features = [
 ];
 @endphp
 
-<section class="py-20 bg-gray-50">
+<section id="why-invest" class="py-20 bg-gray-50">
     <div class="max-w-7xl mx-auto px-4">
         <div class="text-center mb-16 animate-fadeInUp">
             <h2 class="text-4xl md:text-5xl font-montserrat font-bold text-gray-900 mb-6">
@@ -73,12 +73,21 @@ $features = [
                 <p class="text-lg mb-6 opacity-90">
                     Join thousands of investors who trust RWAMP for their real estate investments
                 </p>
-                <button 
-                    onclick="document.getElementById('signup').scrollIntoView({ behavior: 'smooth' })"
-                    class="bg-white text-primary px-8 py-4 rounded-lg font-montserrat font-bold text-lg hover:bg-gray-100 transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                >
-                    Get Started Now
-                </button>
+                @auth
+                    <a 
+                        href="{{ route('open.purchase') }}"
+                        class="inline-block bg-white text-primary px-8 py-4 rounded-lg font-montserrat font-bold text-lg hover:bg-gray-100 transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                    >
+                        Get Started Now
+                    </a>
+                @else
+                    <a 
+                        href="{{ route('open.purchase') }}"
+                        class="inline-block bg-white text-primary px-8 py-4 rounded-lg font-montserrat font-bold text-lg hover:bg-gray-100 transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                    >
+                        Get Started Now
+                    </a>
+                @endauth
             </div>
         </div>
     </div>

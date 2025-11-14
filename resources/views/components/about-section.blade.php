@@ -1,4 +1,4 @@
-<section class="py-20 bg-white">
+<section id="about" class="py-20 bg-white">
     <div class="max-w-7xl mx-auto px-4">
         <div class="grid lg:grid-cols-2 gap-12 items-center">
             <!-- Left side - Illustration -->
@@ -57,8 +57,7 @@
                     RWAMP is the official token for investing in real estate projects across 
                     <span class="font-semibold text-primary"> Dubai</span>, 
                     <span class="font-semibold text-accent"> Pakistan</span>, and 
-                    <span class="font-semibold text-success"> Saudi Arabia</span>. 
-                    All projects are powered by Mark Properties.
+                    <span class="font-semibold text-success"> Saudi Arabia</span>.
                 </p>
                 
                 <div class="space-y-4">
@@ -76,7 +75,7 @@
                             <span class="text-black text-sm">✓</span>
                         </div>
                         <p class="text-gray-700">
-                            <span class="font-semibold">Mark Properties Backing:</span> Industry expertise and proven track record in real estate development.
+                            <span class="font-semibold">Trusted Expertise:</span> Industry expertise and proven track record in real estate development.
                         </p>
                     </div>
                     

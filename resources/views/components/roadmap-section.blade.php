@@ -48,7 +48,7 @@ $phases = [
 ];
 @endphp
 
-<section class="py-20 bg-white">
+<section id="roadmap" class="py-20 bg-white">
     <div class="max-w-7xl mx-auto px-4">
         <div class="text-center mb-16 animate-fadeInUp">
             <h2 class="text-4xl md:text-5xl font-montserrat font-bold text-gray-900 mb-6">

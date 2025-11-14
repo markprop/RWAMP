@@ -39,7 +39,7 @@ class EmailService
             ]);
 
             return true;
-        } catch (\Throwable $e) {
+        } catch (\Exception $e) {
             Log::error('Failed to send contact notification emails', [
                 'contact_id' => $contact->id,
                 'error' => $e->getMessage(),
@@ -77,7 +77,7 @@ class EmailService
             ]);
 
             return true;
-        } catch (\Throwable $e) {
+        } catch (\Exception $e) {
             Log::error('Failed to send reseller notification emails', [
                 'application_id' => $application->id,
                 'error' => $e->getMessage(),
@@ -108,7 +108,7 @@ class EmailService
             ]);
 
             return true;
-        } catch (\Throwable $e) {
+        } catch (\Exception $e) {
             Log::error('Failed to send welcome email', [
                 'subscription_id' => $subscription->id,
                 'error' => $e->getMessage(),
@@ -141,7 +141,7 @@ class EmailService
             ]);
 
             return true;
-        } catch (\Throwable $e) {
+        } catch (\Exception $e) {
             Log::error('Failed to send newsletter', [
                 'error' => $e->getMessage(),
                 'subject' => $subject,

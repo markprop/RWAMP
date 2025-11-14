@@ -28,11 +28,11 @@ $socialLinks = [
 ];
 
 $quickLinks = [
-    ['name' => 'About RWAMP', 'href' => '#about'],
-    ['name' => 'Why Invest', 'href' => '#why-invest'],
-    ['name' => 'Reseller Program', 'href' => '#reseller'],
-    ['name' => 'Roadmap', 'href' => '#roadmap'],
-    ['name' => 'Contact', 'href' => '#signup']
+    ['name' => 'About RWAMP', 'href' => route('home') . '#about'],
+    ['name' => 'Why Invest', 'href' => route('home') . '#why-invest'],
+    ['name' => 'Become a Partner', 'href' => route('become.partner')],
+    ['name' => 'Roadmap', 'href' => route('home') . '#roadmap'],
+    ['name' => 'Contact', 'href' => route('home') . '#signup']
 ];
 @endphp
 
@@ -57,16 +57,10 @@ $quickLinks = [
                 
                 <p class="text-gray-300 mb-6 leading-relaxed">
                     RWAMP is the official token for investing in real estate projects across Dubai, 
-                    Pakistan, and Saudi Arabia. All projects are powered by Mark Properties.
+                    Pakistan, and Saudi Arabia.
                 </p>
                 
-                <div class="bg-gray-800 rounded-lg p-4">
-                    <p class="text-sm text-gray-300">
-                        <span class="font-semibold text-accent">Powered by Mark Properties</span>
-                        <br />
-                        Your trusted partner in real estate investment
-                    </p>
-                </div>
+                
             </div>
             
             <!-- Quick Links -->
@@ -116,19 +110,13 @@ $quickLinks = [
         <div class="border-t border-gray-800 mt-8 pt-8 animate-fadeInUp" style="animation-delay: 0.3s">
             <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
                 <div class="text-sm text-gray-400">
-                    © 2024 RWAMP. All rights reserved. Powered by Mark Properties.
+                    © 2024 RWAMP. All rights reserved.
                 </div>
                 
                 <div class="flex space-x-6 text-sm">
-                    <a href="#" class="text-gray-400 hover:text-accent transition-colors duration-300">
-                        Privacy Policy
-                    </a>
-                    <a href="#" class="text-gray-400 hover:text-accent transition-colors duration-300">
-                        Terms of Service
-                    </a>
-                    <a href="#" class="text-gray-400 hover:text-accent transition-colors duration-300">
-                        Disclaimer
-                    </a>
+                    <a href="{{ route('privacy.policy') }}" class="text-gray-400 hover:text-accent transition-colors duration-300">Privacy Policy</a>
+                    <a href="{{ route('terms.of.service') }}" class="text-gray-400 hover:text-accent transition-colors duration-300">Terms of Service</a>
+                    <a href="{{ route('disclaimer') }}" class="text-gray-400 hover:text-accent transition-colors duration-300">Disclaimer</a>
                 </div>
                 
                 <button

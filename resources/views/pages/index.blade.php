@@ -1,13 +1,19 @@
 @extends('layouts.app')
 
 @section('content')
-<main class="min-h-screen">
-    @include('components.hero-section')
+<div class="min-h-screen" x-data x-init="
+    @if(request()->query('open') === 'purchase')
+        $nextTick(() => window.dispatchEvent(new CustomEvent('open-purchase-modal')))
+    @endif
+">
+    @include('components.hero-section', ['presaleData' => $presaleData ?? []])
     @include('components.about-section')
     @include('components.why-invest-section')
-    @include('components.reseller-section')
     @include('components.roadmap-section')
     @include('components.signup-section')
     @include('components.footer')
-</main>
+    
+    <!-- Purchase modal available on homepage too -->
+    @include('components.purchase-modal', ['rates' => $rates ?? [], 'wallets' => $wallets ?? []])
+</div>
 @endsection
