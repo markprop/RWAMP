@@ -33,14 +33,48 @@
                 <div class="bg-white rounded-xl shadow-xl p-6 card-hover animate-fadeInUp">
                     <h2 class="text-xl font-montserrat font-bold mb-4">Wallet</h2>
                     <div class="text-sm text-gray-600 mb-1">Wallet Address</div>
-                    <div class="font-mono break-all text-gray-900 mb-4">{{ $user->wallet_address ?? 'Not set' }}</div>
-                    <button 
-                        type="button" 
-                        onclick="document.getElementById('wallet-modal').classList.remove('hidden')"
-                        class="mb-4 w-full btn-secondary text-sm"
-                    >
-                        Update Wallet Address
-                    </button>
+                    @if($user->wallet_address)
+                        <div class="mb-4">
+                            <div class="flex items-center mb-2">
+                                <span id="walletDisplay" class="font-mono bg-gray-100 px-2 py-1 rounded text-gray-900 break-all">
+                                    {{ substr($user->wallet_address, 0, 4) }} **** **** {{ substr($user->wallet_address, -4) }}
+                                </span>
+                                <button 
+                                    type="button" 
+                                    onclick="copyText('{{ $user->wallet_address }}')" 
+                                    class="ml-2 text-sm text-blue-600 hover:text-blue-800 font-medium px-2 py-1 hover:bg-blue-50 rounded transition-colors"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <button 
+                                type="button" 
+                                onclick="toggleWalletAddress()" 
+                                id="toggleWalletBtn"
+                                class="text-xs text-gray-600 hover:text-gray-800 font-medium underline"
+                            >
+                                Show Full Address
+                            </button>
+                        </div>
+                    @else
+                        <div class="mb-4">
+                            <div class="font-mono break-all text-gray-500 mb-3">Not set</div>
+                            <form method="POST" action="{{ route('wallet.generate') }}" id="generateWalletForm">
+                                @csrf
+                                <button 
+                                    type="submit" 
+                                    id="generateWalletBtn"
+                                    class="w-full btn-primary text-sm py-2.5 flex items-center justify-center gap-2"
+                                >
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                    </svg>
+                                    Generate Wallet Address
+                                </button>
+                            </form>
+                        </div>
+                    @endif
+                    <p class="text-xs text-gray-500 mb-4">Your wallet address is auto-generated and used for secure internal transfers.</p>
                     <div class="mt-4 grid grid-cols-2 gap-4">
                         <div class="bg-black text-white rounded-lg p-4 text-center">
                             <div class="text-xs text-white/70">Token Balance</div>
@@ -48,7 +82,7 @@
                         </div>
                         <div class="bg-accent text-black rounded-lg p-4 text-center">
                             <div class="text-xs text-black/70">Value (Rs)</div>
-                            <div class="text-2xl font-bold">{{ number_format(($user->token_balance ?? 0) * 0.70, 2) }}</div>
+                            <div class="text-2xl font-bold">{{ number_format(($user->token_balance ?? 0) * ($officialPrice ?? 0.70), 2) }}</div>
                         </div>
                     </div>
                     @if($user->kyc_status === 'approved')
@@ -204,6 +238,7 @@
                                     <th class="py-3 pr-6">Date</th>
                                     <th class="py-3 pr-6">Type</th>
                                     <th class="py-3 pr-6">Amount</th>
+                                    <th class="py-3 pr-6">Price (Rs)</th>
                                     <th class="py-3 pr-6">Status</th>
                                 </tr>
                             </thead>
@@ -213,10 +248,17 @@
                                         <td class="py-3 pr-6">{{ $t->created_at?->format('Y-m-d') }}</td>
                                         <td class="py-3 pr-6">{{ str_replace('_', ' ', ucfirst($t->type)) }}</td>
                                         <td class="py-3 pr-6">{{ number_format($t->amount, 2) }} RWAMP</td>
+                                        <td class="py-3 pr-6">
+                                            @if($t->price_per_coin && $t->price_per_coin > 0)
+                                                {{ number_format($t->price_per_coin, 2) }}
+                                            @else
+                                                <span class="text-gray-400">—</span>
+                                            @endif
+                                        </td>
                                         <td class="py-3 pr-6"><span class="rw-badge">{{ ucfirst($t->status) }}</span></td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="4" class="py-6 text-center text-gray-500">No transactions yet.</td></tr>
+                                    <tr><td colspan="5" class="py-6 text-center text-gray-500">No transactions yet.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -273,6 +315,165 @@
         </form>
     </div>
 </div>
+
+<!-- Toast Notification -->
+<div id="copyToast" class="hidden fixed top-4 right-4 z-50 max-w-sm w-full">
+    <div id="copyToastContent" class="bg-white rounded-lg shadow-lg border p-4 flex items-center justify-between">
+        <div class="flex items-center">
+            <div id="copyToastIcon" class="mr-3"></div>
+            <div>
+                <p id="copyToastMessage" class="text-sm font-medium text-gray-900"></p>
+            </div>
+        </div>
+        <button onclick="hideCopyToast()" class="ml-4 text-gray-400 hover:text-gray-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    </div>
+</div>
+
+<script>
+let walletAddressVisible = false;
+const fullWalletAddress = '{{ $user->wallet_address ?? "" }}';
+const maskedWalletAddress = '{{ $user->wallet_address ? substr($user->wallet_address, 0, 4) . " **** **** " . substr($user->wallet_address, -4) : "" }}';
+
+// Handle wallet generation form submission
+document.addEventListener('DOMContentLoaded', function() {
+    const generateWalletForm = document.getElementById('generateWalletForm');
+    const generateWalletBtn = document.getElementById('generateWalletBtn');
+    
+    if (generateWalletForm && generateWalletBtn) {
+        generateWalletForm.addEventListener('submit', function(e) {
+            // Disable button and show loading state
+            generateWalletBtn.disabled = true;
+            generateWalletBtn.innerHTML = `
+                <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Generating...
+            `;
+        });
+    }
+});
+
+function toggleWalletAddress() {
+    const walletDisplay = document.getElementById('walletDisplay');
+    const toggleBtn = document.getElementById('toggleWalletBtn');
+    
+    if (!walletDisplay || !toggleBtn) return;
+    
+    walletAddressVisible = !walletAddressVisible;
+    
+    if (walletAddressVisible) {
+        walletDisplay.textContent = fullWalletAddress;
+        toggleBtn.textContent = 'Hide Full Address';
+    } else {
+        walletDisplay.textContent = maskedWalletAddress;
+        toggleBtn.textContent = 'Show Full Address';
+    }
+}
+
+function showCopyToast(message, isSuccess = true) {
+    const toast = document.getElementById('copyToast');
+    const toastContent = document.getElementById('copyToastContent');
+    const toastIcon = document.getElementById('copyToastIcon');
+    const toastMessage = document.getElementById('copyToastMessage');
+    
+    if (!toast || !toastContent || !toastIcon || !toastMessage) return;
+    
+    // Set message
+    toastMessage.textContent = message;
+    
+    // Set icon and styling based on success/error
+    if (isSuccess) {
+        toastIcon.innerHTML = '<svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+        toastContent.className = 'bg-white rounded-lg shadow-lg border border-green-200 p-4 flex items-center justify-between';
+    } else {
+        toastIcon.innerHTML = '<svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+        toastContent.className = 'bg-white rounded-lg shadow-lg border border-red-200 p-4 flex items-center justify-between';
+    }
+    
+    // Show toast with animation
+    toast.classList.remove('hidden');
+    toast.classList.add('animate-fadeIn');
+    
+    // Auto-hide after 3 seconds
+    setTimeout(function() {
+        hideCopyToast();
+    }, 3000);
+}
+
+function hideCopyToast() {
+    const toast = document.getElementById('copyToast');
+    if (toast) {
+        toast.classList.add('hidden');
+        toast.classList.remove('animate-fadeIn');
+    }
+}
+
+function copyText(text) {
+    if (!text) {
+        showCopyToast('No wallet address to copy', false);
+        return;
+    }
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() {
+            showCopyToast('Wallet address copied to clipboard!', true);
+        }, function(err) {
+            console.error('Failed to copy: ', err);
+            fallbackCopyTextToClipboard(text);
+        });
+    } else {
+        fallbackCopyTextToClipboard(text);
+    }
+}
+
+function fallbackCopyTextToClipboard(text) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.position = "fixed";
+    textArea.style.opacity = "0";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            showCopyToast('Wallet address copied to clipboard!', true);
+        } else {
+            showCopyToast('Failed to copy. Please copy manually.', false);
+        }
+    } catch (err) {
+        console.error('Fallback copy failed: ', err);
+        showCopyToast('Failed to copy. Please copy manually.', false);
+    }
+    
+    document.body.removeChild(textArea);
+}
+</script>
+
+<style>
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fadeIn {
+    animation: fadeIn 0.3s ease-out;
+}
+</style>
 @endsection
 
 

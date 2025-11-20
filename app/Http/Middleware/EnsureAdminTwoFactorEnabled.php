@@ -16,6 +16,14 @@ class EnsureAdminTwoFactorEnabled
             // even if not yet confirmed (confirmation happens on next login).
             if (empty($user->two_factor_secret)) {
                 if (! $request->routeIs('admin.2fa.setup')) {
+                    // For AJAX requests, return JSON response instead of redirect
+                    if ($request->expectsJson() || $request->ajax()) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Two-factor authentication must be enabled to access this feature.',
+                            'redirect' => route('admin.2fa.setup')
+                        ], 403);
+                    }
                     return redirect()->route('admin.2fa.setup');
                 }
             }

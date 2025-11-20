@@ -109,20 +109,80 @@ class ResellerController extends Controller
     {
         $reseller = Auth::user();
         
+        // Get official coin price
+        $officialPrice = \App\Helpers\PriceHelper::getRwampPkrPrice();
+        
+        // Calculate average purchase price from all purchases
+        $tokenBalance = $reseller->token_balance ?? 0;
+        $averagePurchasePrice = $officialPrice; // Default to official price
+        
+        // Get all crypto payments where reseller purchased coins
+        $cryptoPayments = CryptoPayment::where('user_id', $reseller->id)
+            ->where('status', 'approved')
+            ->whereNotNull('coin_price_rs')
+            ->where('coin_price_rs', '>', 0)
+            ->get();
+        
+        // Get all transactions where reseller received coins with price information
+        $creditTransactions = Transaction::where('user_id', $reseller->id)
+            ->whereIn('type', ['credit', 'crypto_purchase', 'commission', 'admin_transfer_credit'])
+            ->where('status', 'completed')
+            ->whereNotNull('price_per_coin')
+            ->where('price_per_coin', '>', 0)
+            ->where('amount', '>', 0) // Only positive amounts (credits)
+            ->get();
+        
+        // Calculate weighted average purchase price
+        $totalAmount = 0;
+        $totalValue = 0;
+        
+        // Add crypto payments
+        foreach ($cryptoPayments as $payment) {
+            $amount = (float) $payment->token_amount;
+            $price = (float) $payment->coin_price_rs;
+            if ($amount > 0 && $price > 0) {
+                $totalAmount += $amount;
+                $totalValue += $amount * $price;
+            }
+        }
+        
+        // Add credit transactions
+        foreach ($creditTransactions as $transaction) {
+            $amount = abs((float) $transaction->amount); // Ensure positive
+            $price = (float) $transaction->price_per_coin;
+            if ($amount > 0 && $price > 0) {
+                $totalAmount += $amount;
+                $totalValue += $amount * $price;
+            }
+        }
+        
+        // Calculate average price
+        if ($totalAmount > 0) {
+            $averagePurchasePrice = $totalValue / $totalAmount;
+        } elseif ($reseller->coin_price) {
+            // Fallback to reseller's coin_price if no purchase history
+            $averagePurchasePrice = $reseller->coin_price;
+        }
+        
+        // Calculate portfolio values
+        $portfolioValue = $tokenBalance * $averagePurchasePrice;
+        $officialPortfolioValue = $tokenBalance * $officialPrice;
+        
         // Calculate metrics
         $metrics = [
             'total_users' => User::where('reseller_id', $reseller->id)->count(),
-            'pending_payments' => CryptoPayment::whereHas('user', function($q) use ($reseller) {
-                $q->where('reseller_id', $reseller->id);
-            })->where('status', 'pending')->count(),
             'total_payments' => CryptoPayment::whereHas('user', function($q) use ($reseller) {
                 $q->where('reseller_id', $reseller->id);
             })->count(),
             'total_commission' => Transaction::where('user_id', $reseller->id)
                 ->where('type', 'commission')
                 ->sum('amount'),
-            'token_balance' => $reseller->token_balance,
+            'token_balance' => $tokenBalance,
             'total_transactions' => Transaction::where('user_id', $reseller->id)->count(),
+            'portfolio_value' => $portfolioValue,
+            'official_portfolio_value' => $officialPortfolioValue,
+            'average_purchase_price' => $averagePurchasePrice,
+            'official_price' => $officialPrice,
         ];
         
         // Get my users
@@ -131,15 +191,13 @@ class ResellerController extends Controller
             ->latest()
             ->paginate(20, ['*'], 'users_page');
 
-        // Get pending crypto payments for my users
-        $pendingPayments = CryptoPayment::whereHas('user', function($q) use ($reseller) {
-            $q->where('reseller_id', $reseller->id);
-        })
-        ->where('status', 'pending')
-        ->with('user')
-        ->latest()
-        ->limit(5)
-        ->get();
+        // Get pending buy requests from users
+        $pendingBuyRequests = BuyFromResellerRequest::where('reseller_id', $reseller->id)
+            ->where('status', 'pending')
+            ->with('user')
+            ->latest()
+            ->limit(5)
+            ->get();
 
         // Get all resellers for "Buy from Reseller" feature
         $allResellers = User::where('role', 'reseller')
@@ -172,7 +230,7 @@ class ResellerController extends Controller
             ->limit(20)
             ->get();
 
-        return view('dashboard.reseller', compact('metrics', 'myUsers', 'pendingPayments', 'allResellers', 'recentTransactions'));
+        return view('dashboard.reseller', compact('metrics', 'myUsers', 'pendingBuyRequests', 'allResellers', 'recentTransactions'));
     }
 
     /**
@@ -807,6 +865,10 @@ class ResellerController extends Controller
      */
     public function approveBuyRequest(Request $request, BuyFromResellerRequest $buyRequest)
     {
+        $validated = $request->validate([
+            'payment_method' => 'required|in:usdt,bank,cash',
+        ]);
+
         $reseller = Auth::user();
 
         // Verify request belongs to this reseller
@@ -825,16 +887,11 @@ class ResellerController extends Controller
             ], 400);
         }
 
-        // Verify reseller has sufficient balance
-        if ($reseller->token_balance < $buyRequest->coin_quantity) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Insufficient token balance.'
-            ], 400);
-        }
+        // Note: Balance check removed - resellers can approve requests regardless of balance
+        // Resellers can see their own balance in the dashboard when deciding to approve
 
         try {
-            DB::transaction(function() use ($reseller, $buyRequest) {
+            DB::transaction(function() use ($reseller, $buyRequest, $validated) {
                 // Deduct from reseller
                 $reseller->decrement('token_balance', $buyRequest->coin_quantity);
                 
@@ -850,6 +907,8 @@ class ResellerController extends Controller
                     'amount' => -$buyRequest->coin_quantity, // Negative for debit
                     'price_per_coin' => $buyRequest->coin_price,
                     'total_price' => $buyRequest->total_amount,
+                    'payment_type' => $validated['payment_method'],
+                    'payment_status' => $validated['payment_method'] === 'cash' ? 'verified' : 'pending',
                     'sender_type' => 'reseller',
                     'status' => 'completed',
                     'reference' => 'BUY-REQ-' . $buyRequest->id,
@@ -864,6 +923,8 @@ class ResellerController extends Controller
                     'amount' => $buyRequest->coin_quantity,
                     'price_per_coin' => $buyRequest->coin_price,
                     'total_price' => $buyRequest->total_amount,
+                    'payment_type' => $validated['payment_method'],
+                    'payment_status' => $validated['payment_method'] === 'cash' ? 'verified' : 'pending',
                     'sender_type' => 'reseller',
                     'status' => 'completed',
                     'reference' => 'BUY-REQ-' . $buyRequest->id,

@@ -32,6 +32,21 @@ class EmailVerificationController extends Controller
         // Normalize email
         $email = \Illuminate\Support\Str::lower(trim($email));
 
+        // If OTP doesn't exist in cache, generate and send a new one
+        $cacheKey = "otp:{$email}";
+        if (!Cache::has($cacheKey)) {
+            try {
+                $this->generateAndSendOtp($email);
+                Log::info("Generated and sent new OTP for email verification page: {$email}");
+            } catch (\Exception $e) {
+                Log::error("Failed to generate/send OTP on verification page", [
+                    'email' => $email,
+                    'error' => $e->getMessage(),
+                ]);
+                // Continue anyway - in debug mode, OTP will be shown
+            }
+        }
+
         // Get OTP from cache for debugging (only in debug mode)
         $debugOtp = null;
         $cachedOtpForDebug = null;
@@ -41,6 +56,11 @@ class EmailVerificationController extends Controller
             
             // Also get from cache to compare
             $cachedOtpForDebug = Cache::get("otp:{$email}");
+            
+            // If debug OTP not in session but exists in cache, get it
+            if (!$debugOtp && $cachedOtpForDebug) {
+                $debugOtp = $cachedOtpForDebug;
+            }
         }
 
         // Check if email is locked due to too many attempts
@@ -324,8 +344,14 @@ class EmailVerificationController extends Controller
         $intendedAction = $request->session()->get('intended_action');
         $redirectUrl = route($dashboardRoute);
         
-        // Always open purchase modal after email verification (unless KYC is required)
-        if ($user->role !== 'user' || $dashboardRoute !== 'kyc.show') {
+        // Always open purchase modal after email verification (unless KYC is required or user is admin)
+        if ($user->role === 'admin') {
+            // Admin users should not see purchase modal
+            if ($intendedAction === 'purchase') {
+                $request->session()->forget('intended_action');
+            }
+            $redirectUrl = route($dashboardRoute);
+        } elseif ($user->role !== 'user' || $dashboardRoute !== 'kyc.show') {
             if ($intendedAction === 'purchase') {
                 $request->session()->forget('intended_action');
             }
@@ -452,7 +478,12 @@ class EmailVerificationController extends Controller
         // Send OTP email
         try {
             Mail::to($normalizedEmail)->send(new VerifyOtpMail($otp));
-            Log::info("OTP sent to email: {$normalizedEmail}", ['otp' => $otp]);
+            Log::info("OTP sent to email: {$normalizedEmail}", [
+                'otp' => $otp,
+                'mail_driver' => config('mail.default'),
+                'mail_host' => config('mail.mailers.smtp.host'),
+                'mail_from' => config('mail.from.address'),
+            ]);
             
             // Store OTP in session for debugging (only in debug mode)
             if (config('app.debug')) {
@@ -463,8 +494,28 @@ class EmailVerificationController extends Controller
                 ]);
             }
         } catch (\Exception $e) {
-            Log::error("Failed to send OTP email to {$normalizedEmail}: " . $e->getMessage());
-            throw $e;
+            Log::error("Failed to send OTP email to {$normalizedEmail}", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'mail_driver' => config('mail.default'),
+                'mail_host' => config('mail.mailers.smtp.host'),
+                'mail_from' => config('mail.from.address'),
+            ]);
+            
+            // If in debug mode, still allow the process to continue and show OTP on page
+            if (config('app.debug')) {
+                session()->put("otp_debug_{$normalizedEmail}", [
+                    'otp' => $otp,
+                    'timestamp' => now()->toIso8601String(),
+                    'email' => $normalizedEmail,
+                    'email_send_failed' => true,
+                    'email_error' => $e->getMessage(),
+                ]);
+                Log::warning("Email sending failed but continuing in debug mode. OTP: {$otp}");
+            } else {
+                // In production, throw the error
+                throw $e;
+            }
         }
 
         return $otp;

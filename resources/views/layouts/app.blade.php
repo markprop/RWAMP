@@ -97,5 +97,8 @@
 
     <!-- Scripts -->
     @stack('scripts')
+    
+    <!-- Tawk.to Live Chat Widget -->
+    @include('components.tawk-to')
 </body>
 </html>

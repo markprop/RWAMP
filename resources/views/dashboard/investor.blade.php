@@ -108,28 +108,53 @@
 @endpush
 
 @section('content')
-<div class="min-h-screen bg-white" x-data="{ 
-    purchaseModalOpen: false,
-    init() {
-        @if(request()->query('open') === 'purchase')
-        var self = this;
-        setTimeout(function() {
-            self.purchaseModalOpen = true;
-        }, 0);
-        @endif
-    }
-}" x-cloak>
+<div class="min-h-screen bg-white" x-data="investorDashboard" x-cloak>
     <section class="bg-gradient-to-r from-black to-secondary text-white py-12">
         <div class="max-w-7xl mx-auto px-4">
-            <h1 class="text-3xl md:text-5xl font-montserrat font-bold">Investor Dashboard</h1>
-            <p class="text-white/80">Welcome, {{ auth()->user()->name }}.</p>
+            <div class="flex items-start justify-between flex-wrap gap-6">
+                <div class="flex-1">
+                    <h1 class="text-3xl md:text-5xl font-montserrat font-bold mb-2">Investor Dashboard</h1>
+                    <p class="text-white/80 mb-4">Welcome, {{ auth()->user()->name }}.</p>
+                    @if(auth()->user()->referral_code)
+                        <div class="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20 inline-block">
+                            <span class="text-xs text-white/70 uppercase tracking-wide">Your Referral Code:</span>
+                            <span class="text-lg font-mono font-bold text-white ml-2">{{ auth()->user()->referral_code }}</span>
+                        </div>
+                    @endif
+                </div>
+                
+                <!-- Portfolio Cards Row -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full md:w-auto">
+                    <!-- Token Balance Card -->
+                    <div class="bg-gradient-to-br from-primary to-red-600 rounded-xl px-6 py-5 border-2 border-white/40 shadow-2xl min-w-[200px]">
+                        <div class="text-xs text-white uppercase tracking-wide mb-2 font-bold" style="color: #ffffff !important;">Token Balance</div>
+                        <div class="text-3xl md:text-4xl font-extrabold text-white drop-shadow-lg" style="color: #ffffff !important;">
+                            {{ number_format($metrics['token_balance'] ?? auth()->user()->token_balance ?? 0, 0) }} <span class="text-xl md:text-2xl font-bold" style="color: #ffffff !important;">RWAMP</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Portfolio Value Card -->
+                    <div class="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl px-6 py-5 border-2 border-white/40 shadow-2xl min-w-[200px]">
+                        <div class="text-xs text-white uppercase tracking-wide mb-2 font-bold" style="color: #ffffff !important;">Portfolio Value</div>
+                        <div class="text-3xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-1" style="color: #ffffff !important;">
+                            PKR {{ number_format($metrics['portfolio_value'] ?? 0, 0) }}
+                        </div>
+                        <div class="text-xs text-white" style="color: #ffffff !important;">Avg: PKR {{ number_format($metrics['average_purchase_price'] ?? 0, 2) }}/coin</div>
+                    </div>
+                    
+                    <!-- Official Portfolio Value Card -->
+                    <div class="bg-gradient-to-br from-green-500 to-green-700 rounded-xl px-6 py-5 border-2 border-white/40 shadow-2xl min-w-[200px]">
+                        <div class="text-xs text-white uppercase tracking-wide mb-2 font-bold" style="color: #ffffff !important;">Official Portfolio Value</div>
+                        <div class="text-3xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-1" style="color: #ffffff !important;">
+                            PKR {{ number_format($metrics['official_portfolio_value'] ?? 0, 0) }}
+                        </div>
+                        <div class="text-xs text-white" style="color: #ffffff !important;">Official: PKR {{ number_format($metrics['official_price'] ?? 0, 2) }}/coin</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
     <div class="max-w-7xl mx-auto px-4 py-10 grid md:grid-cols-4 gap-6">
-        <div class="bg-white rounded-xl shadow-xl p-6 card-hover animate-fadeInUp">
-            <h3 class="font-montserrat font-bold mb-2">Token Balance</h3>
-            <div class="text-3xl font-bold">{{ number_format(auth()->user()->token_balance ?? 0) }} RWAMP</div>
-        </div>
         <div class="bg-white rounded-xl shadow-xl p-6 card-hover animate-fadeInUp">
             <h3 class="font-montserrat font-bold mb-2">Purchase History</h3>
             <p class="text-gray-600">View your recent token purchases.</p>
@@ -152,6 +177,83 @@
             </div>
         </div>
     </div>
+
+    {{-- CHAT SYSTEM DISABLED - See CHAT_REENABLE_GUIDE.md to re-enable --}}
+    {{-- <!-- Chat Section -->
+    <div class="max-w-7xl mx-auto px-4 py-6">
+        <div class="bg-white rounded-xl shadow-xl p-6 card-hover">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <div class="flex items-center space-x-4">
+                    <div class="bg-green-100 rounded-full p-3">
+                        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-montserrat font-bold text-xl mb-1 text-gray-900">💬 Chat Dashboard</h3>
+                        <p class="text-gray-600 text-sm">Communicate with resellers, bargain, and complete offline payments</p>
+                    </div>
+                </div>
+                <a href="{{ route('chat.index') }}" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200 shadow-lg hover:shadow-xl">
+                    Open Chat Dashboard
+                </a>
+            </div>
+        </div>
+    </div> --}}
+
+    <!-- Pending Buy Requests Section -->
+    @if(isset($pendingBuyRequests) && $pendingBuyRequests->count() > 0)
+    <div class="max-w-7xl mx-auto px-4 pb-6">
+        <div class="bg-white rounded-xl shadow-xl p-6 card-hover animate-fadeInUp">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="font-montserrat font-bold text-xl">Pending Buy Requests</h3>
+                    <p class="text-gray-600 text-sm mt-1">Your pending coin purchase requests waiting for approval</p>
+                </div>
+            </div>
+            <div class="border rounded-lg overflow-hidden">
+                <div class="max-h-96 overflow-y-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-gray-50 sticky top-0">
+                            <tr>
+                                <th class="text-left px-4 py-2">Date</th>
+                                <th class="text-left px-4 py-2">Seller</th>
+                                <th class="text-left px-4 py-2">Coins</th>
+                                <th class="text-left px-4 py-2">Price per Coin</th>
+                                <th class="text-left px-4 py-2">Total Amount</th>
+                                <th class="text-left px-4 py-2">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($pendingBuyRequests as $buyRequest)
+                                <tr class="border-t">
+                                    <td class="px-4 py-2 whitespace-nowrap">{{ $buyRequest->created_at->format('Y-m-d H:i') }}</td>
+                                    <td class="px-4 py-2">
+                                        <div class="font-semibold">
+                                            @if($buyRequest->reseller)
+                                                {{ $buyRequest->reseller->name }} <span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Reseller</span>
+                                            @else
+                                                <span class="text-gray-500">Unknown</span>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-2">{{ number_format($buyRequest->coin_quantity, 0) }} RWAMP</td>
+                                    <td class="px-4 py-2">PKR {{ number_format($buyRequest->coin_price, 2) }}</td>
+                                    <td class="px-4 py-2 font-semibold">PKR {{ number_format($buyRequest->total_amount, 2) }}</td>
+                                    <td class="px-4 py-2">
+                                        <span class="rw-badge bg-yellow-100 text-yellow-800">
+                                            Pending Approval
+                                        </span>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 
     <!-- Recent Activity -->
     <div class="max-w-7xl mx-auto px-4 pb-12 grid md:grid-cols-2 gap-6">

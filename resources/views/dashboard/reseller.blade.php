@@ -22,30 +22,47 @@
 @endphp
 
 @section('content')
-<div class="min-h-screen bg-white" x-data x-init="
-    @if(request()->query('open') === 'purchase')
-        $nextTick(() => window.dispatchEvent(new CustomEvent('open-purchase-modal')))
-    @endif
-" x-cloak>
+<div class="min-h-screen bg-white" x-data x-cloak>
     <section class="bg-gradient-to-r from-black to-secondary text-white py-12">
         <div class="max-w-7xl mx-auto px-4">
-            <div class="flex items-center justify-between flex-wrap gap-4">
-                <div>
-                    <h1 class="text-3xl md:text-5xl font-montserrat font-bold">Reseller Dashboard</h1>
-                    <p class="text-white/80">Welcome, {{ auth()->user()->name }}.</p>
+            <div class="flex items-start justify-between flex-wrap gap-6">
+                <div class="flex-1">
+                    <h1 class="text-3xl md:text-5xl font-montserrat font-bold mb-2">Reseller Dashboard</h1>
+                    <p class="text-white/80 mb-4">Welcome, {{ auth()->user()->name }}.</p>
                     @if(auth()->user()->referral_code)
-                        <div class="mt-3 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20 inline-block">
+                        <div class="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20 inline-block">
                             <span class="text-xs text-white/70 uppercase tracking-wide">Your Referral Code:</span>
                             <span class="text-lg font-mono font-bold text-white ml-2">{{ auth()->user()->referral_code }}</span>
                         </div>
                     @endif
                 </div>
-                <div class="flex items-center gap-4 flex-wrap">
-                    <div class="bg-white/10 backdrop-blur-sm rounded-lg px-6 py-3 border border-white/20">
-                        <div class="text-xs text-white/70 uppercase tracking-wide mb-1">Token Balance</div>
-                        <div class="text-2xl font-bold text-white">
-                            {{ number_format($metrics['token_balance'] ?? 0, 0) }} RWAMP
+                
+                <!-- Portfolio Cards Row -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full md:w-auto">
+                    <!-- Token Balance Card -->
+                    <div class="bg-gradient-to-br from-primary to-red-600 rounded-xl px-6 py-5 border-2 border-white/40 shadow-2xl min-w-[200px]">
+                        <div class="text-xs text-white uppercase tracking-wide mb-2 font-bold" style="color: #ffffff !important;">Token Balance</div>
+                        <div class="text-3xl md:text-4xl font-extrabold text-white drop-shadow-lg" style="color: #ffffff !important;">
+                            {{ number_format($metrics['token_balance'] ?? 0, 0) }} <span class="text-xl md:text-2xl font-bold" style="color: #ffffff !important;">RWAMP</span>
                         </div>
+                    </div>
+                    
+                    <!-- Portfolio Value Card -->
+                    <div class="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl px-6 py-5 border-2 border-white/40 shadow-2xl min-w-[200px]">
+                        <div class="text-xs text-white uppercase tracking-wide mb-2 font-bold" style="color: #ffffff !important;">Portfolio Value</div>
+                        <div class="text-3xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-1" style="color: #ffffff !important;">
+                            PKR {{ number_format($metrics['portfolio_value'] ?? 0, 0) }}
+                        </div>
+                        <div class="text-xs text-white" style="color: #ffffff !important;">Avg: PKR {{ number_format($metrics['average_purchase_price'] ?? 0, 2) }}/coin</div>
+                    </div>
+                    
+                    <!-- Official Portfolio Value Card -->
+                    <div class="bg-gradient-to-br from-green-500 to-green-700 rounded-xl px-6 py-5 border-2 border-white/40 shadow-2xl min-w-[200px]">
+                        <div class="text-xs text-white uppercase tracking-wide mb-2 font-bold" style="color: #ffffff !important;">Official Portfolio Value</div>
+                        <div class="text-3xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-1" style="color: #ffffff !important;">
+                            PKR {{ number_format($metrics['official_portfolio_value'] ?? 0, 0) }}
+                        </div>
+                        <div class="text-xs text-white" style="color: #ffffff !important;">Official: PKR {{ number_format($metrics['official_price'] ?? 0, 2) }}/coin</div>
                     </div>
                 </div>
             </div>
@@ -59,11 +76,6 @@
                 <div class="text-sm text-gray-600 mb-1">My Users</div>
                 <div class="text-3xl font-bold text-primary">{{ $metrics['total_users'] ?? 0 }}</div>
                 <div class="text-xs text-gray-500 mt-2">Users under you</div>
-            </a>
-            <a href="{{ route('reseller.payments') }}" class="bg-white rounded-xl shadow-xl p-6 card-hover block w-full text-left cursor-pointer hover:shadow-2xl transition-all duration-300">
-                <div class="text-sm text-gray-600 mb-1">Pending Payments</div>
-                <div class="text-3xl font-bold text-yellow-600">{{ $metrics['pending_payments'] ?? 0 }}</div>
-                <div class="text-xs text-gray-500 mt-2">Awaiting approval</div>
             </a>
             <a href="{{ route('reseller.payments', ['status' => 'approved']) }}" class="bg-white rounded-xl shadow-xl p-6 card-hover block w-full text-left cursor-pointer hover:shadow-2xl transition-all duration-300">
                 <div class="text-sm text-gray-600 mb-1">Total Payments</div>
@@ -118,6 +130,27 @@
                 </a>
             </div>
         </div>
+
+        {{-- CHAT SYSTEM DISABLED - See CHAT_REENABLE_GUIDE.md to re-enable --}}
+        {{-- <!-- Chat Dashboard Section -->
+        <div class="bg-white rounded-xl shadow-xl p-6 card-hover mb-8">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="bg-green-100 rounded-full p-3">
+                        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-montserrat font-bold text-xl mb-1 text-gray-900">💬 Chat Dashboard</h3>
+                        <p class="text-gray-600 text-sm">Communicate with investors, bargain, and handle offline payments</p>
+                    </div>
+                </div>
+                <a href="{{ route('chat.index') }}" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200 shadow-lg hover:shadow-xl">
+                    Open Chat Dashboard
+                </a>
+            </div>
+        </div> --}}
 
         <!-- Coin Price Management Section -->
         <div id="coin-price" class="bg-white rounded-xl shadow-xl p-6 mb-8">
@@ -279,38 +312,47 @@
             @endif
         </div>
 
-        <!-- Pending Payments Section -->
-        <div id="pending-payments" class="bg-white rounded-xl shadow-xl p-6 mb-8">
+        <!-- Pending Buy Requests Section -->
+        <div id="pending-buy-requests" class="bg-white rounded-xl shadow-xl p-6 mb-8">
             <div class="flex items-center justify-between mb-6">
                 <div>
-                    <h3 class="font-montserrat font-bold text-xl">Pending Payments</h3>
-                    <p class="text-gray-600 text-sm mt-1">Approve or reject crypto payments from your users</p>
+                    <h3 class="font-montserrat font-bold text-xl">Pending Buy Requests</h3>
+                    <p class="text-gray-600 text-sm mt-1">Approve or reject coin purchase requests from users</p>
                 </div>
-                <a href="{{ route('reseller.payments') }}" class="btn-secondary">
-                    View All Payments
+                <a href="{{ route('reseller.buy-requests') }}" class="btn-secondary">
+                    View All Requests
                 </a>
             </div>
             
-            @if($pendingPayments->count() > 0)
+            @if(isset($pendingBuyRequests) && $pendingBuyRequests->count() > 0)
                 <div class="space-y-4">
-                    @foreach($pendingPayments as $payment)
-                        <div class="border rounded-lg p-4 hover:bg-gray-50">
+                    @foreach($pendingBuyRequests as $buyRequest)
+                        <div class="border rounded-lg p-4 hover:bg-gray-50" data-request-id="{{ $buyRequest->id }}">
                             <div class="flex items-center justify-between flex-wrap gap-4">
                                 <div class="flex-1">
-                                    <div class="font-semibold">{{ $payment->user->name }}</div>
-                                    <div class="text-sm text-gray-600">{{ $payment->user->email }}</div>
+                                    <div class="font-semibold" data-user-name>{{ $buyRequest->user->name }}</div>
+                                    <div class="text-sm text-gray-600" data-user-email>{{ $buyRequest->user->email }}</div>
                                     <div class="mt-2 flex gap-4 text-sm">
-                                        <span><strong>Amount:</strong> {{ number_format($payment->token_amount, 0) }} RWAMP</span>
-                                        <span><strong>Network:</strong> {{ strtoupper($payment->network) }}</span>
-                                        <span><strong>TX Hash:</strong> <code class="text-xs">{{ substr($payment->tx_hash, 0, 20) }}...</code></span>
+                                        <span><strong>Coins:</strong> <span data-coin-quantity>{{ number_format($buyRequest->coin_quantity, 0) }} RWAMP</span></span>
+                                        <span><strong>Price per Coin:</strong> <span data-coin-price>PKR {{ number_format($buyRequest->coin_price, 2) }}</span></span>
+                                        <span><strong>Total Amount:</strong> <span data-total-amount>PKR {{ number_format($buyRequest->total_amount, 2) }}</span></span>
+                                    </div>
+                                    <div class="mt-1 text-xs text-gray-500">
+                                        Requested: {{ $buyRequest->created_at->format('M d, Y H:i') }}
                                     </div>
                                 </div>
                                 <div class="flex gap-2">
                                     <button 
-                                        onclick="approvePayment({{ $payment->id }})"
+                                        onclick="approveBuyRequest({{ $buyRequest->id }})"
                                         class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
                                     >
                                         Approve
+                                    </button>
+                                    <button 
+                                        onclick="openRejectBuyRequestModal({{ $buyRequest->id }})"
+                                        class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                                    >
+                                        Reject
                                     </button>
                                 </div>
                             </div>
@@ -319,7 +361,7 @@
                 </div>
             @else
                 <div class="text-center py-8 text-gray-500">
-                    <p>No pending payments at the moment.</p>
+                    <p>No pending buy requests at the moment.</p>
                 </div>
             @endif
         </div>
@@ -409,10 +451,10 @@
                                         $amountColor = 'text-green-600';
                                         $coinsColor = 'text-red-600';
                                     } elseif ($transaction->type === 'admin_transfer_credit') {
-                                        // Admin sent to reseller - received both money and coins (+)
-                                        $amountSign = '+';
+                                        // Admin sent to reseller - received coins (+), but no money received (Amount = -)
+                                        $amountSign = '-';
                                         $coinsSign = '+';
-                                        $amountColor = 'text-green-600';
+                                        $amountColor = 'text-red-600';
                                         $coinsColor = 'text-green-600';
                                     } elseif (in_array($transaction->type, ['commission', 'credit'])) {
                                         // Credits - both positive
@@ -554,6 +596,121 @@
     </div>
 </div>
 
+<!-- Approve Buy Request Confirmation Modal -->
+<div id="approveBuyRequestModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center" style="display: none;">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-bold text-gray-900">Confirm Approval</h3>
+            <button onclick="closeApproveBuyRequestModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <div class="mb-6">
+            <div class="flex items-center mb-4">
+                <div class="bg-green-100 rounded-full p-3 mr-3">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-gray-900 font-medium">Approve Buy Request?</p>
+                    <p class="text-sm text-gray-600 mt-1">Are you sure you want to approve this buy request?</p>
+                </div>
+            </div>
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                <p class="text-sm text-yellow-800">
+                    <strong>Note:</strong> The tokens will be transferred to the user immediately upon approval.
+                </p>
+            </div>
+            <div id="approveBuyRequestDetails" class="text-sm text-gray-600 space-y-1 mb-4">
+                <!-- Details will be populated by JavaScript -->
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Payment Method <span class="text-red-500">*</span></label>
+                <select id="paymentMethod" class="form-input w-full" required>
+                    <option value="">Select payment method...</option>
+                    <option value="cash">Cash</option>
+                    <option value="bank">Bank Transfer</option>
+                    <option value="usdt">USDT</option>
+                </select>
+                <p class="text-xs text-gray-500 mt-1">Select how the user will pay for these coins.</p>
+            </div>
+        </div>
+        <div class="flex gap-3">
+            <button onclick="closeApproveBuyRequestModal()" class="btn-secondary flex-1">Cancel</button>
+            <button onclick="confirmApproveBuyRequest()" id="confirmApproveBtn" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors flex-1 font-medium">
+                Approve Request
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Buy Request Modal -->
+<div id="rejectBuyRequestModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center" style="display: none;">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-bold text-gray-900">Reject Buy Request</h3>
+            <button onclick="closeRejectBuyRequestModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <div class="mb-6">
+            <div class="flex items-center mb-4">
+                <div class="bg-red-100 rounded-full p-3 mr-3">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-gray-900 font-medium">Reject Buy Request?</p>
+                    <p class="text-sm text-gray-600 mt-1">Please provide a reason for rejecting this request.</p>
+                </div>
+            </div>
+            <div id="rejectBuyRequestDetails" class="text-sm text-gray-600 space-y-1 mb-4">
+                <!-- Details will be populated by JavaScript -->
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Rejection Reason <span class="text-red-500">*</span></label>
+                <textarea 
+                    id="rejectionReason" 
+                    rows="4" 
+                    class="form-input w-full" 
+                    placeholder="Enter the reason for rejecting this buy request..."
+                    required
+                ></textarea>
+                <p class="text-xs text-gray-500 mt-1">This reason will be visible to the user.</p>
+            </div>
+        </div>
+        <div class="flex gap-3">
+            <button onclick="closeRejectBuyRequestModal()" class="btn-secondary flex-1">Cancel</button>
+            <button onclick="confirmRejectBuyRequest()" id="confirmRejectBtn" class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors flex-1 font-medium">
+                Reject Request
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Success/Error Toast Notification -->
+<div id="toastNotification" class="hidden fixed top-4 right-4 z-50 max-w-sm w-full">
+    <div id="toastContent" class="bg-white rounded-lg shadow-lg border p-4 flex items-center justify-between">
+        <div class="flex items-center">
+            <div id="toastIcon" class="mr-3"></div>
+            <div>
+                <p id="toastMessage" class="text-sm font-medium text-gray-900"></p>
+            </div>
+        </div>
+        <button onclick="hideToast()" class="ml-4 text-gray-400 hover:text-gray-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    </div>
+</div>
+
 <!-- Sell Coins Modal -->
 <div id="sellModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center" style="display: none;">
     <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
@@ -594,6 +751,15 @@
 </div>
 
 <script>
+// Open purchase modal if URL parameter is set
+@if(request()->query('open') === 'purchase')
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        window.dispatchEvent(new CustomEvent('open-purchase-modal'));
+    }, 100);
+});
+@endif
+
 function scrollToSection(sectionId) {
     const element = document.getElementById(sectionId);
     if (element) {
@@ -687,29 +853,254 @@ document.getElementById('sellForm').addEventListener('submit', async function(e)
     }
 });
 
-async function approvePayment(paymentId) {
-    if (!confirm('Are you sure you want to approve this payment?')) return;
+
+let currentBuyRequestId = null;
+let currentBuyRequestData = null;
+
+function approveBuyRequest(requestId) {
+    // Find the request data from the DOM
+    const requestElement = document.querySelector(`[data-request-id="${requestId}"]`);
+    if (!requestElement) {
+        showToast('Request not found', false);
+        return;
+    }
+
+    currentBuyRequestId = requestId;
+    
+    // Extract request details
+    const userName = requestElement.querySelector('[data-user-name]')?.textContent || 'User';
+    const userEmail = requestElement.querySelector('[data-user-email]')?.textContent || '';
+    const coinQuantity = requestElement.querySelector('[data-coin-quantity]')?.textContent || '';
+    const coinPrice = requestElement.querySelector('[data-coin-price]')?.textContent || '';
+    const totalAmount = requestElement.querySelector('[data-total-amount]')?.textContent || '';
+
+    // Populate modal with details
+    const detailsHtml = `
+        <div class="bg-gray-50 rounded-lg p-3 space-y-2">
+            <div class="flex justify-between">
+                <span class="text-gray-600">User:</span>
+                <span class="font-medium text-gray-900">${userName}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">Email:</span>
+                <span class="font-medium text-gray-900">${userEmail}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">Coins:</span>
+                <span class="font-medium text-gray-900">${coinQuantity}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">Price per Coin:</span>
+                <span class="font-medium text-gray-900">${coinPrice}</span>
+            </div>
+            <div class="flex justify-between border-t pt-2">
+                <span class="text-gray-600 font-semibold">Total Amount:</span>
+                <span class="font-bold text-gray-900">${totalAmount}</span>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('approveBuyRequestDetails').innerHTML = detailsHtml;
+    document.getElementById('approveBuyRequestModal').style.display = 'flex';
+}
+
+function closeApproveBuyRequestModal() {
+    document.getElementById('approveBuyRequestModal').style.display = 'none';
+    document.getElementById('paymentMethod').value = '';
+    currentBuyRequestId = null;
+}
+
+async function confirmApproveBuyRequest() {
+    if (!currentBuyRequestId) return;
+
+    const paymentMethod = document.getElementById('paymentMethod').value;
+    if (!paymentMethod) {
+        showToast('Please select a payment method', false);
+        return;
+    }
+
+    const confirmBtn = document.getElementById('confirmApproveBtn');
+    const originalText = confirmBtn.textContent;
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Processing...';
 
     try {
-        const response = await fetch(`/api/reseller/crypto-payments/${paymentId}/approve`, {
+        const response = await fetch(`{{ route('reseller.buy-requests.approve', ['buyRequest' => ':id']) }}`.replace(':id', currentBuyRequestId), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ payment_method: paymentMethod })
         });
 
         const data = await response.json();
         if (data.success) {
-            alert('Payment approved successfully!');
-            location.reload();
+            closeApproveBuyRequestModal();
+            showToast('Buy request approved successfully!', true);
+            setTimeout(() => location.reload(), 1500);
         } else {
-            alert(data.message || 'Failed to approve payment');
+            showToast(data.message || 'Failed to approve buy request', false);
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = originalText;
         }
     } catch (error) {
-        alert('Error approving payment');
+        showToast('Error approving buy request', false);
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = originalText;
     }
 }
+
+function openRejectBuyRequestModal(requestId) {
+    // Find the request data from the DOM
+    const requestElement = document.querySelector(`[data-request-id="${requestId}"]`);
+    if (!requestElement) {
+        showToast('Request not found', false);
+        return;
+    }
+
+    currentBuyRequestId = requestId;
+    
+    // Extract request details
+    const userName = requestElement.querySelector('[data-user-name]')?.textContent || 'User';
+    const userEmail = requestElement.querySelector('[data-user-email]')?.textContent || '';
+    const coinQuantity = requestElement.querySelector('[data-coin-quantity]')?.textContent || '';
+    const coinPrice = requestElement.querySelector('[data-coin-price]')?.textContent || '';
+    const totalAmount = requestElement.querySelector('[data-total-amount]')?.textContent || '';
+
+    // Populate modal with details
+    const detailsHtml = `
+        <div class="bg-gray-50 rounded-lg p-3 space-y-2">
+            <div class="flex justify-between">
+                <span class="text-gray-600">User:</span>
+                <span class="font-medium text-gray-900">${userName}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">Email:</span>
+                <span class="font-medium text-gray-900">${userEmail}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">Coins:</span>
+                <span class="font-medium text-gray-900">${coinQuantity}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">Price per Coin:</span>
+                <span class="font-medium text-gray-900">${coinPrice}</span>
+            </div>
+            <div class="flex justify-between border-t pt-2">
+                <span class="text-gray-600 font-semibold">Total Amount:</span>
+                <span class="font-bold text-gray-900">${totalAmount}</span>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('rejectBuyRequestDetails').innerHTML = detailsHtml;
+    document.getElementById('rejectionReason').value = '';
+    document.getElementById('rejectBuyRequestModal').style.display = 'flex';
+}
+
+function closeRejectBuyRequestModal() {
+    document.getElementById('rejectBuyRequestModal').style.display = 'none';
+    document.getElementById('rejectionReason').value = '';
+    currentBuyRequestId = null;
+}
+
+async function confirmRejectBuyRequest() {
+    if (!currentBuyRequestId) return;
+
+    const reason = document.getElementById('rejectionReason').value.trim();
+    if (!reason) {
+        showToast('Please provide a reason for rejection', false);
+        return;
+    }
+
+    const confirmBtn = document.getElementById('confirmRejectBtn');
+    const originalText = confirmBtn.textContent;
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Processing...';
+
+    try {
+        const response = await fetch(`{{ route('reseller.buy-requests.reject', ['buyRequest' => ':id']) }}`.replace(':id', currentBuyRequestId), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ rejection_reason: reason })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            closeRejectBuyRequestModal();
+            showToast('Buy request rejected successfully!', true);
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast(data.message || 'Failed to reject buy request', false);
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = originalText;
+        }
+    } catch (error) {
+        showToast('Error rejecting buy request', false);
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = originalText;
+    }
+}
+
+function showToast(message, isSuccess = true) {
+    const toast = document.getElementById('toastNotification');
+    const toastContent = document.getElementById('toastContent');
+    const toastIcon = document.getElementById('toastIcon');
+    const toastMessage = document.getElementById('toastMessage');
+
+    toastMessage.textContent = message;
+
+    if (isSuccess) {
+        toastIcon.innerHTML = `
+            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+        `;
+        toastContent.classList.remove('border-red-200');
+        toastContent.classList.add('border-green-200');
+    } else {
+        toastIcon.innerHTML = `
+            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+        `;
+        toastContent.classList.remove('border-green-200');
+        toastContent.classList.add('border-red-200');
+    }
+
+    toast.classList.remove('hidden');
+    toast.classList.add('fadeIn');
+
+    // Auto hide after 5 seconds
+    setTimeout(() => {
+        hideToast();
+    }, 5000);
+}
+
+function hideToast() {
+    const toast = document.getElementById('toastNotification');
+    toast.classList.add('hidden');
+    toast.classList.remove('fadeIn');
+}
+
+// Close modals when clicking outside
+document.getElementById('approveBuyRequestModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeApproveBuyRequestModal();
+    }
+});
+
+document.getElementById('rejectBuyRequestModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeRejectBuyRequestModal();
+    }
+});
 </script>
 
     <!-- Contact Us Section -->
@@ -744,4 +1135,20 @@ async function approvePayment(paymentId) {
         });
     }
     </script>
+
+    <style>
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .fadeIn {
+            animation: fadeIn 0.3s ease-out;
+        }
+    </style>
 @endsection

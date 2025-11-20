@@ -47,20 +47,18 @@
                         <div 
                             @click="selectReseller(reseller)"
                             class="border rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition-colors"
-                            :class="isSelected(reseller) ? 'border-primary bg-primary/5' : ''"
+                            :class="isSelected(reseller) ? 'border-primary bg-primary/5' : (reseller.is_linked ? 'border-green-500 bg-green-50' : '')"
                         >
                             <div class="flex items-center justify-between">
-                                <div>
-                                    <div class="font-semibold" x-text="reseller.name"></div>
-                                    <div class="text-sm text-gray-600" x-text="reseller.email"></div>
-                                    <div class="text-xs text-gray-500 mt-1">
-                                        Referral Code: <code class="bg-gray-100 px-1 rounded" x-text="reseller.referral_code"></code>
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2">
+                                        <div class="font-semibold" x-text="reseller.name"></div>
+                                        <span x-show="reseller.is_linked" class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded font-medium">Your Reseller</span>
                                     </div>
                                 </div>
-                                <div class="text-right">
-                                    <div class="font-bold text-primary">PKR <span x-text="(reseller.coin_price || 0).toFixed(2)"></span></div>
+                                <div class="text-right ml-4">
+                                    <div class="font-bold text-primary text-lg">PKR <span x-text="(reseller.coin_price || 0).toFixed(2)"></span></div>
                                     <div class="text-xs text-gray-500">per coin</div>
-                                    <div class="text-xs text-gray-500 mt-1">Balance: <span x-text="(reseller.token_balance || 0).toLocaleString()"></span> RWAMP</div>
                                 </div>
                             </div>
                         </div>
@@ -290,7 +288,7 @@ function buyFromResellerModal() {
                 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    console.error('Response error:', response.status, errorText)
+                    // console.error('Response error:', response.status, errorText)
                     this.showMessage('error', 'Failed to load resellers. Please try again.');
                     this.resellers = [];
                     return;
@@ -298,9 +296,9 @@ function buyFromResellerModal() {
                 
                 const data = await response.json();
                 this.resellers = Array.isArray(data) ? data : [];
-                console.log('Loaded resellers:', this.resellers.length)
+                // console.log('Loaded resellers:', this.resellers.length)
             } catch (error) {
-                console.error('Error loading resellers:', error)
+                // console.error('Error loading resellers:', error)
                 this.showMessage('error', 'Failed to load resellers. Please try again.');
                 this.resellers = [];
             } finally {
@@ -325,7 +323,7 @@ function buyFromResellerModal() {
                 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    console.error('Response error:', response.status, errorText)
+                    // console.error('Response error:', response.status, errorText)
                     this.showMessage('error', 'Failed to search resellers. Please try again.');
                     this.resellers = [];
                     return;
@@ -333,9 +331,9 @@ function buyFromResellerModal() {
                 
                 const data = await response.json();
                 this.resellers = Array.isArray(data) ? data : [];
-                console.log('Search results:', this.resellers.length)
+                // console.log('Search results:', this.resellers.length)
             } catch (error) {
-                console.error('Error searching resellers:', error)
+                // console.error('Error searching resellers:', error)
                 this.showMessage('error', 'Failed to search resellers. Please try again.');
                 this.resellers = [];
             } finally {
@@ -380,8 +378,8 @@ function buyFromResellerModal() {
 
         async sendOtp() {
             this.sendingOtp = true;
-            console.log('=== Sending OTP ===')
-            console.log('Email:', this.email)
+            // console.log('=== Sending OTP ===')
+            // console.log('Email:', this.email)
             
             try {
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -393,7 +391,7 @@ function buyFromResellerModal() {
                     email: this.email
 ,
                 };
-                console.log('Request body:', requestBody)
+                // console.log('Request body:', requestBody)
 
                 const response = await fetch('{{ route("buy.from.reseller.send-otp") }}', {
                     method: 'POST',
@@ -408,15 +406,15 @@ function buyFromResellerModal() {
 ,
                 });
 
-                console.log('Response status:', response.status)
-                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+                // console.log('Response status:', response.status)
+                // console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    console.error('OTP response error:', response.status, errorText)
+                    // console.error('OTP response error:', response.status, errorText)
                     try {
                         const errorData = JSON.parse(errorText);
-                        console.error('Error data:', errorData)
+                        // console.error('Error data:', errorData)
                         this.showMessage('error', errorData.message || 'Failed to send OTP. Please try again.', errorData);
                     } catch (e) {
                         this.showMessage('error', `Failed to send OTP (${response.status}). Please try again.`, { raw: errorText });
@@ -425,17 +423,17 @@ function buyFromResellerModal() {
                 }
 
                 const data = await response.json();
-                console.log('Response data:', data)
+                // console.log('Response data:', data)
                 
                 if (data.success) {
                     this.otpSent = true;
                     this.showMessage('success', 'OTP sent to your email. Please check your inbox.');
-                    console.log('OTP sent successfully')
+                    // console.log('OTP sent successfully')
                 } else {
                     this.showMessage('error', data.message || 'Failed to send OTP. Please try again.', data);
                 }
             } catch (error) {
-                console.error('Error sending OTP:', error)
+                // console.error('Error sending OTP:', error)
                 this.showMessage('error', 'Failed to send OTP. Please try again.', { error: error.message, stack: error.stack });
             } finally {
                 this.sendingOtp = false;
@@ -453,7 +451,7 @@ function buyFromResellerModal() {
             if (!this.canSubmit) return;
 
             this.submitting = true;
-            console.log('=== Submitting Buy Request ===')
+            // console.log('=== Submitting Buy Request ===')
             
             const requestBody = {
                 reseller_id: this.selectedReseller.id,
@@ -462,11 +460,11 @@ function buyFromResellerModal() {
                 email: this.email
 ,
             };
-            console.log('Request body:', requestBody)
-            console.log('OTP value:', this.otp)
-            console.log('OTP type:', typeof this.otp)
-            console.log('OTP length:', this.otp.length)
-            console.log('Email:', this.email)
+            // console.log('Request body:', requestBody)
+            // console.log('OTP value:', this.otp)
+            // console.log('OTP type:', typeof this.otp)
+            // console.log('OTP length:', this.otp.length)
+            // console.log('Email:', this.email)
             
             try {
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -487,18 +485,18 @@ function buyFromResellerModal() {
 ,
                 });
 
-                console.log('Response status:', response.status)
-                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+                // console.log('Response status:', response.status)
+                // console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
                 const responseText = await response.text();
-                console.log('Response text (raw):', responseText);
+                // console.log('Response text (raw):', responseText);
                 
                 let data;
                 try {
                     data = JSON.parse(responseText);
-                    console.log('Response data (parsed):', data);
+                    // console.log('Response data (parsed):', data);
                 } catch (e) {
-                    console.error('Failed to parse JSON response:', e)
+                    // console.error('Failed to parse JSON response:', e)
                     this.showMessage('error', 'Invalid response from server. Please try again.', { raw: responseText });
                     return;
                 }
@@ -506,13 +504,13 @@ function buyFromResellerModal() {
                 if (data.success) {
                     this.step = 3;
                     this.showMessage('success', 'Buy request submitted successfully!');
-                    console.log('Request submitted successfully')
+                    // console.log('Request submitted successfully')
                 } else {
-                    console.error('Request failed:', data)
+                    // console.error('Request failed:', data)
                     this.showMessage('error', data.message || 'Failed to submit request. Please try again.', data.debug || null);
                 }
             } catch (error) {
-                console.error('Error submitting request:', error)
+                // console.error('Error submitting request:', error)
                 this.showMessage('error', 'Failed to submit request. Please try again.', { error: error.message, stack: error.stack });
             } finally {
                 this.submitting = false;

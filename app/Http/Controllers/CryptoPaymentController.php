@@ -31,7 +31,7 @@ class CryptoPaymentController extends Controller
                 'rates' => [
                     'tokenUsd' => PriceHelper::getRwampUsdPrice(),
                     'tokenPkr' => PriceHelper::getRwampPkrPrice(),
-                    'usdToPkr' => (float) config('crypto.rates.usd_pkr', 278),
+                    'usdToPkr' => PriceHelper::getUsdToPkrRate(),
                     'usdtUsd' => PriceHelper::getUsdtUsdPrice(),
                     'usdtPkr' => PriceHelper::getUsdtPkrPrice(),
                     'btcUsd' => PriceHelper::getBtcUsdPrice(),
@@ -329,7 +329,38 @@ class CryptoPaymentController extends Controller
 
         $transactions = $transactionsQuery->paginate(20, ['*'], 'transactions')->withQueryString();
 
-        return view('dashboard.user-history', compact('payments','transactions','currentCoinPrice'));
+        // Buy Requests query
+        $buyRequestsQuery = \App\Models\BuyFromResellerRequest::where('user_id', $userId)
+            ->with('reseller');
+        
+        // Search buy requests
+        if ($request->filled('buy_request_search')) {
+            $search = $request->buy_request_search;
+            $buyRequestsQuery->where(function($q) use ($search) {
+                $q->whereHas('reseller', function($q2) use ($search) {
+                    $q2->where('name', 'like', "%{$search}%")
+                       ->orWhere('email', 'like', "%{$search}%");
+                });
+            });
+        }
+
+        // Filter buy requests by status
+        if ($request->filled('buy_request_status') && in_array($request->buy_request_status, ['pending', 'approved', 'rejected', 'completed'])) {
+            $buyRequestsQuery->where('status', $request->buy_request_status);
+        }
+
+        // Sort buy requests
+        $buyRequestSort = $request->get('buy_request_sort', 'created_at');
+        $buyRequestDir = $request->get('buy_request_dir', 'desc');
+        if (in_array($buyRequestSort, ['created_at', 'coin_quantity', 'total_amount', 'status'])) {
+            $buyRequestsQuery->orderBy($buyRequestSort, $buyRequestDir);
+        } else {
+            $buyRequestsQuery->latest();
+        }
+
+        $buyRequests = $buyRequestsQuery->paginate(20, ['*'], 'buy_requests')->withQueryString();
+
+        return view('dashboard.user-history', compact('payments','transactions','buyRequests','currentCoinPrice'));
     }
 
     /**
@@ -337,7 +368,68 @@ class CryptoPaymentController extends Controller
      */
     public function investorDashboard(Request $request)
     {
-        $userId = $request->user()->id;
+        $investor = $request->user();
+        $userId = $investor->id;
+        
+        // Get official coin price
+        $officialPrice = \App\Helpers\PriceHelper::getRwampPkrPrice();
+        
+        // Calculate average purchase price from all purchases
+        $tokenBalance = $investor->token_balance ?? 0;
+        $averagePurchasePrice = $officialPrice; // Default to official price
+        
+        // Get all crypto payments where investor purchased coins
+        $cryptoPayments = CryptoPayment::where('user_id', $userId)
+            ->where('status', 'approved')
+            ->whereNotNull('coin_price_rs')
+            ->where('coin_price_rs', '>', 0)
+            ->get();
+        
+        // Get all transactions where investor received coins with price information
+        $creditTransactions = Transaction::where('user_id', $userId)
+            ->whereIn('type', ['credit', 'crypto_purchase', 'commission', 'admin_transfer_credit'])
+            ->where('status', 'completed')
+            ->whereNotNull('price_per_coin')
+            ->where('price_per_coin', '>', 0)
+            ->where('amount', '>', 0) // Only positive amounts (credits)
+            ->get();
+        
+        // Calculate weighted average purchase price
+        $totalAmount = 0;
+        $totalValue = 0;
+        
+        // Add crypto payments
+        foreach ($cryptoPayments as $payment) {
+            $amount = (float) $payment->token_amount;
+            $price = (float) $payment->coin_price_rs;
+            if ($amount > 0 && $price > 0) {
+                $totalAmount += $amount;
+                $totalValue += $amount * $price;
+            }
+        }
+        
+        // Add credit transactions
+        foreach ($creditTransactions as $transaction) {
+            $amount = abs((float) $transaction->amount); // Ensure positive
+            $price = (float) $transaction->price_per_coin;
+            if ($amount > 0 && $price > 0) {
+                $totalAmount += $amount;
+                $totalValue += $amount * $price;
+            }
+        }
+        
+        // Calculate average price
+        if ($totalAmount > 0) {
+            $averagePurchasePrice = $totalValue / $totalAmount;
+        } elseif ($investor->coin_price) {
+            // Fallback to investor's coin_price if no purchase history
+            $averagePurchasePrice = $investor->coin_price;
+        }
+        
+        // Calculate portfolio values
+        $portfolioValue = $tokenBalance * $averagePurchasePrice;
+        $officialPortfolioValue = $tokenBalance * $officialPrice;
+        
         // Recent payment submissions (pending/approved/rejected)
         $paymentsRecent = CryptoPayment::where('user_id', $userId)
             ->latest()
@@ -350,9 +442,25 @@ class CryptoPaymentController extends Controller
             ->limit(10)
             ->get();
 
-        $currentCoinPrice = (float) (config('crypto.rates.coin_price_rs') ?? config('app.coin_price_rs') ?? 0.70);
+        // Get pending buy requests from resellers
+        $pendingBuyRequests = BuyFromResellerRequest::where('user_id', $userId)
+            ->where('status', 'pending')
+            ->with('reseller')
+            ->latest()
+            ->get();
 
-        return view('dashboard.investor', compact('paymentsRecent','transactionsRecent','currentCoinPrice'));
+        $currentCoinPrice = (float) (config('crypto.rates.coin_price_rs') ?? config('app.coin_price_rs') ?? 0.70);
+        
+        // Prepare metrics for view
+        $metrics = [
+            'token_balance' => $tokenBalance,
+            'portfolio_value' => $portfolioValue,
+            'official_portfolio_value' => $officialPortfolioValue,
+            'average_purchase_price' => $averagePurchasePrice,
+            'official_price' => $officialPrice,
+        ];
+
+        return view('dashboard.investor', compact('paymentsRecent','transactionsRecent','pendingBuyRequests','currentCoinPrice','metrics'));
     }
 
     /**
@@ -404,13 +512,7 @@ class CryptoPaymentController extends Controller
         $baseAmount = (float) $validated['amount'];
         $finalAmount = $baseAmount * (1 + $markupRate);
 
-        // Verify reseller has sufficient balance
-        if ($reseller->token_balance < $finalAmount) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Reseller has insufficient token balance.'
-            ], 400);
-        }
+        // Note: Balance check removed - users can request from any reseller regardless of balance
 
         // Perform transfer in transaction
         try {
@@ -469,6 +571,7 @@ class CryptoPaymentController extends Controller
     public function searchResellers(Request $request)
     {
         try {
+            $user = Auth::user();
             $query = trim($request->get('q', ''));
             
             $resellersQuery = User::where('role', 'reseller')
@@ -484,18 +587,18 @@ class CryptoPaymentController extends Controller
             }
             
             $resellers = $resellersQuery
-                ->select('id', 'name', 'email', 'referral_code', 'coin_price', 'token_balance')
+                ->select('id', 'name', 'email', 'referral_code', 'coin_price')
                 ->orderBy('name')
                 ->limit(50)
                 ->get()
-                ->map(function($reseller) {
+                ->map(function($reseller) use ($user) {
                     return [
                         'id' => $reseller->id,
                         'name' => $reseller->name,
                         'email' => $reseller->email,
                         'referral_code' => $reseller->referral_code,
                         'coin_price' => (float) ($reseller->coin_price ?? \App\Helpers\PriceHelper::getRwampPkrPrice()),
-                        'token_balance' => (float) ($reseller->token_balance ?? 0),
+                        'is_linked' => $user && $user->reseller_id == $reseller->id, // Highlight linked reseller
                     ];
                 });
 
@@ -683,13 +786,7 @@ class CryptoPaymentController extends Controller
         $coinPrice = $reseller->coin_price ?? \App\Helpers\PriceHelper::getRwampPkrPrice();
         $totalAmount = $validated['coin_quantity'] * $coinPrice;
 
-        // Verify reseller has sufficient balance
-        if ($reseller->token_balance < $validated['coin_quantity']) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Reseller has insufficient token balance.'
-            ], 400);
-        }
+        // Note: Balance check removed - users can request from any reseller regardless of balance
 
         // Create buy request
         try {

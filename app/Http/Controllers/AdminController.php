@@ -6,6 +6,7 @@ use App\Models\ResellerApplication;
 use App\Models\User;
 use App\Models\Transaction;
 use App\Models\CryptoPayment;
+use App\Models\Chat;
 use App\Helpers\PriceHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -18,28 +19,57 @@ class AdminController extends Controller
 {
     public function dashboard()
     {
-        $users = User::query();
-        $now = now();
-        $metrics = [
-            'users' => $users->count(),
-            'resellers' => User::where('role','reseller')->count(),
-            'investors' => User::where('role','investor')->count(),
-            'new_users_7' => User::where('created_at','>=',$now->copy()->subDays(7))->count(),
-            'new_users_30' => User::where('created_at','>=',$now->copy()->subDays(30))->count(),
-            'pending_applications' => ResellerApplication::where('status','pending')->count(),
-            'approved_applications' => ResellerApplication::where('status','approved')->count(),
-            'rejected_applications' => ResellerApplication::where('status','rejected')->count(),
-            'pending_kyc' => User::where('kyc_status','pending')->count(),
-            'contacts' => \App\Models\Contact::count(),
-            'coin_price' => \App\Helpers\PriceHelper::getRwampPkrPrice(),
-            'crypto_payments' => CryptoPayment::count(),
-            'pending_crypto_payments' => CryptoPayment::where('status','pending')->count(),
-        ];
+        try {
+            $users = User::query();
+            $now = now();
+            $metrics = [
+                'users' => $users->count(),
+                'resellers' => User::where('role','reseller')->count(),
+                'investors' => User::where('role','investor')->count(),
+                'new_users_7' => User::where('created_at','>=',$now->copy()->subDays(7))->count(),
+                'new_users_30' => User::where('created_at','>=',$now->copy()->subDays(30))->count(),
+                'pending_applications' => ResellerApplication::where('status','pending')->count(),
+                'approved_applications' => ResellerApplication::where('status','approved')->count(),
+                'rejected_applications' => ResellerApplication::where('status','rejected')->count(),
+                'pending_kyc' => User::where('kyc_status','pending')->count(),
+                'contacts' => \App\Models\Contact::count(),
+                'coin_price' => \App\Helpers\PriceHelper::getRwampPkrPrice(),
+                'crypto_payments' => CryptoPayment::count(),
+                'pending_crypto_payments' => CryptoPayment::where('status','pending')->count(),
+            ];
 
-        return view('dashboard.admin', [
-            'metrics' => $metrics,
-            'applications' => ResellerApplication::latest()->limit(10)->get(),
-        ]);
+            return view('dashboard.admin', [
+                'metrics' => $metrics,
+                'applications' => ResellerApplication::latest()->limit(10)->get(),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Admin dashboard error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            
+            // Return a view with error message instead of throwing
+            return view('dashboard.admin', [
+                'metrics' => [
+                    'users' => 0,
+                    'resellers' => 0,
+                    'investors' => 0,
+                    'new_users_7' => 0,
+                    'new_users_30' => 0,
+                    'pending_applications' => 0,
+                    'approved_applications' => 0,
+                    'rejected_applications' => 0,
+                    'pending_kyc' => 0,
+                    'contacts' => 0,
+                    'coin_price' => 0,
+                    'crypto_payments' => 0,
+                    'pending_crypto_payments' => 0,
+                ],
+                'applications' => collect([]),
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred while loading the dashboard. Please check the logs.',
+            ]);
+        }
     }
 
     public function approve(ResellerApplication $application)
@@ -52,24 +82,38 @@ class AdminController extends Controller
         // Mark application approved
         $application->update(['status' => 'approved']);
 
-        // Create or update reseller user with default one-time password
-        $defaultPassword = 'RWAMP@agent';
+        // Use password from application (already hashed)
         $user = User::where('email', $application->email)->first();
         if (!$user) {
+            // Generate unique 16-digit wallet address
+            $walletAddress = $this->generateUniqueWalletAddress();
+            
             $user = User::create([
                 'name' => $application->name,
                 'email' => $application->email,
                 'phone' => $application->phone,
                 'role' => 'reseller',
-                'password' => \Illuminate\Support\Facades\Hash::make($defaultPassword),
+                'password' => $application->password, // Use password from application
                 'company_name' => $application->company,
-                'experience' => null,
+                'investment_capacity' => $application->investment_capacity,
+                'experience' => $application->experience,
+                'email_verified_at' => null, // Email verification required on first login
+                'wallet_address' => $walletAddress, // Auto-generated wallet address
             ]);
         } else {
-            // Ensure role and default password are set for first login
+            // Update existing user - generate wallet if missing
+            if (!$user->wallet_address) {
+                $walletAddress = $this->generateUniqueWalletAddress();
+                $user->wallet_address = $walletAddress;
+            }
+            
             $user->update([
                 'role' => 'reseller',
-                'password' => \Illuminate\Support\Facades\Hash::make($defaultPassword),
+                'password' => $application->password, // Use password from application
+                'company_name' => $application->company,
+                'investment_capacity' => $application->investment_capacity,
+                'experience' => $application->experience,
+                'email_verified_at' => null, // Require email verification on first login
             ]);
         }
 
@@ -80,20 +124,16 @@ class AdminController extends Controller
             ]);
         }
 
-        // Flag user to change password on next login (cache-based flag without migration)
-        \Cache::put('password_reset_required_user_'.$user->id, true, now()->addYear());
-
-        // Send email notification with credentials
+        // Send email notification
         try {
             if (!empty($user->email)) {
                 $loginUrl = route('login');
                 \Mail::send('emails.reseller-approved', [
                     'user' => $user,
-                    'defaultPassword' => $defaultPassword,
                     'loginUrl' => $loginUrl,
                 ], function($m) use ($user) {
                     $m->to($user->email, $user->name)
-                      ->subject('RWAMP Reseller Account Approved - Welcome!');
+                      ->subject('RWAMP Reseller Application Approved - Welcome!');
                 });
             }
         } catch (\Throwable $e) {
@@ -106,8 +146,30 @@ class AdminController extends Controller
 
     public function reject(ResellerApplication $application)
     {
+        // If already approved/rejected, do nothing
+        if ($application->status !== 'pending') {
+            return back()->with('success', 'Application already ' . $application->status . '.');
+        }
+
+        // Mark application rejected
         $application->update(['status' => 'rejected']);
-        return back()->with('success', 'Application rejected');
+
+        // Send rejection email notification
+        try {
+            if (!empty($application->email)) {
+                \Mail::send('emails.reseller-rejected', [
+                    'application' => $application,
+                ], function($m) use ($application) {
+                    $m->to($application->email, $application->name)
+                      ->subject('RWAMP Reseller Application Status Update');
+                });
+            }
+        } catch (\Throwable $e) {
+            \Log::error('Failed to send reseller rejection email: ' . $e->getMessage());
+            // Continue even if email fails
+        }
+
+        return back()->with('success', 'Application rejected and notification sent.');
     }
 
     public function cryptoPayments(Request $request)
@@ -549,7 +611,7 @@ class AdminController extends Controller
      */
     public function priceManagement()
     {
-        $usdPkr = config('crypto.rates.usd_pkr', 278);
+        $usdPkr = PriceHelper::getUsdToPkrRate();
         
         // Get RWAMP prices
         $rwampPkr = PriceHelper::getRwampPkrPrice();
@@ -614,6 +676,18 @@ class AdminController extends Controller
     /**
      * Fetch current BTC price from CoinGecko API
      */
+    /**
+     * Generate a unique 16-digit wallet address
+     */
+    private function generateUniqueWalletAddress(): string
+    {
+        do {
+            $wallet = str_pad(random_int(1000000000000000, 9999999999999999), 16, '0', STR_PAD_LEFT);
+        } while (User::where('wallet_address', $wallet)->exists());
+
+        return $wallet;
+    }
+
     private function fetchBtcPrice(): float
     {
         try {
@@ -653,7 +727,7 @@ class AdminController extends Controller
         ]);
 
         $rwampPkr = (float) $request->rwamp_pkr;
-        $usdPkr = config('crypto.rates.usd_pkr', 278);
+        $usdPkr = PriceHelper::getUsdToPkrRate();
         
         // Auto-calculate RWAMP/USD price from PKR using exchange rate
         // RWAMP/USD = RWAMP/PKR / USD/PKR
@@ -708,30 +782,121 @@ class AdminController extends Controller
             'phone' => 'nullable|string|max:20',
             'role' => 'required|in:user,investor,reseller,admin',
             'password' => 'nullable|string|min:8',
+            'coin_quantity' => 'nullable|numeric|min:0',
+            'price_per_coin' => 'nullable|numeric|min:0.01',
         ]);
+        
+        // Validate price_per_coin is required if coin_quantity is provided
+        if (!empty($validated['coin_quantity']) && $validated['coin_quantity'] > 0) {
+            if (empty($validated['price_per_coin']) || $validated['price_per_coin'] <= 0) {
+                return redirect()->route('admin.users')
+                    ->withErrors(['price_per_coin' => 'Price per coin is required when assigning coins.'])
+                    ->withInput();
+            }
+        }
 
         // Use default password if not provided
         $password = $validated['password'] ?? 'RWAMP@agent';
+        
+        // Get coin assignment details (optional)
+        $coinQuantity = $validated['coin_quantity'] ?? 0;
+        $pricePerCoin = $validated['price_per_coin'] ?? 0;
+        $assignCoins = $coinQuantity > 0 && $pricePerCoin > 0;
 
-        // Create the user
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => strtolower(trim($validated['email'])),
-            'phone' => $validated['phone'] ?? null,
-            'role' => $validated['role'],
-            'password' => Hash::make($password),
-            'email_verified_at' => now(), // Auto-verify email for admin-created users
-        ]);
+        try {
+            \DB::beginTransaction();
 
-        // Optionally send welcome email with credentials
-        // Mail::to($user->email)->send(new WelcomeMail($user, $password));
+            // Generate unique 16-digit wallet address
+            $walletAddress = $this->generateUniqueWalletAddress();
 
-        return redirect()->route('admin.users')
-            ->with('success', __('User created successfully. Default password: :password', ['password' => $password]));
+            // Create the user
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => strtolower(trim($validated['email'])),
+                'phone' => $validated['phone'] ?? null,
+                'role' => $validated['role'],
+                'password' => Hash::make($password),
+                'email_verified_at' => now(), // Auto-verify email for admin-created users
+                'token_balance' => $assignCoins ? $coinQuantity : 0,
+                'wallet_address' => $walletAddress, // Auto-generated wallet address
+            ]);
+
+            // If coins are assigned, create a transaction record
+            if ($assignCoins) {
+                $admin = Auth::user();
+                $totalPrice = $coinQuantity * $pricePerCoin;
+                
+                // Create transaction record for the new user (credit)
+                Transaction::create([
+                    'user_id' => $user->id,
+                    'sender_id' => $admin->id,
+                    'recipient_id' => $user->id,
+                    'type' => 'admin_transfer_credit',
+                    'amount' => $coinQuantity,
+                    'price_per_coin' => $pricePerCoin,
+                    'total_price' => $totalPrice,
+                    'sender_type' => 'admin',
+                    'status' => 'completed',
+                    'reference' => 'ADMIN-CREATE-' . time() . '-' . $user->id,
+                    'payment_type' => null,
+                    'payment_hash' => null,
+                    'payment_receipt' => null,
+                    'payment_status' => 'verified', // Admin-assigned coins are automatically verified
+                ]);
+
+                // Create transaction record for admin (debit tracking)
+                Transaction::create([
+                    'user_id' => $admin->id,
+                    'sender_id' => $admin->id,
+                    'recipient_id' => $user->id,
+                    'type' => 'admin_transfer_debit',
+                    'amount' => -$coinQuantity,
+                    'price_per_coin' => $pricePerCoin,
+                    'total_price' => $totalPrice,
+                    'sender_type' => 'admin',
+                    'status' => 'completed',
+                    'reference' => 'ADMIN-CREATE-' . time() . '-' . $user->id,
+                    'payment_type' => null,
+                    'payment_hash' => null,
+                    'payment_receipt' => null,
+                    'payment_status' => 'verified',
+                ]);
+
+                \Log::info('Admin assigned coins during user creation', [
+                    'admin_id' => $admin->id,
+                    'user_id' => $user->id,
+                    'coin_quantity' => $coinQuantity,
+                    'price_per_coin' => $pricePerCoin,
+                    'total_price' => $totalPrice,
+                ]);
+            }
+
+            \DB::commit();
+
+            // Optionally send welcome email with credentials
+            // Mail::to($user->email)->send(new WelcomeMail($user, $password));
+
+            $successMessage = 'User created successfully. Default password: ' . $password;
+            if ($assignCoins) {
+                $successMessage .= ' | Assigned ' . number_format($coinQuantity, 0) . ' RWAMP coins.';
+            }
+
+            return redirect()->route('admin.users')
+                ->with('success', $successMessage);
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Error creating user: ' . $e->getMessage());
+            
+            return redirect()->route('admin.users')
+                ->withErrors(['error' => 'Failed to create user. Please try again.'])
+                ->withInput();
+        }
     }
 
     public function usersIndex(Request $request)
     {
+        $defaultPrice = PriceHelper::getRwampPkrPrice();
         $query = User::query();
 
         // Search
@@ -754,13 +919,13 @@ class AdminController extends Controller
         }
 
         // Sort
-        $sort = in_array($request->input('sort'), ['name','email','created_at','role']) ? $request->input('sort') : 'created_at';
+        $sort = in_array($request->input('sort'), ['name','email','created_at','role','token_balance']) ? $request->input('sort') : 'created_at';
         $dir = $request->input('dir') === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sort, $dir);
 
         $users = $query->with('reseller')->paginate(15)->withQueryString();
 
-        return view('dashboard.admin-users', compact('users'));
+        return view('dashboard.admin-users', compact('users', 'defaultPrice'));
     }
 
     /**
@@ -799,6 +964,8 @@ class AdminController extends Controller
                     'id' => $transaction->id,
                     'type' => $transaction->type,
                     'amount' => (float) $transaction->amount,
+                    'price_per_coin' => $transaction->price_per_coin ? (float) $transaction->price_per_coin : null,
+                    'total_price' => $transaction->total_price ? (float) $transaction->total_price : null,
                     'status' => $transaction->status,
                     'reference' => $transaction->reference,
                     'created_at' => $transaction->created_at?->format('Y-m-d H:i:s'),
@@ -827,6 +994,51 @@ class AdminController extends Controller
     /**
      * Admin resets a user's password (optionally specify new password)
      */
+    public function assignWalletAddress(Request $request, User $user)
+    {
+        try {
+            // Check if user already has a wallet address
+            if ($user->wallet_address) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User already has a wallet address: ' . $user->wallet_address
+                ], 400);
+            }
+
+            // Generate unique wallet address
+            $walletAddress = $this->generateUniqueWalletAddress();
+
+            // Assign wallet address to user
+            $user->update([
+                'wallet_address' => $walletAddress
+            ]);
+
+            \Log::info('Wallet address assigned by admin', [
+                'admin_id' => Auth::id(),
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'wallet_address' => $walletAddress
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Wallet address assigned successfully',
+                'wallet_address' => $walletAddress
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error assigning wallet address: ' . $e->getMessage(), [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to assign wallet address. Please try again.'
+            ], 500);
+        }
+    }
+
     public function usersResetPassword(Request $request, User $user)
     {
         $request->validate([
@@ -1048,12 +1260,22 @@ class AdminController extends Controller
     /**
      * Display admin sell coins page
      */
-    public function sellPage()
+    public function sellPage(Request $request)
     {
         $admin = Auth::user();
         $defaultPrice = PriceHelper::getRwampPkrPrice();
+        $userId = $request->query('user_id');
         
-        return view('dashboard.admin-sell', compact('defaultPrice'));
+        $preSelectedUser = null;
+        if ($userId) {
+            $preSelectedUser = User::where('id', $userId)
+                ->where('id', '!=', $admin->id)
+                ->whereIn('role', ['investor', 'reseller', 'user'])
+                ->select('id', 'name', 'email', 'token_balance', 'role')
+                ->first();
+        }
+        
+        return view('dashboard.admin-sell', compact('defaultPrice', 'preSelectedUser'));
     }
 
     /**
@@ -1139,39 +1361,44 @@ class AdminController extends Controller
      */
     public function searchUsersForSell(Request $request)
     {
-        $admin = Auth::user();
-        $query = trim($request->input('q', ''));
+        try {
+            $admin = Auth::user();
+            $query = trim($request->input('q', ''));
 
-        // Search ALL users and resellers (excluding admin)
-        $usersQuery = User::where('id', '!=', $admin->id)
-            ->whereIn('role', ['investor', 'reseller', 'user']);
+            // Search ALL users and resellers (excluding admin)
+            $usersQuery = User::where('id', '!=', $admin->id)
+                ->whereIn('role', ['investor', 'reseller', 'user']);
 
-        // Apply search filter if query is provided
-        if (!empty($query)) {
-            $usersQuery->where(function($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%")
-                    ->orWhere('email', 'like', "%{$query}%")
-                    ->orWhere('id', 'like', "%{$query}%");
-            });
+            // Apply search filter if query is provided and has at least 1 character
+            if (!empty($query) && strlen($query) >= 1) {
+                $usersQuery->where(function($q) use ($query) {
+                    $q->where('name', 'like', "%{$query}%")
+                        ->orWhere('email', 'like', "%{$query}%")
+                        ->orWhere('id', 'like', "%{$query}%");
+                });
+            }
+
+            $users = $usersQuery
+                ->select('id', 'name', 'email', 'token_balance', 'role')
+                ->orderBy('name', 'asc')
+                ->orderBy('created_at', 'desc')
+                ->limit(50)
+                ->get()
+                ->map(function($user) {
+                    return [
+                        'id' => $user->id,
+                        'name' => $user->name ?? 'N/A',
+                        'email' => $user->email ?? 'N/A',
+                        'token_balance' => (float) ($user->token_balance ?? 0),
+                        'role' => $user->role ?? 'investor',
+                    ];
+                });
+
+            return response()->json($users);
+        } catch (\Exception $e) {
+            \Log::error('Error in searchUsersForSell: ' . $e->getMessage());
+            return response()->json(['error' => 'Search failed. Please try again.'], 500);
         }
-
-        $users = $usersQuery
-            ->select('id', 'name', 'email', 'token_balance', 'role')
-            ->orderBy('name', 'asc')
-            ->orderBy('created_at', 'desc')
-            ->limit(50)
-            ->get()
-            ->map(function($user) {
-                return [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'token_balance' => (float) ($user->token_balance ?? 0),
-                    'role' => $user->role ?? 'investor',
-                ];
-            });
-
-        return response()->json($users);
     }
 
     /**
@@ -1179,34 +1406,54 @@ class AdminController extends Controller
      */
     public function sendOtpForSell(Request $request)
     {
-        $validated = $request->validate([
-            'email' => 'required|email',
-        ]);
-
-        $email = \Illuminate\Support\Str::lower(trim($validated['email']));
-        $admin = Auth::user();
-
-        // Verify email matches admin's email
-        if ($email !== \Illuminate\Support\Str::lower(trim($admin->email))) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Email does not match your account.'
-            ], 422);
-        }
-
         try {
+            $validated = $request->validate([
+                'email' => 'required|email',
+            ]);
+
+            $email = \Illuminate\Support\Str::lower(trim($validated['email']));
+            $admin = Auth::user();
+
+            if (!$admin) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You must be logged in to send OTP.'
+                ], 401);
+            }
+
+            // Verify email matches admin's email
+            if ($email !== \Illuminate\Support\Str::lower(trim($admin->email))) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Email does not match your account.'
+                ], 422);
+            }
+
             $otpController = new \App\Http\Controllers\Auth\EmailVerificationController();
             $otpController->generateAndSendOtp($email);
+
+            \Log::info('Admin OTP sent successfully', ['email' => $email, 'admin_id' => $admin->id]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'OTP sent to your email.'
             ]);
-        } catch (\Exception $e) {
-            \Log::error('Admin OTP send error: ' . $e->getMessage());
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Admin OTP validation error', ['errors' => $e->errors()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to send OTP. Please try again.'
+                'message' => 'Invalid email address.',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Admin OTP send error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send OTP: ' . ($e->getMessage() ?? 'Unknown error. Please try again.')
             ], 500);
         }
     }
@@ -1412,6 +1659,211 @@ class AdminController extends Controller
                 'message' => 'Failed to transfer coins. Please try again.'
             ], 500);
         }
+    }
+
+    /**
+     * Show 2FA setup page with proper error handling
+     */
+    public function showTwoFactorSetup()
+    {
+        try {
+            $user = Auth::user();
+            
+            // Check if 2FA secret exists but is corrupted
+            $hasCorruptedSecret = false;
+            $hasCorruptedRecoveryCodes = false;
+            $secretExists = false;
+            $recoveryCodesExist = false;
+            
+            // Safely check if secret exists without triggering decryption
+            try {
+                $secretValue = $user->getAttribute('two_factor_secret');
+                $secretExists = !empty($secretValue);
+                
+                if ($secretExists) {
+                    try {
+                        // Try to decrypt the secret to check if it's valid
+                        \Laravel\Fortify\Fortify::currentEncrypter()->decrypt($secretValue);
+                    } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+                        $hasCorruptedSecret = true;
+                        \Log::warning('Corrupted 2FA secret for user ' . $user->id . ': ' . $e->getMessage());
+                    } catch (\Throwable $e) {
+                        $hasCorruptedSecret = true;
+                        \Log::warning('Error checking 2FA secret for user ' . $user->id . ': ' . $e->getMessage());
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Log::error('Error accessing two_factor_secret: ' . $e->getMessage());
+            }
+            
+            // Safely check if recovery codes exist without triggering decryption
+            try {
+                $recoveryCodesValue = $user->getAttribute('two_factor_recovery_codes');
+                $recoveryCodesExist = !empty($recoveryCodesValue);
+                
+                if ($recoveryCodesExist) {
+                    try {
+                        // Use the overridden method which handles errors gracefully
+                        $codes = $user->recoveryCodes();
+                        // If it returns empty array, codes might be corrupted
+                        if (empty($codes) && !empty($recoveryCodesValue)) {
+                            // Try direct decryption to confirm corruption
+                            try {
+                                \Laravel\Fortify\Fortify::currentEncrypter()->decrypt($recoveryCodesValue);
+                            } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+                                $hasCorruptedRecoveryCodes = true;
+                                \Log::warning('Corrupted recovery codes for user ' . $user->id . ': ' . $e->getMessage());
+                            }
+                        }
+                    } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+                        $hasCorruptedRecoveryCodes = true;
+                        \Log::warning('Corrupted recovery codes for user ' . $user->id . ': ' . $e->getMessage());
+                    } catch (\Throwable $e) {
+                        \Log::warning('Error checking recovery codes for user ' . $user->id . ': ' . $e->getMessage());
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Log::error('Error accessing two_factor_recovery_codes: ' . $e->getMessage());
+            }
+            
+            return view('auth.two-factor-setup', [
+                'hasCorruptedSecret' => $hasCorruptedSecret,
+                'hasCorruptedRecoveryCodes' => $hasCorruptedRecoveryCodes,
+                'secretExists' => $secretExists,
+                'recoveryCodesExist' => $recoveryCodesExist,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Error loading 2FA setup page: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            return view('auth.two-factor-setup', [
+                'error' => 'An error occurred while loading the 2FA setup page. Please try again.',
+                'hasCorruptedSecret' => false,
+                'hasCorruptedRecoveryCodes' => false,
+                'secretExists' => false,
+                'recoveryCodesExist' => false,
+            ]);
+        }
+    }
+
+    /**
+     * Regenerate two-factor authentication recovery codes
+     */
+    public function regenerateRecoveryCodes(Request $request)
+    {
+        $user = Auth::user();
+
+        // Check if 2FA is enabled
+        if (!$user->two_factor_secret) {
+            return back()->with('error', 'Two-factor authentication is not enabled on your account.');
+        }
+
+        try {
+            // Use Fortify's action to generate new recovery codes
+            $generate = new \Laravel\Fortify\Actions\GenerateNewRecoveryCodes();
+            $generate($user);
+
+            return back()->with('success', 'Recovery codes have been regenerated successfully. Please save them in a safe place.');
+        } catch (\Exception $e) {
+            \Log::error('Failed to regenerate recovery codes: ' . $e->getMessage());
+            return back()->with('error', 'Failed to regenerate recovery codes. Please try again.');
+        }
+    }
+
+    /**
+     * View all chats (admin read-only access)
+     */
+    public function chatsIndex(Request $request)
+    {
+        $query = \App\Models\Chat::with(['participants', 'latestMessage.sender']);
+
+        // Search
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhereHas('participants', function($userQuery) use ($search) {
+                      $userQuery->where('name', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Filter by type
+        if ($request->filled('type') && in_array($request->type, ['private', 'group'])) {
+            $query->where('type', $request->type);
+        }
+
+        // Filter by user
+        if ($request->filled('user_id')) {
+            $chatIds = \App\Models\ChatParticipant::where('user_id', $request->user_id)->pluck('chat_id');
+            $query->whereIn('id', $chatIds);
+        }
+
+        // Filter by deleted messages only
+        if ($request->filled('show_deleted_only')) {
+            $query->whereHas('messages', function($q) {
+                $q->where('is_deleted', true);
+            });
+        }
+
+        $chats = $query->withCount('messages')
+            ->orderBy('last_message_at', 'desc')
+            ->paginate(20)
+            ->withQueryString();
+
+        return view('admin.chat.index', compact('chats'));
+    }
+
+    /**
+     * View a specific chat (admin read-only)
+     */
+    public function viewChat(\App\Models\Chat $chat)
+    {
+        // Admin can view all chats - no permission check needed
+        $messages = $chat->messages()
+            ->withTrashed() // Include deleted messages
+            ->with(['sender', 'deletedBy'])
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        $participants = $chat->participants;
+
+        // Log admin access
+        \Log::info('Admin viewed chat', [
+            'chat_id' => $chat->id,
+            'admin_id' => Auth::id(),
+            'admin_email' => Auth::user()->email,
+        ]);
+
+        return view('admin.chat.view', [
+            'chat' => $chat,
+            'messages' => $messages,
+            'participants' => $participants,
+        ]);
+    }
+
+    /**
+     * Get chat audit trail
+     */
+    public function auditTrail(\App\Models\Chat $chat)
+    {
+        $messages = $chat->messages()
+            ->withTrashed()
+            ->with(['sender', 'deletedBy'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $auditData = [
+            'chat' => $chat,
+            'total_messages' => $chat->messages()->count(),
+            'deleted_messages' => $chat->messages()->where('is_deleted', true)->count(),
+            'messages' => $messages,
+        ];
+
+        return response()->json($auditData);
     }
 }
 

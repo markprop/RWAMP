@@ -2,35 +2,35 @@
 
 @section('content')
 <div class="min-h-screen bg-white">
-    <section class="bg-gradient-to-r from-black to-secondary text-white py-12">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex items-center justify-between flex-wrap gap-4">
+    <section class="bg-gradient-to-r from-black to-secondary text-white py-8 sm:py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 class="text-3xl md:text-5xl font-montserrat font-bold">Sell Coins</h1>
-                    <p class="text-white/80">Transfer tokens to users/resellers (OTP protected)</p>
+                    <h1 class="text-2xl sm:text-3xl md:text-5xl font-montserrat font-bold">Sell Coins</h1>
+                    <p class="text-white/80 text-sm sm:text-base mt-1">Transfer tokens to users/resellers (OTP protected)</p>
                 </div>
-                <a href="{{ route('dashboard.admin') }}" class="btn-secondary">
+                <a href="{{ route('dashboard.admin') }}" class="btn-secondary text-center text-sm sm:text-base px-4 py-2 sm:px-6 sm:py-3 whitespace-nowrap">
                     ← Back to Dashboard
                 </a>
             </div>
         </div>
     </section>
 
-    <div class="max-w-7xl mx-auto px-4 py-10">
-        <div class="grid md:grid-cols-2 gap-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
             <!-- Sell Form -->
-            <div class="bg-white rounded-xl shadow-xl p-6">
-                <h2 class="text-2xl font-bold mb-6">Transfer Tokens</h2>
+            <div class="bg-white rounded-xl shadow-xl p-4 sm:p-6">
+                <h2 class="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Transfer Tokens</h2>
                 
-                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                    <p class="text-sm text-yellow-800">
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+                    <p class="text-xs sm:text-sm text-yellow-800">
                         <strong>Note:</strong> You can sell tokens to any user or reseller. An OTP will be sent to your email for security verification.
                     </p>
                 </div>
 
                 <!-- Coin Price Calculator -->
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                    <h3 class="font-semibold text-blue-900 mb-3">Coin Price Calculator</h3>
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+                    <h3 class="font-semibold text-blue-900 mb-2 sm:mb-3 text-sm sm:text-base">Coin Price Calculator</h3>
                     <div class="space-y-3">
                         <div>
                             <label class="block text-xs font-medium text-blue-800 mb-1">Coin Price (PKR per coin)</label>
@@ -54,14 +54,17 @@
 
                 <form id="sellForm" class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium mb-2">Search User/Reseller <span class="text-red-500">*</span></label>
+                        <label class="block text-sm font-medium mb-2">Enter Wallet Address (16 digits) <span class="text-red-500">*</span></label>
                         <div class="relative">
                             <input 
                                 type="text" 
-                                id="userSearch" 
-                                class="form-input w-full pr-10" 
-                                placeholder="Search by name, email, or user ID..."
+                                id="walletAddressInput" 
+                                class="form-input w-full pr-10 font-mono" 
+                                placeholder="Enter 16-digit wallet address..."
                                 autocomplete="off"
+                                maxlength="16"
+                                pattern="[0-9]{16}"
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 16)"
                             >
                             <div class="absolute right-3 top-1/2 transform -translate-y-1/2">
                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -69,14 +72,16 @@
                                 </svg>
                             </div>
                         </div>
-                        <div id="userSearchResults" class="hidden mt-2 border border-gray-200 rounded-lg bg-white shadow-lg max-h-60 overflow-y-auto z-10"></div>
-                        <input type="hidden" id="recipientId" required>
+                        <div id="walletLookupError" class="hidden mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                            <p class="text-sm text-red-800" id="walletLookupErrorMessage"></p>
+                        </div>
+                        <div id="walletLookupLoading" class="hidden mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p class="text-sm text-blue-800">Looking up wallet address...</p>
+                        </div>
                         <div id="selectedUser" class="hidden mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="font-semibold text-green-900" id="selectedUserName"></p>
-                                    <p class="text-sm text-green-700" id="selectedUserEmail"></p>
-                                    <p class="text-xs text-green-600 mt-1">Balance: <span id="selectedUserBalance"></span> RWAMP | Role: <span id="selectedUserRole"></span></p>
+                                    <p class="font-semibold text-green-900">✓ Found: <span id="selectedUserName"></span></p>
                                 </div>
                                 <button type="button" onclick="clearSelectedUser()" class="text-red-600 hover:text-red-800">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,7 +90,8 @@
                                 </button>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-500 mt-1">Search for any user or reseller by name, email, or user ID</p>
+                        <input type="hidden" id="recipientId" required>
+                        <p class="text-xs text-gray-500 mt-1">Enter the 16-digit wallet address of the recipient</p>
                     </div>
                     
                     <div>
@@ -319,111 +325,213 @@
 </div>
 
 <script>
+// Store routes in variables to avoid Blade compilation issues
+const searchUsersRoute = '{!! route('admin.search-users') !!}';
+const sendOtpRoute = '{!! route('admin.send-otp') !!}';
+const sellCoinsRoute = '{!! route('admin.sell-coins') !!}';
+const adminDashboardRoute = '{!! route('dashboard.admin') !!}';
+
 let searchTimeout;
 let selectedUserData = null;
-let coinPrice = {{ $defaultPrice }};
-let defaultPrice = {{ $defaultPrice }};
+let coinPrice = {{ (float) $defaultPrice }};
+let defaultPrice = {{ (float) $defaultPrice }};
 
-// User search functionality
-document.getElementById('userSearch').addEventListener('input', function(e) {
-    const query = e.target.value.trim();
-    const resultsDiv = document.getElementById('userSearchResults');
-    
-    clearTimeout(searchTimeout);
-    
-    searchTimeout = setTimeout(async () => {
-        try {
-            const url = `{{ route('admin.search-users') }}${query ? '?q=' + encodeURIComponent(query) : ''}`;
-            const response = await fetch(url, {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                credentials: 'same-origin'
-,
-            });
-            
-            if (!response.ok) {
-                throw new Error('Search failed');
-            }
-            
-            const users = await response.json();
-            displaySearchResults(users, query);
-        } catch (error) {
-            console.error('Search error:', error)
-            resultsDiv.innerHTML = '<div class="p-3 text-sm text-red-500">Error searching users. Please try again.</div>';
-            resultsDiv.classList.remove('hidden');
-        }
-    }, 300);
-});
-
-document.getElementById('userSearch').addEventListener('focus', function(e) {
-    const query = e.target.value.trim();
-    if (query.length >= 1 || query.length === 0) {
-        e.target.dispatchEvent(new Event('input'));
-    }
-});
-
+// Utility function to escape HTML
 function escapeHtml(text) {
+    if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
-function displaySearchResults(users, query = '') {
-    const resultsDiv = document.getElementById('userSearchResults');
-    
-    if (users.length === 0) {
-        const message = query 
-            ? `No users found matching "${escapeHtml(query)}". Try a different search.`
-            : 'No users found.';
-        resultsDiv.innerHTML = `<div class="p-3 text-sm text-gray-500">${message}</div>`;
-        resultsDiv.classList.remove('hidden');
+// Wallet lookup functionality - wait for DOM to be ready
+document.addEventListener('DOMContentLoaded', function() {
+    const walletAddressInput = document.getElementById('walletAddressInput');
+    if (!walletAddressInput) {
+        console.error('Wallet address input not found!');
         return;
     }
     
-    resultsDiv.innerHTML = '';
-    
-    if (!query || query.length === 0) {
-        const headerDiv = document.createElement('div');
-        headerDiv.className = 'p-2 bg-gray-100 border-b border-gray-200';
-        headerDiv.innerHTML = '<p class="text-xs font-semibold text-gray-600">All Users/Resellers (Click to select)</p>';
-        resultsDiv.appendChild(headerDiv);
-    }
-    
-    users.forEach(user => {
-        const div = document.createElement('div');
-        div.className = 'p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0';
-        div.onclick = () => selectUser(user.id, user.name, user.email, user.token_balance, user.role);
-        
-        const roleColors = {
-            'investor': 'bg-blue-100 text-blue-800',
-            'reseller': 'bg-green-100 text-green-800',
-            'user': 'bg-gray-100 text-gray-800'
+    // Pre-select user if user_id is provided in URL (for backward compatibility)
+    @if(isset($preSelectedUser) && $preSelectedUser)
+        const preSelectedUser = {
+            id: {{ $preSelectedUser->id }},
+            name: {!! json_encode($preSelectedUser->name) !!},
+            email: {!! json_encode($preSelectedUser->email) !!},
+            token_balance: {{ (float) ($preSelectedUser->token_balance ?? 0) }},
+            role: {!! json_encode($preSelectedUser->role ?? 'investor') !!}
         };
-        const roleColor = roleColors[user.role] || 'bg-gray-100 text-gray-800';
-        const roleLabel = (user.role || 'investor').charAt(0).toUpperCase() + (user.role || 'investor').slice(1);
         
-        div.innerHTML = `
-            <div class="flex items-center justify-between">
-                <div class="flex-1">
-                    <p class="font-semibold text-gray-900">${escapeHtml(user.name)}</p>
-                    <p class="text-sm text-gray-600">${escapeHtml(user.email)}</p>
-                    <p class="text-xs text-gray-500 mt-1">ID: ${user.id} | Balance: ${(user.token_balance || 0).toLocaleString()} RWAMP</p>
-                </div>
-                <span class="ml-2 px-2 py-1 text-xs font-semibold rounded ${roleColor}">${escapeHtml(roleLabel)}</span>
-            </div>
-        `;
+        // Pre-select the user
+        selectUser(
+            preSelectedUser.id,
+            preSelectedUser.name,
+            preSelectedUser.email,
+            preSelectedUser.token_balance,
+            preSelectedUser.role
+        );
+    @endif
+    
+    // Wallet lookup on blur
+    walletAddressInput.addEventListener('blur', function(e) {
+        const wallet = e.target.value.trim();
         
-        resultsDiv.appendChild(div);
+        // Only lookup if wallet is exactly 16 digits
+        if (wallet.length === 16 && /^\d{16}$/.test(wallet)) {
+            lookupWalletAddress(wallet);
+        } else if (wallet.length > 0) {
+            showWalletError('Wallet address must be exactly 16 digits');
+        }
     });
     
-    const footerDiv = document.createElement('div');
-    footerDiv.className = 'p-2 bg-gray-50 border-t border-gray-200';
-    footerDiv.innerHTML = `<p class="text-xs text-gray-500 text-center">Showing ${users.length} user${users.length !== 1 ? 's' : ''}</p>`;
-    resultsDiv.appendChild(footerDiv);
+    // Also lookup on Enter key
+    walletAddressInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const wallet = e.target.value.trim();
+            if (wallet.length === 16 && /^\d{16}$/.test(wallet)) {
+                lookupWalletAddress(wallet);
+            } else if (wallet.length > 0) {
+                showWalletError('Wallet address must be exactly 16 digits');
+            }
+        }
+    });
+});
+
+async function lookupWalletAddress(wallet) {
+    // Hide previous errors and results
+    hideWalletError();
+    document.getElementById('selectedUser').classList.add('hidden');
+    document.getElementById('walletLookupLoading').classList.remove('hidden');
     
-    resultsDiv.classList.remove('hidden');
+    try {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (!csrfToken) {
+            throw new Error('CSRF token not found. Please refresh the page.');
+        }
+        
+        const response = await fetch('{{ route("api.users.lookup-by-wallet") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ wallet: wallet })
+        });
+        
+        // Check content-type before parsing
+        const contentType = response.headers.get('content-type');
+        const isJson = contentType && contentType.includes('application/json');
+        
+        // Get response text first
+        const responseText = await response.text();
+        
+        // Check if response is ok before parsing JSON
+        if (!response.ok) {
+            let errorMessage = 'Wallet address not found';
+            
+            if (isJson) {
+                try {
+                    const errorData = JSON.parse(responseText);
+                    errorMessage = errorData.error || errorData.message || errorMessage;
+                } catch (e) {
+                    console.error('Error parsing JSON error response:', e);
+                    errorMessage = response.status === 404 ? 'Wallet address not found' : 'Error looking up wallet address';
+                }
+            } else {
+                // Response is HTML (likely an error page)
+                console.error('Server returned HTML instead of JSON. Status:', response.status);
+                console.error('Response preview:', responseText.substring(0, 200));
+                
+                if (response.status === 403) {
+                    errorMessage = 'You do not have permission to lookup wallet addresses.';
+                } else if (response.status === 401) {
+                    errorMessage = 'Please log in to lookup wallet addresses.';
+                } else if (response.status === 404) {
+                    errorMessage = 'Wallet address not found';
+                } else if (response.status === 422) {
+                    errorMessage = 'Invalid wallet address format. Must be exactly 16 digits.';
+                } else {
+                    errorMessage = 'Server error. Please try again or contact support.';
+                }
+            }
+            
+            document.getElementById('walletLookupLoading').classList.add('hidden');
+            showWalletError(errorMessage);
+            return;
+        }
+        
+        // Parse JSON only if response is ok and is JSON
+        if (!isJson) {
+            console.error('Server returned non-JSON response:', responseText.substring(0, 200));
+            document.getElementById('walletLookupLoading').classList.add('hidden');
+            showWalletError('Server returned invalid response. Please try again.');
+            return;
+        }
+        
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (e) {
+            console.error('Error parsing JSON response:', e);
+            console.error('Response text:', responseText.substring(0, 500));
+            document.getElementById('walletLookupLoading').classList.add('hidden');
+            showWalletError('Error parsing server response. Please try again.');
+            return;
+        }
+        
+        document.getElementById('walletLookupLoading').classList.add('hidden');
+        
+        if (data.name && data.id) {
+            // Success - user found
+            selectedUserData = { id: data.id, name: data.name };
+            document.getElementById('recipientId').value = data.id;
+            document.getElementById('selectedUserName').textContent = data.name;
+            document.getElementById('selectedUser').classList.remove('hidden');
+            
+            // Show payment section if quantity is already entered
+            const quantity = parseFloat(document.getElementById('coinQuantity')?.value) || 0;
+            if (quantity > 0) {
+                document.getElementById('paymentSection')?.classList.remove('hidden');
+            }
+            
+            // If payment type is already selected, fetch proof
+            const paymentType = document.getElementById('paymentType')?.value;
+            if (paymentType && (paymentType === 'usdt' || paymentType === 'bank')) {
+                fetchPaymentProof(data.id, paymentType);
+            }
+        } else {
+            // User not found
+            showWalletError(data.error || 'Wallet address not found');
+        }
+    } catch (error) {
+        console.error('Wallet lookup error:', error);
+        document.getElementById('walletLookupLoading').classList.add('hidden');
+        
+        // Provide more specific error message
+        if (error.message && error.message.includes('JSON')) {
+            showWalletError('Server error. The server returned an invalid response. Please try again.');
+        } else if (error.message && error.message.includes('CSRF')) {
+            showWalletError('Security token expired. Please refresh the page and try again.');
+        } else if (error.message && error.message.includes('fetch')) {
+            showWalletError('Network error. Please check your internet connection and try again.');
+        } else {
+            showWalletError('Error looking up wallet address. Please try again.');
+        }
+    }
+}
+
+function showWalletError(message) {
+    document.getElementById('walletLookupError').classList.remove('hidden');
+    document.getElementById('walletLookupErrorMessage').textContent = message;
+    document.getElementById('recipientId').value = '';
+    selectedUserData = null;
+}
+
+function hideWalletError() {
+    document.getElementById('walletLookupError').classList.add('hidden');
 }
 
 function selectUser(userId, userName, userEmail, userBalance, userRole) {
@@ -431,25 +539,38 @@ function selectUser(userId, userName, userEmail, userBalance, userRole) {
     
     document.getElementById('recipientId').value = userId;
     document.getElementById('selectedUserName').textContent = userName;
-    document.getElementById('selectedUserEmail').textContent = userEmail;
-    document.getElementById('selectedUserBalance').textContent = (userBalance || 0).toLocaleString();
-    document.getElementById('selectedUserRole').textContent = (userRole || 'investor').charAt(0).toUpperCase() + (userRole || 'investor').slice(1);
+    if (document.getElementById('selectedUserEmail')) {
+        document.getElementById('selectedUserEmail').textContent = userEmail;
+    }
+    if (document.getElementById('selectedUserBalance')) {
+        document.getElementById('selectedUserBalance').textContent = (userBalance || 0).toLocaleString();
+    }
+    if (document.getElementById('selectedUserRole')) {
+        document.getElementById('selectedUserRole').textContent = (userRole || 'investor').charAt(0).toUpperCase() + (userRole || 'investor').slice(1);
+    }
     
-    document.getElementById('userSearch').value = '';
-    document.getElementById('userSearchResults').classList.add('hidden');
+    document.getElementById('walletAddressInput').value = '';
     document.getElementById('selectedUser').classList.remove('hidden');
     
     // Show payment section if quantity is already entered
-    const quantity = parseFloat(document.getElementById('coinQuantity').value) || 0;
+    const quantity = parseFloat(document.getElementById('coinQuantity')?.value) || 0;
     if (quantity > 0) {
-        document.getElementById('paymentSection').classList.remove('hidden');
+        document.getElementById('paymentSection')?.classList.remove('hidden');
     }
     
     // If payment type is already selected, fetch proof
-    const paymentType = document.getElementById('paymentType').value;
+    const paymentType = document.getElementById('paymentType')?.value;
     if (paymentType && (paymentType === 'usdt' || paymentType === 'bank')) {
         fetchPaymentProof(userId, paymentType);
     }
+}
+
+function clearSelectedUser() {
+    selectedUserData = null;
+    document.getElementById('recipientId').value = '';
+    document.getElementById('selectedUser').classList.add('hidden');
+    document.getElementById('walletAddressInput').value = '';
+    hideWalletError();
 }
 
 // Payment handling functions
@@ -528,7 +649,6 @@ async function fetchPaymentProof(userId, paymentType) {
             body: JSON.stringify({
                 user_id: userId,
                 payment_type: paymentType
-,
             })
         });
 
@@ -661,11 +781,12 @@ function clearSelectedUser() {
     document.getElementById('userSearch').value = '';
 }
 
+// Close search results when clicking outside
 document.addEventListener('click', function(e) {
     const searchInput = document.getElementById('userSearch');
     const resultsDiv = document.getElementById('userSearchResults');
     
-    if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+    if (searchInput && resultsDiv && !searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
         resultsDiv.classList.add('hidden');
     }
 });
@@ -691,17 +812,35 @@ async function sendOtp() {
     }
 
     try {
-        const response = await fetch('{{ route("admin.send-otp") }}', {
+        console.log('Sending OTP request to:', sendOtpRoute);
+        console.log('Email:', email);
+        
+        const response = await fetch(sendOtpRoute, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                'Accept': 'application/json'
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify({ email })
         });
 
-        const data = await response.json();
+        console.log('OTP Response status:', response.status);
+        
+        const responseText = await response.text();
+        console.log('OTP Response text:', responseText);
+        
+        let data;
+        try {
+            data = JSON.parse(responseText);
+            console.log('OTP Response data:', data);
+        } catch (parseError) {
+            console.error('Failed to parse OTP response:', parseError);
+            showError('Invalid response from server. Please try again.');
+            return;
+        }
+
         if (data.success) {
             document.getElementById('otpSection').classList.remove('hidden');
             document.getElementById('sendOtpBtn').classList.add('hidden');
@@ -709,18 +848,61 @@ async function sendOtp() {
             hideError();
             showInfo('OTP sent to your email! Please check your inbox.');
         } else {
-            showError(data.message || 'Failed to send OTP');
+            const errorMessage = data.message || data.error || 'Failed to send OTP';
+            console.error('OTP send failed:', errorMessage);
+            showError(errorMessage);
         }
     } catch (error) {
+        console.error('OTP send error:', error);
         showError('Error sending OTP. Please try again.');
     }
 }
 
-document.getElementById('sellForm').addEventListener('submit', async function(e) {
+// Calculate total function - must be in global scope for inline handlers
+function calculateTotal() {
+    const quantity = parseFloat(document.getElementById('coinQuantity').value) || 0;
+    const totalPriceSection = document.getElementById('totalPriceSection');
+    const totalPriceEl = document.getElementById('totalPrice');
+    const pricePerCoinEl = document.getElementById('pricePerCoin');
+    
+    const currentPrice = parseFloat(document.getElementById('coinPriceInput').value) || defaultPrice;
+    coinPrice = currentPrice;
+    
+    if (quantity <= 0) {
+        totalPriceSection.classList.add('hidden');
+        return;
+    }
+    
+    const totalPrice = quantity * currentPrice;
+    totalPriceEl.textContent = 'PKR ' + totalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    pricePerCoinEl.textContent = 'PKR ' + currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    totalPriceSection.classList.remove('hidden');
+    
+    // Show payment section when quantity is entered and user is selected
+    if (quantity > 0 && document.getElementById('recipientId').value) {
+        document.getElementById('paymentSection').classList.remove('hidden');
+    }
+}
+
+// Wait for DOM to be ready before attaching form submit handler
+document.addEventListener('DOMContentLoaded', function() {
+    const sellForm = document.getElementById('sellForm');
+    if (!sellForm) {
+        console.error('Sell form not found!');
+        return;
+    }
+    
+    // Add oninput handler for coin quantity
+    const coinQuantityInput = document.getElementById('coinQuantity');
+    if (coinQuantityInput) {
+        coinQuantityInput.addEventListener('input', calculateTotal);
+    }
+    
+    sellForm.addEventListener('submit', async function(e) {
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('=== Form Submit Started ===')
+    console.log('=== Form Submit Started ===');
     
     const recipientId = document.getElementById('recipientId').value;
     const quantity = document.getElementById('coinQuantity').value;
@@ -730,23 +912,16 @@ document.getElementById('sellForm').addEventListener('submit', async function(e)
     const paymentReceived = document.querySelector('input[name="paymentReceived"]:checked')?.value;
     const paymentType = document.getElementById('paymentType').value;
     const paymentHash = document.getElementById('paymentHash').value;
-    const paymentReceipt = document.getElementById('paymentReceipt').files[0];
+    const paymentReceipt = document.getElementById('paymentReceipt')?.value || '';
 
     // Clean OTP - remove all spaces
     const otp = rawOtp.replace(/\s+/g, '');
 
     console.log('Form Data:', {
-        // recipientId,
-        // quantity,
-        // pricePerCoin,
         rawOtp: rawOtp,
         cleanedOtp: otp,
-        otpLength: otp.length,
-        // email,
-        // paymentReceived,
-        // paymentType,
-        // paymentHash
-    })
+        otpLength: otp.length
+    });
 
     if (!recipientId || !quantity || !otp || !email) {
         showError('Please fill all required fields');
@@ -774,6 +949,10 @@ document.getElementById('sellForm').addEventListener('submit', async function(e)
             showError('Payment receipt not found. Please ensure user has an approved bank payment.');
             return false;
         }
+        
+        if (paymentType === 'cash') {
+            // Cash payment doesn't need additional validation
+        }
     }
 
     hideError();
@@ -792,30 +971,41 @@ document.getElementById('sellForm').addEventListener('submit', async function(e)
             payment_type: paymentType || '',
             payment_hash: paymentHash || '',
             payment_receipt: paymentReceipt || ''
-,
         };
 
-        console.log('=== Sending Request ===')
-        console.log('Request URL:', '{{ route("admin.sell-coins") }}');
-        console.log('Request Body:', requestBody)
-        console.log('OTP being sent:', otp)
-        console.log('OTP type:', typeof otp)
-        console.log('OTP length:', otp.length)
+        console.log('=== Sending Request ===');
+        console.log('Request URL:', sellCoinsRoute);
+        console.log('Request Body:', requestBody);
+        console.log('OTP being sent:', otp);
+        console.log('OTP type:', typeof otp);
+        console.log('OTP length:', otp.length);
 
-        // const response = await fetch('{{ route("admin.sell-coins") }}', {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        if (!csrfToken) {
+            showError('CSRF token not found. Please refresh the page and try again.');
+            document.getElementById('submitSellBtn').disabled = false;
+            document.getElementById('submitSellBtn').textContent = 'Confirm Transfer';
+            return false;
+        }
+
+        const response = await fetch(sellCoinsRoute, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'X-CSRF-TOKEN': csrfToken,
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify(requestBody)
-,
         });
 
-        console.log('Response Status:', response.status)
-        console.log('Response Headers:', Object.fromEntries(response.headers.entries()));
+        console.log('Response Status:', response.status);
+        // Note: Object.fromEntries may not be available in all browsers
+        try {
+            console.log('Response Headers:', Object.fromEntries(response.headers.entries()));
+        } catch (e) {
+            console.log('Response Headers: (unable to log)');
+        }
 
         const responseText = await response.text();
         console.log('Response Text (raw):', responseText);
@@ -842,7 +1032,7 @@ document.getElementById('sellForm').addEventListener('submit', async function(e)
             document.getElementById('selectedUser').classList.add('hidden');
             document.getElementById('coinPriceInput').value = defaultPrice;
             setTimeout(() => {
-                window.location.href = '{{ route("dashboard.admin") }}';
+                window.location.href = adminDashboardRoute;
             }, 2000);
         } else {
             console.error('❌ Transaction failed:', data)
@@ -865,6 +1055,13 @@ document.getElementById('sellForm').addEventListener('submit', async function(e)
     }
     
     return false;
+    });
+    
+    // Coin price input listener
+    const coinPriceInput = document.getElementById('coinPriceInput');
+    if (coinPriceInput) {
+        coinPriceInput.addEventListener('input', calculateTotal);
+    }
 });
 
 function showError(message) {
@@ -892,34 +1089,6 @@ function hideInfo() {
     document.getElementById('infoMessage').classList.add('hidden');
 }
 
-function calculateTotal() {
-    const quantity = parseFloat(document.getElementById('coinQuantity').value) || 0;
-    const totalPriceSection = document.getElementById('totalPriceSection');
-    const totalPriceEl = document.getElementById('totalPrice');
-    const pricePerCoinEl = document.getElementById('pricePerCoin');
-    
-    const currentPrice = parseFloat(document.getElementById('coinPriceInput').value) || defaultPrice;
-    coinPrice = currentPrice;
-    
-    if (quantity <= 0) {
-        totalPriceSection.classList.add('hidden');
-        return;
-    }
-    
-    const totalPrice = quantity * currentPrice;
-    totalPriceEl.textContent = 'PKR ' + totalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    pricePerCoinEl.textContent = 'PKR ' + currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    totalPriceSection.classList.remove('hidden');
-    
-    // Show payment section when quantity is entered and user is selected
-    if (quantity > 0 && document.getElementById('recipientId').value) {
-        document.getElementById('paymentSection').classList.remove('hidden');
-    }
-}
-
-document.getElementById('coinPriceInput').addEventListener('input', function() {
-    calculateTotal();
-});
 </script>
 @endsection
 

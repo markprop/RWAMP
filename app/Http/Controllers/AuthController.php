@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Database\QueryException;
 use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
@@ -29,10 +30,21 @@ class AuthController extends Controller
 
 	public function login(Request $request)
 	{
+		// Check if we should require reCAPTCHA (skip on localhost)
+		$requireRecaptcha = config('services.recaptcha.secret_key') && 
+			!in_array($request->getHost(), ['localhost', '127.0.0.1']) &&
+			!str_contains(config('app.url', ''), 'localhost') &&
+			!str_contains(config('app.url', ''), '127.0.0.1') &&
+			config('app.env') !== 'local';
+
 		$credentials = $request->validate([
 			'email' => ['required', 'email'],
 			'password' => ['required'],
 			'role' => ['nullable', 'in:investor,reseller,admin'],
+			'g-recaptcha-response' => $requireRecaptcha ? ['required', 'recaptcha'] : ['nullable'],
+		], [
+			'g-recaptcha-response.required' => 'Please complete the reCAPTCHA verification.',
+			'g-recaptcha-response.recaptcha' => 'reCAPTCHA verification failed. Please try again.',
 		]);
 
 		if (Auth::attempt($request->only('email','password'), $request->boolean('remember'))) {
@@ -119,21 +131,128 @@ class AuthController extends Controller
 		return response()->json(['valid' => false]);
 	}
 
+	/**
+	 * Check if email is valid and exists (API endpoint)
+	 */
+	public function checkEmail(Request $request)
+	{
+		$email = strtolower(trim($request->query('email', '')));
+		
+		if (empty($email)) {
+			return response()->json(['valid' => false, 'message' => 'Email is required']);
+		}
+
+		// Validate email format
+		if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+			return response()->json([
+				'valid' => false,
+				'exists' => false,
+				'message' => 'Please enter a valid email address format'
+			]);
+		}
+
+		// Check if email already exists in users or reseller_applications
+		$existsInUsers = User::where('email', $email)->exists();
+		$existsInApplications = \App\Models\ResellerApplication::where('email', $email)->exists();
+
+		if ($existsInUsers || $existsInApplications) {
+			return response()->json([
+				'valid' => true,
+				'exists' => true,
+				'message' => 'This email address is already registered'
+			]);
+		}
+
+		// Check if email domain exists (DNS check)
+		$domain = substr(strrchr($email, "@"), 1);
+		$dnsValid = checkdnsrr($domain, 'MX') || checkdnsrr($domain, 'A');
+
+		if (!$dnsValid) {
+			return response()->json([
+				'valid' => false,
+				'exists' => false,
+				'message' => 'Please enter a valid email address. The domain does not exist.'
+			]);
+		}
+
+		return response()->json([
+			'valid' => true,
+			'exists' => false,
+			'message' => 'Email address is valid and available'
+		]);
+	}
+
+	/**
+	 * Check if phone number is valid (API endpoint)
+	 */
+	public function checkPhone(Request $request)
+	{
+		$phone = trim($request->query('phone', ''));
+		
+		if (empty($phone)) {
+			return response()->json(['valid' => false, 'message' => 'Phone number is required']);
+		}
+
+		// Validate phone format: should start with + and contain digits
+		// Format: +[country code][space][number] or +[country code][number]
+		$phonePattern = '/^\+[1-9]\d{1,3}[\s]?\d{4,14}$/';
+		
+		if (!preg_match($phonePattern, $phone)) {
+			return response()->json([
+				'valid' => false,
+				'message' => 'Please enter a valid phone number. Format: +[Country Code] [Number] (e.g., +92 300 1234567)'
+			]);
+		}
+
+		// Check if phone already exists
+		$existsInUsers = User::where('phone', $phone)->exists();
+		$existsInApplications = \App\Models\ResellerApplication::where('phone', $phone)->exists();
+
+		if ($existsInUsers || $existsInApplications) {
+			return response()->json([
+				'valid' => true,
+				'exists' => true,
+				'message' => 'This phone number is already registered'
+			]);
+		}
+
+		return response()->json([
+			'valid' => true,
+			'exists' => false,
+			'message' => 'Phone number is valid and available'
+		]);
+	}
+
 	public function register(Request $request)
 	{
+		$role = $request->input('role', 'investor');
+		
+		// Handle reseller applications differently
+		if ($role === 'reseller') {
+			return $this->registerResellerApplication($request);
+		}
+		
+		// Check if we should require reCAPTCHA (skip on localhost)
+		$requireRecaptcha = config('services.recaptcha.secret_key') && 
+			!in_array($request->getHost(), ['localhost', '127.0.0.1']) &&
+			!str_contains(config('app.url', ''), 'localhost') &&
+			!str_contains(config('app.url', ''), '127.0.0.1') &&
+			config('app.env') !== 'local';
+
+		// Handle investor registration (existing flow)
 		$validated = $request->validate([
 			'name' => ['required', 'string', 'max:255'],
 			'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-			'phone' => ['nullable', 'string', 'max:30'],
+			'phone' => ['required', 'string', 'max:30'],
 			'role' => ['nullable', 'in:investor,reseller,admin'],
-			'company_name' => ['nullable', 'string', 'max:255'],
-			'investment_capacity' => ['nullable', 'string', 'max:50'],
-			'experience' => ['nullable', 'string', 'max:2000'],
 			'password' => ['required', 'confirmed', Password::min(8)],
 			'referral_code' => ['nullable', 'string', 'max:20'],
+			'g-recaptcha-response' => $requireRecaptcha ? ['required', 'recaptcha'] : ['nullable'],
+		], [
+			'g-recaptcha-response.required' => 'Please complete the reCAPTCHA verification.',
+			'g-recaptcha-response.recaptcha' => 'reCAPTCHA verification failed. Please try again.',
 		]);
 
-		$role = $validated['role'] ?? 'user';
 		$normalizedEmail = \Illuminate\Support\Str::lower(trim($validated['email']));
 
 		// Handle referral code from form input or URL parameter
@@ -167,17 +286,18 @@ class AuthController extends Controller
 			}
 		}
 
+		// Generate unique 16-digit wallet address
+		$walletAddress = $this->generateUniqueWalletAddress();
+
 		$user = User::create([
 			'name' => $validated['name'],
 			'email' => $normalizedEmail,
 			'phone' => $validated['phone'] ?? null,
-			'role' => $role,
-			'company_name' => $role === 'reseller' ? ($validated['company_name'] ?? null) : null,
-			'investment_capacity' => $role === 'reseller' ? ($validated['investment_capacity'] ?? null) : null,
-			'experience' => $role === 'reseller' ? ($validated['experience'] ?? null) : null,
+			'role' => 'investor',
 			'password' => Hash::make($validated['password']),
 			'email_verified_at' => null, // Email verification required
 			'reseller_id' => $resellerId, // Link to reseller if referral code provided
+			'wallet_address' => $walletAddress, // Auto-generated wallet address
 		]);
 
 		// Generate and send OTP
@@ -186,12 +306,24 @@ class AuthController extends Controller
 			$emailVerificationController->generateAndSendOtp($normalizedEmail);
 			Log::info("OTP sent to new user during registration: {$normalizedEmail}");
 		} catch (\Exception $e) {
-			Log::error("Failed to send OTP during registration: " . $e->getMessage());
-			// Delete the user if OTP sending fails
-			$user->delete();
-			return back()->withErrors([
-				'email' => 'Registration failed. Unable to send verification email. Please try again later.',
-			])->withInput();
+			Log::error("Failed to send OTP during registration", [
+				'email' => $normalizedEmail,
+				'error' => $e->getMessage(),
+				'trace' => $e->getTraceAsString(),
+				'mail_driver' => config('mail.default'),
+				'mail_host' => config('mail.mailers.smtp.host'),
+			]);
+			
+			// In debug mode, allow registration to continue and show OTP on verification page
+			if (config('app.debug')) {
+				Log::warning("Email sending failed but continuing in debug mode for: {$normalizedEmail}");
+			} else {
+				// In production, delete the user if OTP sending fails
+				$user->delete();
+				return back()->withErrors([
+					'email' => 'Registration failed. Unable to send verification email. Please check your email configuration or try again later.',
+				])->withInput();
+			}
 		}
 
 		// Store email in session for verification page
@@ -205,6 +337,109 @@ class AuthController extends Controller
 		// Redirect to email verification page
 		return redirect()->route('verify-email', ['email' => $normalizedEmail])
 			->with('success', 'Registration successful! Please check your email for the verification code.');
+	}
+
+	/**
+	 * Handle reseller application registration
+	 */
+	private function registerResellerApplication(Request $request)
+	{
+		try {
+			// Check if we should require reCAPTCHA (skip on localhost)
+			$requireRecaptcha = config('services.recaptcha.secret_key') && 
+				!in_array($request->getHost(), ['localhost', '127.0.0.1']) &&
+				!str_contains(config('app.url', ''), 'localhost') &&
+				!str_contains(config('app.url', ''), '127.0.0.1') &&
+				config('app.env') !== 'local';
+
+			$validated = $request->validate([
+				'name' => ['required', 'string', 'max:255'],
+				'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email', 'unique:reseller_applications,email'],
+				'phone' => ['required', 'string', 'max:30'],
+				'password' => ['required', 'confirmed', Password::min(8)],
+				'company_name' => ['nullable', 'string', 'max:255'],
+				'investment_capacity' => ['required', 'string', 'max:50'],
+				'experience' => ['nullable', 'string', 'max:2000'],
+				'g-recaptcha-response' => $requireRecaptcha ? ['required', 'recaptcha'] : ['nullable'],
+			], [
+				'g-recaptcha-response.required' => 'Please complete the reCAPTCHA verification.',
+				'g-recaptcha-response.recaptcha' => 'reCAPTCHA verification failed. Please try again.',
+			]);
+
+			$normalizedEmail = \Illuminate\Support\Str::lower(trim($validated['email']));
+
+			// Create reseller application (not a user account)
+			try {
+				$application = \App\Models\ResellerApplication::create([
+					'name' => $validated['name'],
+					'email' => $normalizedEmail,
+					'phone' => $validated['phone'],
+					'password' => Hash::make($validated['password']), // Store hashed password
+					'company' => $validated['company_name'] ?? null,
+					'investment_capacity' => $validated['investment_capacity'],
+					'experience' => $validated['experience'] ?? null,
+					'status' => 'pending',
+					'ip_address' => $request->ip(),
+					'user_agent' => $request->userAgent(),
+				]);
+
+				Log::info("Reseller application created successfully", [
+					'application_id' => $application->id,
+					'email' => $normalizedEmail,
+				]);
+			} catch (\Illuminate\Database\QueryException $e) {
+				Log::error("Database error creating reseller application: " . $e->getMessage(), [
+					'error_code' => $e->getCode(),
+					'sql_state' => $e->errorInfo[0] ?? null,
+					'email' => $normalizedEmail,
+				]);
+				
+				// Check if it's a table missing error
+				if (str_contains($e->getMessage(), "doesn't exist") || str_contains($e->getMessage(), "Unknown table")) {
+					return back()->withErrors([
+						'email' => 'Database configuration error. Please contact support. Error: Table missing.',
+					])->withInput();
+				}
+				
+				throw $e; // Re-throw if it's a different database error
+			}
+
+			// Send notification emails (non-blocking)
+			try {
+				$emailService = new \App\Services\EmailService();
+				$emailService->sendResellerNotification($application);
+				Log::info("Reseller application notification email sent", [
+					'application_id' => $application->id,
+				]);
+			} catch (\Exception $e) {
+				Log::error("Failed to send reseller application notification: " . $e->getMessage(), [
+					'application_id' => $application->id ?? null,
+					'error' => $e->getMessage(),
+					'trace' => $e->getTraceAsString(),
+				]);
+				// Continue even if email fails - application is already saved
+			}
+
+			// Show success message and redirect back
+			return redirect()->route('register')
+				->with('success', 'Your reseller application has been submitted successfully! Our admin team will review your application and notify you via email once a decision has been made. Please check your email for updates.');
+				
+		} catch (\Illuminate\Validation\ValidationException $e) {
+			// Re-throw validation exceptions to show form errors
+			throw $e;
+		} catch (\Exception $e) {
+			Log::error("Unexpected error in registerResellerApplication: " . $e->getMessage(), [
+				'error' => $e->getMessage(),
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+				'trace' => $e->getTraceAsString(),
+				'request_data' => $request->except(['password', 'password_confirmation']),
+			]);
+			
+			return back()->withErrors([
+				'email' => 'An unexpected error occurred. Please try again later or contact support if the problem persists.',
+			])->withInput();
+		}
 	}
 
 	public function logout(Request $request)
@@ -253,6 +488,18 @@ class AuthController extends Controller
 		return redirect()->route('dashboard.reseller')->with('success', 'Password changed successfully! You can now access your dashboard.');
 	}
 
+	/**
+	 * Generate a unique 16-digit wallet address
+	 */
+	private function generateUniqueWalletAddress(): string
+	{
+		do {
+			$wallet = str_pad(random_int(1000000000000000, 9999999999999999), 16, '0', STR_PAD_LEFT);
+		} while (User::where('wallet_address', $wallet)->exists());
+
+		return $wallet;
+	}
+
 	private function redirectByRole(User $user, ?string $intendedRole = null, ?Request $request = null)
 	{
 		$role = $intendedRole ?? $user->role;
@@ -272,7 +519,11 @@ class AuthController extends Controller
 		$intendedAction = $request ? $request->session()->get('intended_action') : null;
 		if ($intendedAction === 'purchase') {
 			$request->session()->forget('intended_action');
-			return redirect()->to($defaultDashboard . '?open=purchase');
+			// Don't open purchase modal for admin users
+			if ($role !== 'admin') {
+				return redirect()->to($defaultDashboard . '?open=purchase');
+			}
+			return redirect()->to($defaultDashboard);
 		}
 
 		// Check if there's an intended URL from Laravel's auth system
@@ -282,9 +533,12 @@ class AuthController extends Controller
 		}
 		
 		// If there's no specific intended URL (user logged in directly),
-		// automatically open the purchase modal
+		// automatically open the purchase modal (except for admin users)
 		if (!$intendedUrl || $intendedUrl === $defaultDashboard) {
-			return redirect()->to($defaultDashboard . '?open=purchase');
+			if ($role !== 'admin') {
+				return redirect()->to($defaultDashboard . '?open=purchase');
+			}
+			return redirect()->to($defaultDashboard);
 		}
 
 		// If there's a specific intended URL, use it

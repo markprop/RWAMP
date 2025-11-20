@@ -13,9 +13,14 @@ class ProfileController extends Controller
 	{
 		$user = Auth::user()->load('reseller');
 		$transactions = method_exists($user, 'transactions') ? $user->transactions()->latest()->limit(20)->get() : collect();
+		
+		// Get official coin price
+		$officialPrice = \App\Helpers\PriceHelper::getRwampPkrPrice();
+		
 		return view('auth.profile', [
 			'user' => $user,
 			'transactions' => $transactions,
+			'officialPrice' => $officialPrice,
 		]);
 	}
 

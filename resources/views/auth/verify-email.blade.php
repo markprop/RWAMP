@@ -108,21 +108,15 @@ window.otpVerification = function() {
         otp: '',
         isSubmitting: false,
         init() {
-            // Prevent console clearing
-            const originalClear = console.clear;
-            console.clear = function() {
-                console.warn('Console clear was called but prevented to preserve OTP debugging logs')
-            };
-            
-            // Log initialization
-            const emailInput = document.querySelector('input[name="email"]');
-            const email = emailInput ? emailInput.value : 'N/A';
-            
             // Get debug OTP values if available
             const debugOtpSent = document.getElementById('debug-otp-sent');
             const debugOtpCached = document.getElementById('debug-otp-cached');
             let sentOtp = debugOtpSent ? debugOtpSent.value : null;
             const cachedOtp = debugOtpCached ? debugOtpCached.value : null;
+            
+            // Log initialization
+            const emailInput = document.querySelector('input[name="email"]');
+            const email = emailInput ? emailInput.value : 'N/A';
             
             // Store sent OTP in sessionStorage for persistence
             if (sentOtp) {
@@ -131,7 +125,7 @@ window.otpVerification = function() {
                     sessionStorage.setItem('otp_sent_timestamp', new Date().toISOString());
                     sessionStorage.setItem('otp_sent_email', email);
                 } catch (e) {
-                    console.warn('Could not save sent OTP to sessionStorage:', e)
+                    // Ignore sessionStorage errors
                 }
             } else {
                 // Try to get from sessionStorage if not in DOM
@@ -144,48 +138,6 @@ window.otpVerification = function() {
                     // Ignore
                 }
             }
-            
-            // Check for previous logs in sessionStorage
-            try {
-                const previousLogs = JSON.parse(sessionStorage.getItem('otp_verification_logs') || '[]');
-                if (previousLogs.length > 0) {
-                    console.log('%c=== PREVIOUS OTP VERIFICATION LOGS ===', 'font-size: 14px; font-weight: bold; color: #0066cc;')
-                    previousLogs.forEach((log, index) => {
-                        console.log(`%cLog ${index + 1} (${log.timestamp}):`, 'font-weight: bold; color: #0066cc;', log);
-                    });
-                    console.log('%c========================================', 'font-size: 14px; font-weight: bold; color: #0066cc;')
-                }
-            } catch (e) {
-                console.warn('Could not load previous logs:', e)
-            }
-            
-            console.log('%c=== OTP VERIFICATION INITIALIZED ===', 'font-size: 16px; font-weight: bold; color: #00aa00; background: #f0f0f0; padding: 5px;')
-            console.log('Email from form:', email)
-            console.log('Initial OTP value:', this.otp)
-            
-            // Display the OTP that was sent (for debugging)
-            if (sentOtp) {
-                console.log('%c🔐 EXACT OTP SENT TO EMAIL:', 'font-size: 18px; font-weight: bold; color: #ff0000; background: #fff3cd; padding: 10px; border: 2px solid #ff0000;')
-                console.log('%c' + sentOtp, 'font-size: 24px; font-weight: bold; color: #ff0000; letter-spacing: 5px;')
-                console.log('OTP Length:', sentOtp.length)
-                console.log('OTP Type:', typeof sentOtp)
-                console.log('OTP Bytes (hex):', this.stringToHex(sentOtp));
-            } else {
-                console.warn('⚠️ Debug OTP not available. Make sure APP_DEBUG=true in .env')
-            }
-            
-            if (cachedOtp) {
-                console.log('%c💾 OTP IN CACHE:', 'font-size: 14px; font-weight: bold; color: #0066cc;')
-                console.log('Cached OTP:', cachedOtp)
-                console.log('Cached OTP Length:', cachedOtp.length)
-                console.log('Cached OTP Type:', typeof cachedOtp)
-                if (sentOtp) {
-                    console.log('Sent vs Cached Match:', sentOtp === cachedOtp)
-                }
-            }
-            
-            console.log('%c====================================', 'font-size: 16px; font-weight: bold; color: #00aa00;')
-            console.log('Tip: Logs are preserved in sessionStorage. Use: JSON.parse(sessionStorage.getItem("otp_verification_logs"))');
         },
         stringToHex(str) {
             let hex = '';
@@ -198,11 +150,6 @@ window.otpVerification = function() {
         // Return OTP without spaces (CSP-safe, no regex)
         strippedOtp() {
             const cleaned = String(this.otp || '').split(' ').join('');
-            console.log('strippedOtp() called:', {
-                'original': this.otp,
-                'cleaned': cleaned,
-                'length': cleaned.length
-            });
             return cleaned;
         },
         isVerifyDisabled() {
@@ -224,14 +171,6 @@ window.otpVerification = function() {
             }
             this.otp = formattedValue;
             event.target.value = formattedValue;
-            
-            // Debug logging
-            console.log('OTP Formatting:', {
-                'original': originalValue,
-                'cleaned': value,
-                'formatted': formattedValue,
-                'length': value.length
-            })
         },
         submitAndClean() {
             // Replace the input value with the 6-digit numeric OTP before submit
@@ -249,65 +188,8 @@ window.otpVerification = function() {
                 // Ignore
             }
             
-            // Store logs in sessionStorage to preserve them across page reloads
-            const logData = {
-                timestamp: new Date().toISOString(),
-                rawOtp: rawOtp,
-                rawOtpLength: rawOtp.length,
-                cleanedOtp: cleanedOtp,
-                cleanedOtpLength: cleanedOtp.length,
-                email: email,
-                inputValueBefore: input ? input.value : 'N/A',
-                sentOtp: sentOtp,
-            };
-            
-            // Console logging for debugging - use multiple methods to ensure visibility
-            console.log('%c=== OTP VERIFICATION DEBUG - FORM SUBMISSION ===', 'font-size: 18px; font-weight: bold; color: #ffffff; background: #ff0000; padding: 10px; border: 3px solid #000000;')
-            
-            // Show the exact OTP that was sent
-            if (sentOtp) {
-                console.log('%c📧 EXACT OTP SENT TO EMAIL:', 'font-size: 16px; font-weight: bold; color: #ff0000; background: #fff3cd; padding: 8px;')
-                console.log('%c' + sentOtp, 'font-size: 28px; font-weight: bold; color: #ff0000; letter-spacing: 8px; background: #fff3cd; padding: 10px;')
-                console.log('Sent OTP Length:', sentOtp.length)
-                console.log('Sent OTP Type:', typeof sentOtp)
-                console.log('Sent OTP Bytes (hex):', this.stringToHex(sentOtp));
-            } else {
-                console.warn('⚠️ Could not retrieve sent OTP from sessionStorage')
-            }
-            
-            console.log('%c📝 USER ENTERED OTP:', 'font-size: 16px; font-weight: bold; color: #0066cc; background: #e7f3ff; padding: 8px;')
-            console.log('Raw OTP (with spaces):', rawOtp);
-            console.log('Raw OTP length:', rawOtp.length)
-            console.log('%cCleaned OTP (no spaces):', 'font-size: 14px; font-weight: bold;', cleanedOtp);
-            console.log('%c' + cleanedOtp, 'font-size: 28px; font-weight: bold; color: #0066cc; letter-spacing: 8px; background: #e7f3ff; padding: 10px;')
-            console.log('Cleaned OTP length:', cleanedOtp.length)
-            console.log('Cleaned OTP Type:', typeof cleanedOtp)
-            console.log('Cleaned OTP Bytes (hex):', this.stringToHex(cleanedOtp));
-            
-            // Compare sent vs entered
-            if (sentOtp && cleanedOtp) {
-                const match = sentOtp === cleanedOtp;
-                console.log('%c🔍 COMPARISON RESULT:', 'font-size: 16px; font-weight: bold; color: ' + (match ? '#00aa00' : '#ff0000') + '; background: ' + (match ? '#d4edda' : '#f8d7da') + '; padding: 8px;');
-                console.log('Match (strict ===):', match);
-                console.log('Match (loose ==):', sentOtp == cleanedOtp);
-                console.log('Sent OTP:', sentOtp)
-                console.log('Entered OTP:', cleanedOtp)
-                if (!match) {
-                    console.error('❌ OTP MISMATCH DETECTED!')
-                    console.log('Sent OTP bytes:', this.stringToHex(sentOtp));
-                    console.log('Entered OTP bytes:', this.stringToHex(cleanedOtp));
-                } else {
-                    console.log('✅ OTP MATCHES!')
-                }
-            }
-            
-            console.log('Email:', email)
-            console.log('Input element value before update:', input ? input.value : 'N/A')
-            
             if (input) {
                 input.value = cleanedOtp;
-                logData.inputValueAfter = input.value;
-                console.log('Input element value after update:', input.value)
             }
             
             // Hide previous messages
@@ -316,35 +198,8 @@ window.otpVerification = function() {
             // Set submitting state
             this.isSubmitting = true;
             
-            // Prepare form data (reuse for both logging and submission)
+            // Prepare form data
             const formData = new FormData(this.$refs.form);
-            const formDataObj = {};
-            
-            // Log form data
-            console.log('%c📤 FORM DATA BEING SUBMITTED:', 'font-size: 14px; font-weight: bold; color: #0066cc;')
-            for (let [key, value] of formData.entries()) {
-                formDataObj[key] = value;
-                if (key === 'otp') {
-                    console.log('  ' + key + ':', value, '(length: ' + value.length + ')');
-                    console.log('  ' + key + ' (hex):', this.stringToHex(value));
-                } else {
-                    console.log('  ' + key + ':', value)
-                }
-            }
-            logData.formData = formDataObj;
-            
-            // Store in sessionStorage for persistence
-            try {
-                const existingLogs = JSON.parse(sessionStorage.getItem('otp_verification_logs') || '[]');
-                existingLogs.push(logData);
-                sessionStorage.setItem('otp_verification_logs', JSON.stringify(existingLogs));
-                console.log('✅ Logs saved to sessionStorage. Check with: JSON.parse(sessionStorage.getItem("otp_verification_logs"))');
-            } catch (e) {
-                console.warn('Could not save logs to sessionStorage:', e)
-            }
-            
-            console.log('%c=============================', 'font-size: 16px; font-weight: bold; color: #ff0000;')
-            console.log('⏳ Submitting via AJAX...')
             
             // Submit via AJAX
             fetch(this.$refs.form.action, {
@@ -356,7 +211,6 @@ window.otpVerification = function() {
                 },
             })
             .then(response => {
-                console.log('Response received:', response.status, response.statusText)
                 const contentType = response.headers.get('content-type');
                 
                 // Check if response is JSON
@@ -372,7 +226,6 @@ window.otpVerification = function() {
                 }
             })
             .then(result => {
-                console.log('Response result:', result)
                 this.isSubmitting = false;
                 
                 // Handle JSON response
@@ -391,20 +244,8 @@ window.otpVerification = function() {
                     // Handle error response
                     let errorMessage = data.message || 'Invalid verification code.';
                     
-                    // Add debug info to console if available
+                    // Add debug info if available
                     if (data.debug) {
-                        console.error('%c❌ SERVER-SIDE OTP MISMATCH DEBUG:', 'font-size: 16px; font-weight: bold; color: #ff0000; background: #fff3cd; padding: 10px;')
-                        console.error('Submitted OTP:', data.debug.submitted_otp, '(length:', data.debug.submitted_otp_length + ')');
-                        console.error('Cached OTP:', data.debug.cached_otp, '(length:', data.debug.cached_otp_length + ')');
-                        console.error('Cached OTP Raw:', data.debug.cached_otp_raw)
-                        console.error('Cache Key:', data.debug.cache_key)
-                        console.error('Cache Exists:', data.debug.cache_exists)
-                        console.error('Email:', data.debug.email)
-                        console.error('Strict Match:', data.debug.comparison.strict_match)
-                        console.error('Loose Match:', data.debug.comparison.loose_match)
-                        console.error('Submitted Hex:', data.debug.comparison.submitted_hex)
-                        console.error('Cached Hex:', data.debug.comparison.cached_hex)
-                        
                         if (!data.debug.cache_exists) {
                             errorMessage += ' (OTP not found in cache - may have expired)';
                         } else if (data.debug.cached_otp !== data.debug.submitted_otp) {
@@ -432,7 +273,6 @@ window.otpVerification = function() {
                 }
             })
             .catch(error => {
-                console.error('AJAX Error:', error)
                 this.isSubmitting = false;
                 this.showError('An error occurred. Please try again.');
             });

@@ -23,7 +23,7 @@
      @open-purchase-modal.window="handlePurchaseModalOpen($event)"
      x-show="purchaseModalOpen" 
      @keydown.escape.window="purchaseModalOpen = false"
-     class="fixed inset-0 z-50 overflow-y-auto" 
+     class="fixed inset-0 z-50 overflow-y-auto p-4" 
      style="display: none;"
      x-cloak>
     <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
@@ -46,23 +46,23 @@
              x-transition:leave="ease-in duration-200"
              x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
              x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-             class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl border-2 border-red-300 ring-1 ring-red-500/20 ring-offset-2 ring-offset-white transform transition-all sm:my-8 sm:align-middle sm:max-w-5xl sm:w-full">
+             class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl border-2 border-red-300 ring-1 ring-red-500/20 ring-offset-2 ring-offset-white transform transition-all sm:my-8 sm:align-middle sm:max-w-5xl w-full max-w-full">
             
             <!-- Modal header -->
-            <div class="bg-gradient-to-r from-black to-secondary text-white px-6 py-4 border-b border-red-400/30">
+            <div class="bg-gradient-to-r from-black to-secondary text-white px-4 sm:px-6 py-3 sm:py-4 border-b border-red-400/30">
                 <div class="flex items-center justify-between">
-                    <h3 class="text-2xl font-montserrat font-bold">Purchase RWAMP Tokens</h3>
-                    <button @click="purchaseModalOpen = false" class="text-white hover:text-gray-300">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <h3 class="text-lg sm:text-2xl font-montserrat font-bold">Purchase RWAMP Tokens</h3>
+                    <button @click="purchaseModalOpen = false" class="text-white hover:text-gray-300 p-1">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
-                <p class="text-white/80 mt-1 text-sm">Buy using cryptocurrency with WalletConnect. Prices are set by admin.</p>
+                <p class="text-white/80 mt-1 text-xs sm:text-sm">Buy using cryptocurrency with WalletConnect. Prices are set by admin.</p>
             </div>
 
             <!-- Modal body -->
-            <div class="bg-white px-6 py-6 max-h-[calc(100vh-200px)] overflow-y-auto divide-y divide-gray-100">
+            <div class="bg-white px-4 sm:px-6 py-4 sm:py-6 max-h-[calc(100vh-200px)] overflow-y-auto divide-y divide-gray-100">
                 @include('components.purchase-content', ['rates' => $rates, 'wallets' => $wallets, 'paymentsDisabled' => $paymentsDisabled])
             </div>
         </div>

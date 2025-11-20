@@ -105,12 +105,16 @@
                     <span class="credential-value">{{ $user->email }}</span>
                 </div>
                 <div class="credential-item">
-                    <span class="credential-label">Temporary Password:</span>
-                    <span class="credential-value">{{ $defaultPassword }}</span>
+                    <span class="credential-label">Password:</span>
+                    <span class="credential-value">Use the password you set during application</span>
                 </div>
             </div>
 
             <div class="password-box">
+                <p><strong>Important:</strong> When you log in for the first time, you will be required to verify your email address through OTP verification. Please check your email for the verification code after logging in.</p>
+            </div>
+
+            <div class="password-box" style="display: none;">
                 <strong>🔒 Security Notice</strong>
                 <p style="margin: 10px 0 0 0;">For your security, you <strong>must change your password</strong> immediately after your first login. The system will automatically prompt you to set a new password.</p>
             </div>

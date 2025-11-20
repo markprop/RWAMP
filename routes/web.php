@@ -12,6 +12,7 @@ use App\Http\Controllers\CryptoPaymentController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\KycController;
 use App\Http\Controllers\WithdrawController;
+use App\Http\Controllers\ChatController;
 
 /*
 |--------------------------------------------------------------------------
@@ -178,10 +179,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/api/reseller/search-users', [ResellerController::class, 'searchUsersForSell'])->name('reseller.search-users');
         Route::put('/dashboard/reseller/coin-price', [ResellerController::class, 'updateCoinPrice'])->name('reseller.update-coin-price');
         Route::get('/dashboard/reseller/buy-requests', [ResellerController::class, 'buyRequests'])->name('reseller.buy-requests');
-        Route::post('/dashboard/reseller/buy-requests/{request}/approve', [ResellerController::class, 'approveBuyRequest'])->name('reseller.buy-requests.approve');
-        Route::post('/dashboard/reseller/buy-requests/{request}/reject', [ResellerController::class, 'rejectBuyRequest'])->name('reseller.buy-requests.reject');
+        Route::post('/dashboard/reseller/buy-requests/{buyRequest}/approve', [ResellerController::class, 'approveBuyRequest'])->name('reseller.buy-requests.approve');
+        Route::post('/dashboard/reseller/buy-requests/{buyRequest}/reject', [ResellerController::class, 'rejectBuyRequest'])->name('reseller.buy-requests.reject');
     });
     Route::get('/dashboard/admin', [AdminController::class, 'dashboard'])->middleware(['role:admin','admin.2fa'])->name('dashboard.admin');
+    Route::post('/dashboard/admin/regenerate-recovery-codes', [AdminController::class, 'regenerateRecoveryCodes'])->middleware(['role:admin','admin.2fa'])->name('admin.regenerate-recovery-codes');
     Route::get('/dashboard/admin/crypto-payments', [AdminController::class, 'cryptoPayments'])->middleware(['role:admin','admin.2fa'])->name('admin.crypto.payments');
     Route::get('/dashboard/admin/crypto-payments/{payment}/details', [AdminController::class, 'cryptoPaymentDetails'])->middleware(['role:admin','admin.2fa'])->name('admin.crypto.payments.details');
     Route::get('/dashboard/admin/crypto-payments/{payment}/screenshot', [AdminController::class, 'downloadCryptoPaymentScreenshot'])->middleware(['role:admin','admin.2fa'])->name('admin.crypto.payments.screenshot');
@@ -195,12 +197,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard/admin/users/{user}/details', [AdminController::class, 'userDetails'])->middleware(['role:admin','admin.2fa'])->name('admin.users.details');
     Route::put('/dashboard/admin/users/{user}', [AdminController::class, 'usersUpdate'])->middleware(['role:admin','admin.2fa'])->name('admin.users.update');
     Route::post('/dashboard/admin/users/{user}/reset-password', [AdminController::class, 'usersResetPassword'])->middleware(['role:admin','admin.2fa'])->name('admin.users.reset');
+    Route::post('/dashboard/admin/users/{user}/assign-wallet', [AdminController::class, 'assignWalletAddress'])->middleware(['role:admin','admin.2fa'])->name('admin.users.assign-wallet');
     Route::delete('/dashboard/admin/users/{user}', [AdminController::class, 'usersDelete'])->middleware(['role:admin','admin.2fa'])->name('admin.users.delete');
     Route::get('/dashboard/history', [CryptoPaymentController::class, 'userHistory'])->name('user.history');
     Route::post('/admin/crypto-payments/{payment}/approve', [AdminController::class, 'approveCryptoPayment'])->middleware(['role:admin','admin.2fa'])->name('admin.crypto.approve');
     Route::post('/admin/crypto-payments/{payment}/reject', [AdminController::class, 'rejectCryptoPayment'])->middleware(['role:admin','admin.2fa'])->name('admin.crypto.reject');
     // 2FA setup route with dedicated UI
-    Route::get('/admin/2fa/setup', function () { return view('auth.two-factor-setup'); })->middleware('role:admin')->name('admin.2fa.setup');
+    Route::get('/admin/2fa/setup', [AdminController::class, 'showTwoFactorSetup'])->middleware('role:admin')->name('admin.2fa.setup');
+    Route::post('/admin/2fa/regenerate-recovery-codes', [AdminController::class, 'regenerateRecoveryCodes'])->middleware('role:admin')->name('admin.2fa.regenerate-recovery-codes');
     Route::put('/admin/applications/{application}/approve', [AdminController::class, 'approve'])->middleware(['role:admin','admin.2fa'])->name('admin.applications.approve');
     Route::put('/admin/applications/{application}/reject', [AdminController::class, 'reject'])->middleware(['role:admin','admin.2fa'])->name('admin.applications.reject');
     Route::get('/dashboard/admin/applications/{application}/details', [AdminController::class, 'applicationDetails'])->middleware(['role:admin','admin.2fa'])->name('admin.applications.details');
@@ -237,6 +241,34 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/api/admin/fetch-payment-proof', [AdminController::class, 'fetchUserPaymentProof']);
         Route::post('/api/admin/sell-coins', [AdminController::class, 'sellCoins'])->name('admin.sell-coins');
     });
+    
+    // ============================================
+    // CHAT SYSTEM DISABLED - See CHAT_REENABLE_GUIDE.md to re-enable
+    // ============================================
+    
+    // Admin Chat routes (read-only) - DISABLED
+    // Route::middleware(['role:admin','admin.2fa'])->group(function () {
+    //     Route::get('/dashboard/admin/chats', [AdminController::class, 'chatsIndex'])->name('admin.chats.index');
+    //     Route::get('/dashboard/admin/chats/{chat}', [AdminController::class, 'viewChat'])->name('admin.chat.view');
+    //     Route::get('/dashboard/admin/chats/{chat}/audit', [AdminController::class, 'auditTrail'])->name('admin.chat.audit');
+    // });
+    
+    // Chat routes (User/Reseller) - DISABLED
+    // Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
+    // Route::get('/chat/{chat}', [ChatController::class, 'show'])->name('chat.show');
+    // Route::get('/api/chat/{chat}', [ChatController::class, 'show'])->name('api.chat.show');
+    // Route::post('/chat/create-private', [ChatController::class, 'createPrivateChat'])->name('chat.create.private');
+    // Route::post('/chat/create-group', [ChatController::class, 'createGroupChat'])->name('chat.create.group');
+    // Route::post('/chat/{chat}/message', [ChatController::class, 'storeMessage'])->name('chat.message.store');
+    // Route::post('/chat/{chat}/receipt', [ChatController::class, 'uploadReceipt'])->name('chat.receipt.upload');
+    // Route::post('/chat/{chat}/voice', [ChatController::class, 'uploadVoice'])->name('chat.voice.upload');
+    // Route::post('/chat/{chat}/message/{message}/react', [ChatController::class, 'reactToMessage'])->name('chat.message.react');
+    // Route::post('/chat/{chat}/message/{message}/read', [ChatController::class, 'markMessageAsRead'])->name('chat.message.read');
+    // Route::delete('/chat/{chat}/message/{message}', [ChatController::class, 'deleteMessage'])->name('chat.message.delete');
+    // Route::post('/chat/{chat}/pin', [ChatController::class, 'togglePin'])->name('chat.pin');
+    // Route::post('/chat/{chat}/mute', [ChatController::class, 'toggleMute'])->name('chat.mute');
+    // Route::post('/chat/{chat}/archive', [ChatController::class, 'toggleArchive'])->name('chat.archive');
+    // Route::get('/api/chat/search-users', [ChatController::class, 'searchUsers'])->name('chat.search.users');
 
     // Helper: Open purchase modal on the appropriate dashboard (used for post-login/signup redirect)
     Route::get('/open-purchase', function () {
@@ -261,6 +293,8 @@ Route::prefix('api')->group(function () {
     Route::post('/reseller', [ResellerController::class, 'store'])->middleware('throttle:3,60');
     Route::post('/newsletter', [NewsletterController::class, 'store'])->middleware('throttle:6,60');
     Route::get('/check-referral-code', [AuthController::class, 'checkReferralCode'])->name('api.check.referral.code');
+    Route::get('/check-email', [AuthController::class, 'checkEmail'])->name('api.check.email');
+    Route::get('/check-phone', [AuthController::class, 'checkPhone'])->name('api.check.phone');
     
     // Crypto payment API routes
     Route::middleware('auth')->group(function () {
@@ -268,6 +302,13 @@ Route::prefix('api')->group(function () {
         Route::post('/check-payment-status', [CryptoPaymentController::class, 'checkPaymentStatus']);
         Route::post('/submit-tx-hash', [CryptoPaymentController::class, 'submitTxHash']);
         Route::post('/check-auto-payment', [CryptoPaymentController::class, 'checkAutoPaymentStatus']);
+        
+        // Wallet lookup API (admin/reseller only)
+        Route::middleware('role:admin,reseller')->group(function () {
+            Route::post('/users/lookup-by-wallet', [\App\Http\Controllers\UserController::class, 'lookupByWallet'])
+                ->middleware('throttle:10,1')
+                ->name('api.users.lookup-by-wallet');
+        });
         
         // Reseller API routes
         Route::middleware('role:reseller')->group(function () {
@@ -342,7 +383,7 @@ Route::middleware('guest')->group(function () {
     })->name('password.update');
 });
 
-Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
+Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
 // Profile & Account
 Route::middleware('auth')->group(function () {
@@ -350,5 +391,6 @@ Route::middleware('auth')->group(function () {
     Route::put('/account', [ProfileController::class, 'updateAccount'])->name('account.update');
     Route::put('/account/password', [ProfileController::class, 'updatePassword'])->name('account.password');
     Route::put('/wallet', [ProfileController::class, 'updateWallet'])->name('wallet.update');
+    Route::post('/wallet/generate', [ProfileController::class, 'generateWallet'])->name('wallet.generate');
     Route::post('/email/verification/resend', [ProfileController::class, 'resendEmailVerification'])->name('email.verification.resend');
 });

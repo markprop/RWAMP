@@ -18,14 +18,24 @@ class PageController extends Controller
         $tokenPriceUsd = PriceHelper::getRwampUsdPrice();
         $tokenPricePkr = PriceHelper::getRwampPkrPrice();
         
-        // Calculate total raised from approved payments (in USD)
-        $totalRaisedUsd = CryptoPayment::where('status', 'approved')
-            ->sum('usd_amount') ?? 0;
-        
-        // Calculate total tokens sold from credit transactions
-        $totalTokensSold = Transaction::where('type', 'credit')
+        // Calculate total tokens sold from:
+        // 1. Credit transactions (crypto payments)
+        // 2. Admin transfer credit transactions (admin sales to resellers/users)
+        // 3. Crypto purchase transactions (alternative crypto payment type)
+        $totalTokensSold = Transaction::whereIn('type', ['credit', 'admin_transfer_credit', 'crypto_purchase'])
             ->where('status', 'completed')
+            ->where('amount', '>', 0) // Only count positive amounts (credits)
             ->sum('amount') ?? 0;
+        
+        // Get USD to PKR exchange rate (automatically fetched from API if needed)
+        $usdToPkr = PriceHelper::getUsdToPkrRate();
+        
+        // Calculate total raised in PKR first using CURRENT token price * total tokens sold
+        // This ensures the dashboard shows the value based on current price, not transaction prices
+        $totalRaisedPkr = $totalTokensSold * $tokenPricePkr;
+        
+        // Convert PKR to USD
+        $totalRaisedUsd = $totalRaisedPkr / $usdToPkr;
         
         // Presale configuration
         $presaleStage = config('crypto.presale.stage', 2); // Default to Stage 2
@@ -54,7 +64,7 @@ class PageController extends Controller
         $rates = [
             'tokenUsd' => $tokenPriceUsd,
             'tokenPkr' => $tokenPricePkr,
-            'usdToPkr' => (float) config('crypto.rates.usd_pkr', 278),
+            'usdToPkr' => PriceHelper::getUsdToPkrRate(),
             'usdtUsd' => PriceHelper::getUsdtUsdPrice(),
             'usdtPkr' => PriceHelper::getUsdtPkrPrice(),
             'btcUsd' => PriceHelper::getBtcUsdPrice(),

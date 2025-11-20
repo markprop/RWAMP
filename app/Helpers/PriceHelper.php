@@ -27,7 +27,7 @@ class PriceHelper
         
         // Calculate from PKR price and exchange rate
         $rwampPkr = self::getRwampPkrPrice();
-        $usdPkr = config('crypto.rates.usd_pkr', 278);
+        $usdPkr = self::getUsdToPkrRate();
         return $rwampPkr / $usdPkr;
     }
 
@@ -51,7 +51,7 @@ class PriceHelper
         
         // Calculate from USD price and exchange rate
         $usdtUsd = self::getUsdtUsdPrice();
-        $usdPkr = config('crypto.rates.usd_pkr', 278);
+        $usdPkr = self::getUsdToPkrRate();
         return $usdtUsd * $usdPkr;
     }
 
@@ -75,7 +75,7 @@ class PriceHelper
         
         // Calculate from USD price and exchange rate
         $btcUsd = self::getBtcUsdPrice();
-        $usdPkr = config('crypto.rates.usd_pkr', 278);
+        $usdPkr = self::getUsdToPkrRate();
         return $btcUsd * $usdPkr;
     }
 
@@ -93,6 +93,78 @@ class PriceHelper
     public static function getResellerMarkupRate(): float
     {
         return (float) Cache::get('reseller_markup_rate', config('crypto.reseller_markup_rate', 0.05));
+    }
+
+    /**
+     * Get current USD to PKR exchange rate (from cache or API)
+     * Automatically fetches from API if cache is expired or missing
+     */
+    public static function getUsdToPkrRate(): float
+    {
+        // Check cache first (cache for 1 hour)
+        $cached = Cache::get('exchange_rate_usd_pkr');
+        if ($cached !== null) {
+            return (float) $cached;
+        }
+
+        // Fetch from API if cache is expired
+        $rate = self::fetchUsdToPkrRate();
+        
+        // Cache for 1 hour
+        Cache::put('exchange_rate_usd_pkr', $rate, now()->addHour());
+        
+        return $rate;
+    }
+
+    /**
+     * Fetch USD to PKR exchange rate from API
+     * Uses exchangerate-api.com (free tier) or fallback to config
+     */
+    public static function fetchUsdToPkrRate(): float
+    {
+        try {
+            // Try exchangerate-api.com first (free tier, no API key needed for basic usage)
+            $client = new \GuzzleHttp\Client(['timeout' => 10]);
+            
+            // Using exchangerate-api.com free endpoint
+            $response = $client->get('https://api.exchangerate-api.com/v4/latest/USD');
+            
+            $data = json_decode($response->getBody(), true);
+            if (isset($data['rates']['PKR'])) {
+                $rate = (float) $data['rates']['PKR'];
+                \Log::info('USD to PKR rate fetched from exchangerate-api.com: ' . $rate);
+                return $rate;
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Failed to fetch USD to PKR rate from exchangerate-api.com: ' . $e->getMessage());
+        }
+
+        // Fallback: Try alternative API (fixer.io or currencyapi.net)
+        try {
+            $client = new \GuzzleHttp\Client(['timeout' => 10]);
+            // Using currencyapi.net free endpoint (alternative)
+            $response = $client->get('https://api.currencyapi.com/v3/latest', [
+                'query' => [
+                    'apikey' => env('CURRENCY_API_KEY', ''),
+                    'base_currency' => 'USD',
+                    'currencies' => 'PKR'
+                ]
+            ]);
+            
+            $data = json_decode($response->getBody(), true);
+            if (isset($data['data']['PKR']['value'])) {
+                $rate = (float) $data['data']['PKR']['value'];
+                \Log::info('USD to PKR rate fetched from currencyapi.net: ' . $rate);
+                return $rate;
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Failed to fetch USD to PKR rate from currencyapi.net: ' . $e->getMessage());
+        }
+
+        // Final fallback to config value
+        $defaultRate = (float) config('crypto.rates.usd_pkr', 278);
+        \Log::warning('Using default USD to PKR rate from config: ' . $defaultRate);
+        return $defaultRate;
     }
 }
 

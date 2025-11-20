@@ -86,14 +86,17 @@
 
                 <form id="sellForm" class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium mb-2">Search User <span class="text-red-500">*</span></label>
+                        <label class="block text-sm font-medium mb-2">Enter Wallet Address (16 digits) <span class="text-red-500">*</span></label>
                         <div class="relative">
                             <input 
                                 type="text" 
-                                id="userSearch" 
-                                class="form-input w-full pr-10" 
-                                placeholder="Search by name, email, or user ID..."
+                                id="walletAddressInput" 
+                                class="form-input w-full pr-10 font-mono" 
+                                placeholder="Enter 16-digit wallet address..."
                                 autocomplete="off"
+                                maxlength="16"
+                                pattern="[0-9]{16}"
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 16)"
                             >
                             <div class="absolute right-3 top-1/2 transform -translate-y-1/2">
                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -101,13 +104,16 @@
                                 </svg>
                             </div>
                         </div>
-                        <div id="userSearchResults" class="hidden mt-2 border border-gray-200 rounded-lg bg-white shadow-lg max-h-60 overflow-y-auto z-10"></div>
-                        <input type="hidden" id="sellUserId" required>
+                        <div id="walletLookupError" class="hidden mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                            <p class="text-sm text-red-800" id="walletLookupErrorMessage"></p>
+                        </div>
+                        <div id="walletLookupLoading" class="hidden mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p class="text-sm text-blue-800">Looking up wallet address...</p>
+                        </div>
                         <div id="selectedUser" class="hidden mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="font-semibold text-green-900" id="selectedUserName"></p>
-                                    <p class="text-sm text-green-700" id="selectedUserEmail"></p>
+                                    <p class="font-semibold text-green-900">✓ Found: <span id="selectedUserName"></span></p>
                                 </div>
                                 <button type="button" onclick="clearSelectedUser()" class="text-red-600 hover:text-red-800">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,8 +121,21 @@
                                     </svg>
                                 </button>
                             </div>
+                            <!-- Linked Receipt from Chat -->
+                            <div id="chatReceiptSection" class="hidden mt-3 pt-3 border-t border-green-300">
+                                <p class="text-xs font-semibold text-green-800 mb-2">📄 Receipt from Chat:</p>
+                                <div id="chatReceiptDisplay" class="bg-white rounded p-2">
+                                    <img id="chatReceiptImage" src="" alt="Chat Receipt" class="max-w-full rounded mb-2 hidden">
+                                    <a id="chatReceiptLink" href="" target="_blank" class="text-xs text-blue-600 hover:underline hidden">View Full Receipt</a>
+                                    <label class="flex items-center mt-2">
+                                        <input type="checkbox" id="useChatReceipt" class="mr-2" onchange="toggleChatReceipt()">
+                                        <span class="text-xs text-green-700">Use receipt from chat</span>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
-                        <p class="text-xs text-gray-500 mt-1">Search for any user by name, email, or user ID</p>
+                        <input type="hidden" id="sellUserId" required>
+                        <p class="text-xs text-gray-500 mt-1">Enter the 16-digit wallet address of the recipient</p>
                     </div>
                     
                     <div>
@@ -131,9 +150,14 @@
                             placeholder="Enter quantity"
                             oninput="checkBalanceAndCalculate()"
                         >
-                        <p class="text-xs text-gray-500 mt-1">
-                            Your current balance: <strong id="currentBalance">{{ number_format(auth()->user()->token_balance, 0) }} RWAMP</strong>
-                        </p>
+                        <div class="mt-2 space-y-1">
+                            <p class="text-xs text-gray-500">
+                                Your current balance: <strong id="currentBalance" class="text-gray-700">{{ number_format(auth()->user()->token_balance, 0) }} RWAMP</strong>
+                            </p>
+                            <p id="remainingBalanceDisplay" class="hidden text-xs font-semibold">
+                                Remaining balance after transfer: <strong id="remainingBalance" class="text-green-600">0 RWAMP</strong>
+                            </p>
+                        </div>
                         <div id="balanceError" class="hidden mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
                             <p>❌ Not enough balance in your account. Please enter a lower quantity.</p>
                         </div>
@@ -322,8 +346,8 @@
                     <div class="flex gap-4">
                         <div class="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">1</div>
                         <div>
-                            <h3 class="font-semibold mb-1">Share Link or Search User</h3>
-                            <p class="text-sm text-gray-600">Share your referral link with new users, or search for existing users by name, email, or user ID.</p>
+                            <h3 class="font-semibold mb-1">Enter Wallet Address</h3>
+                            <p class="text-sm text-gray-600">Enter the 16-digit wallet address of the recipient. The system will automatically look up the user.</p>
                         </div>
                     </div>
                     <div class="flex gap-4">
@@ -364,144 +388,205 @@
 </div>
 
 <script>
-let searchTimeout;
+let lookupTimeout;
 let selectedUserData = null;
 let currentBalance = {{ auth()->user()->token_balance ?? 0 }};
 let coinPrice = {{ auth()->user()->coin_price ?? \App\Helpers\PriceHelper::getRwampPkrPrice() }};
 let defaultPrice = {{ \App\Helpers\PriceHelper::getRwampPkrPrice() }};
 
-// User search functionality
-document.getElementById('userSearch').addEventListener('input', function(e) {
-    const query = e.target.value.trim();
-    const resultsDiv = document.getElementById('userSearchResults');
+// Wallet lookup functionality
+document.getElementById('walletAddressInput').addEventListener('blur', function(e) {
+    const wallet = e.target.value.trim();
     
-    clearTimeout(searchTimeout);
+    // Only lookup if wallet is exactly 16 digits
+    if (wallet.length === 16 && /^\d{16}$/.test(wallet)) {
+        lookupWalletAddress(wallet);
+    } else if (wallet.length > 0) {
+        showWalletError('Wallet address must be exactly 16 digits');
+    }
+});
+
+// Also lookup on Enter key
+document.getElementById('walletAddressInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const wallet = e.target.value.trim();
+        if (wallet.length === 16 && /^\d{16}$/.test(wallet)) {
+            lookupWalletAddress(wallet);
+        } else if (wallet.length > 0) {
+            showWalletError('Wallet address must be exactly 16 digits');
+        }
+    }
+});
+
+async function lookupWalletAddress(wallet) {
+    // Hide previous errors and results
+    hideWalletError();
+    document.getElementById('selectedUser').classList.add('hidden');
+    document.getElementById('walletLookupLoading').classList.remove('hidden');
     
-    // Show results even with 1 character or empty (to show all users)
-    searchTimeout = setTimeout(async () => {
-        try {
-            const url = `{{ route('reseller.search-users') }}${query ? '?q=' + encodeURIComponent(query) : ''}`;
-            const response = await fetch(url, {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                credentials: 'same-origin'
-,
-            });
+    try {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (!csrfToken) {
+            throw new Error('CSRF token not found. Please refresh the page.');
+        }
+        
+        const response = await fetch('{{ route("api.users.lookup-by-wallet") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ wallet: wallet })
+        });
+        
+        // Check content-type before parsing
+        const contentType = response.headers.get('content-type');
+        const isJson = contentType && contentType.includes('application/json');
+        
+        // Get response text first
+        const responseText = await response.text();
+        
+        // Check if response is ok before parsing JSON
+        if (!response.ok) {
+            let errorMessage = 'Wallet address not found';
             
-            if (!response.ok) {
-                throw new Error('Search failed');
+            if (isJson) {
+                try {
+                    const errorData = JSON.parse(responseText);
+                    errorMessage = errorData.error || errorData.message || errorMessage;
+                } catch (e) {
+                    console.error('Error parsing JSON error response:', e);
+                    errorMessage = response.status === 404 ? 'Wallet address not found' : 'Error looking up wallet address';
+                }
+            } else {
+                // Response is HTML (likely an error page)
+                console.error('Server returned HTML instead of JSON. Status:', response.status);
+                console.error('Response preview:', responseText.substring(0, 200));
+                
+                if (response.status === 403) {
+                    errorMessage = 'You do not have permission to lookup wallet addresses.';
+                } else if (response.status === 401) {
+                    errorMessage = 'Please log in to lookup wallet addresses.';
+                } else if (response.status === 404) {
+                    errorMessage = 'Wallet address not found';
+                } else if (response.status === 422) {
+                    errorMessage = 'Invalid wallet address format. Must be exactly 16 digits.';
+                } else {
+                    errorMessage = 'Server error. Please try again or contact support.';
+                }
             }
             
-            const users = await response.json();
-            displaySearchResults(users, query);
-        } catch (error) {
-            console.error('Search error:', error)
-            resultsDiv.innerHTML = '<div class="p-3 text-sm text-red-500">Error searching users. Please try again.</div>';
-            resultsDiv.classList.remove('hidden');
+            document.getElementById('walletLookupLoading').classList.add('hidden');
+            showWalletError(errorMessage);
+            return;
         }
-    }, 300);
-});
-
-// Also trigger search on focus to show all users
-document.getElementById('userSearch').addEventListener('focus', function(e) {
-    const query = e.target.value.trim();
-    if (query.length >= 1 || query.length === 0) {
-        // Trigger search to show users
-        e.target.dispatchEvent(new Event('input'));
+        
+        // Parse JSON only if response is ok and is JSON
+        if (!isJson) {
+            console.error('Server returned non-JSON response:', responseText.substring(0, 200));
+            document.getElementById('walletLookupLoading').classList.add('hidden');
+            showWalletError('Server returned invalid response. Please try again.');
+            return;
+        }
+        
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (e) {
+            console.error('Error parsing JSON response:', e);
+            console.error('Response text:', responseText.substring(0, 500));
+            document.getElementById('walletLookupLoading').classList.add('hidden');
+            showWalletError('Error parsing server response. Please try again.');
+            return;
+        }
+        
+        document.getElementById('walletLookupLoading').classList.add('hidden');
+        
+        if (data.name && data.id) {
+            // Success - user found
+            selectedUserData = { id: data.id, name: data.name, receipt_screenshot: data.receipt_screenshot };
+            document.getElementById('sellUserId').value = data.id;
+            document.getElementById('selectedUserName').textContent = data.name;
+            document.getElementById('selectedUser').classList.remove('hidden');
+            
+            // Check for linked receipt from chat
+            if (data.receipt_screenshot) {
+                const receiptSection = document.getElementById('chatReceiptSection');
+                const receiptImage = document.getElementById('chatReceiptImage');
+                const receiptLink = document.getElementById('chatReceiptLink');
+                
+                if (receiptSection && receiptImage && receiptLink) {
+                    receiptImage.src = '/storage/' + data.receipt_screenshot;
+                    receiptImage.classList.remove('hidden');
+                    receiptLink.href = '/storage/' + data.receipt_screenshot;
+                    receiptLink.classList.remove('hidden');
+                    receiptSection.classList.remove('hidden');
+                }
+            } else {
+                const receiptSection = document.getElementById('chatReceiptSection');
+                if (receiptSection) {
+                    receiptSection.classList.add('hidden');
+                }
+            }
+            
+            // If payment type is already selected, fetch proof
+            const paymentType = document.getElementById('paymentType')?.value;
+            if (paymentType && (paymentType === 'usdt' || paymentType === 'bank')) {
+                fetchPaymentProof(data.id, paymentType);
+            }
+        } else {
+            // User not found
+            showWalletError(data.error || 'Wallet address not found');
+        }
+    } catch (error) {
+        console.error('Wallet lookup error:', error);
+        document.getElementById('walletLookupLoading').classList.add('hidden');
+        
+        // Provide more specific error message
+        if (error.message && error.message.includes('JSON')) {
+            showWalletError('Server error. The server returned an invalid response. Please try again.');
+        } else if (error.message && error.message.includes('CSRF')) {
+            showWalletError('Security token expired. Please refresh the page and try again.');
+        } else if (error.message && error.message.includes('fetch')) {
+            showWalletError('Network error. Please check your internet connection and try again.');
+        } else {
+            showWalletError('Error looking up wallet address. Please try again.');
+        }
     }
-});
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 
-function displaySearchResults(users, query = '') {
-    const resultsDiv = document.getElementById('userSearchResults');
-    
-    if (users.length === 0) {
-        const message = query 
-            ? `No users found matching "${escapeHtml(query)}". Try a different search.`
-            : 'No users found.';
-        resultsDiv.innerHTML = `<div class="p-3 text-sm text-gray-500">${message}</div>`;
-        resultsDiv.classList.remove('hidden');
-        return;
-    }
-    
-    // Clear previous results
-    resultsDiv.innerHTML = '';
-    
-    // Add header if showing all users
-    if (!query || query.length === 0) {
-        const headerDiv = document.createElement('div');
-        headerDiv.className = 'p-2 bg-gray-100 border-b border-gray-200';
-        headerDiv.innerHTML = '<p class="text-xs font-semibold text-gray-600">All Users (Click to select)</p>';
-        resultsDiv.appendChild(headerDiv);
-    }
-    
-    users.forEach(user => {
-        const div = document.createElement('div');
-        div.className = 'p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0';
-        div.onclick = () => selectUser(user.id, user.name, user.email);
-        
-        // Get role badge color
-        const roleColors = {
-            'investor': 'bg-blue-100 text-blue-800',
-            'reseller': 'bg-green-100 text-green-800',
-            'user': 'bg-gray-100 text-gray-800'
-        };
-        const roleColor = roleColors[user.role] || 'bg-gray-100 text-gray-800';
-        const roleLabel = (user.role || 'investor').charAt(0).toUpperCase() + (user.role || 'investor').slice(1);
-        
-        div.innerHTML = `
-            <div class="flex items-center justify-between">
-                <div class="flex-1">
-                    <p class="font-semibold text-gray-900">${escapeHtml(user.name)}</p>
-                    <p class="text-sm text-gray-600">${escapeHtml(user.email)}</p>
-                    <p class="text-xs text-gray-500 mt-1">ID: ${user.id}</p>
-                </div>
-                <span class="ml-2 px-2 py-1 text-xs font-semibold rounded ${roleColor}">${escapeHtml(roleLabel)}</span>
-            </div>
-        `;
-        
-        resultsDiv.appendChild(div);
-    });
-    
-    // Add footer with count
-    const footerDiv = document.createElement('div');
-    footerDiv.className = 'p-2 bg-gray-50 border-t border-gray-200';
-    footerDiv.innerHTML = `<p class="text-xs text-gray-500 text-center">Showing ${users.length} user${users.length !== 1 ? 's' : ''}</p>`;
-    resultsDiv.appendChild(footerDiv);
-    
-    resultsDiv.classList.remove('hidden');
+function showWalletError(message) {
+    document.getElementById('walletLookupError').classList.remove('hidden');
+    document.getElementById('walletLookupErrorMessage').textContent = message;
+    document.getElementById('sellUserId').value = '';
+    selectedUserData = null;
 }
 
-function selectUser(userId, userName, userEmail) {
-    selectedUserData = { id: userId, name: userName, email: userEmail };
-    
-    document.getElementById('sellUserId').value = userId;
-    document.getElementById('selectedUserName').textContent = userName;
-    document.getElementById('selectedUserEmail').textContent = userEmail;
-    
-    document.getElementById('userSearch').value = '';
-    document.getElementById('userSearchResults').classList.add('hidden');
-    document.getElementById('selectedUser').classList.remove('hidden');
-    
-    // If payment type is already selected, fetch proof
-    const paymentType = document.getElementById('paymentType').value;
-    if (paymentType && (paymentType === 'usdt' || paymentType === 'bank')) {
-        fetchPaymentProof(userId, paymentType);
-    }
+function hideWalletError() {
+    document.getElementById('walletLookupError').classList.add('hidden');
 }
 
 function clearSelectedUser() {
     selectedUserData = null;
     document.getElementById('sellUserId').value = '';
     document.getElementById('selectedUser').classList.add('hidden');
-    document.getElementById('userSearch').value = '';
+    document.getElementById('walletAddressInput').value = '';
+    document.getElementById('chatReceiptSection').classList.add('hidden');
+    document.getElementById('useChatReceipt').checked = false;
+    hideWalletError();
+}
+
+function toggleChatReceipt() {
+    const useReceipt = document.getElementById('useChatReceipt').checked;
+    if (useReceipt && selectedUserData?.receipt_screenshot) {
+        // Auto-fill payment receipt if using chat receipt
+        document.getElementById('paymentReceipt').value = selectedUserData.receipt_screenshot;
+    } else {
+        document.getElementById('paymentReceipt').value = '';
+    }
 }
 
 // Payment handling functions
@@ -717,15 +802,7 @@ function handleFileUpload(input) {
     }
 }
 
-// Close search results when clicking outside
-document.addEventListener('click', function(e) {
-    const searchInput = document.getElementById('userSearch');
-    const resultsDiv = document.getElementById('userSearchResults');
-    
-    if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
-        resultsDiv.classList.add('hidden');
-    }
-});
+// Removed - no longer needed with wallet lookup
 
 // Copy share link functionality
 function copyShareLink() {
@@ -765,7 +842,7 @@ async function sendOtp() {
     }
 
     if (!userId) {
-        showError('Please search and select a user');
+        showError('Please enter a wallet address and select a user');
         return;
     }
 
@@ -1104,6 +1181,8 @@ function checkBalanceAndCalculate() {
     const totalPriceSection = document.getElementById('totalPriceSection');
     const totalPriceEl = document.getElementById('totalPrice');
     const pricePerCoinEl = document.getElementById('pricePerCoin');
+    const remainingBalanceDisplay = document.getElementById('remainingBalanceDisplay');
+    const remainingBalanceEl = document.getElementById('remainingBalance');
     
     // Get current coin price
     const coinPriceInput = document.getElementById('coinPriceInput');
@@ -1113,13 +1192,18 @@ function checkBalanceAndCalculate() {
     if (quantity <= 0) {
         if (balanceError) balanceError.classList.add('hidden');
         if (totalPriceSection) totalPriceSection.classList.add('hidden');
+        if (remainingBalanceDisplay) remainingBalanceDisplay.classList.add('hidden');
         return;
     }
+    
+    // Calculate remaining balance
+    const remainingBalance = currentBalance - quantity;
     
     // Check balance
     if (quantity > currentBalance) {
         if (balanceError) balanceError.classList.remove('hidden');
         if (totalPriceSection) totalPriceSection.classList.add('hidden');
+        if (remainingBalanceDisplay) remainingBalanceDisplay.classList.add('hidden');
         // Disable send OTP button
         const sendOtpBtn = document.getElementById('sendOtpBtn');
         if (sendOtpBtn) sendOtpBtn.disabled = true;
@@ -1128,6 +1212,28 @@ function checkBalanceAndCalculate() {
         if (balanceError) balanceError.classList.add('hidden');
         const sendOtpBtn = document.getElementById('sendOtpBtn');
         if (sendOtpBtn) sendOtpBtn.disabled = false;
+        
+        // Show remaining balance
+        if (remainingBalanceDisplay) {
+            remainingBalanceDisplay.classList.remove('hidden');
+        }
+        if (remainingBalanceEl) {
+            // Format remaining balance with commas
+            const formattedBalance = remainingBalance.toLocaleString('en-US', { 
+                minimumFractionDigits: 0, 
+                maximumFractionDigits: 0 
+            });
+            remainingBalanceEl.textContent = formattedBalance + ' RWAMP';
+            
+            // Change color based on remaining balance
+            if (remainingBalance < 100) {
+                remainingBalanceEl.className = 'text-orange-600';
+            } else if (remainingBalance < 500) {
+                remainingBalanceEl.className = 'text-yellow-600';
+            } else {
+                remainingBalanceEl.className = 'text-green-600';
+            }
+        }
     }
     
     // Calculate and show total price

@@ -14,6 +14,9 @@ class Kernel extends ConsoleKernel
     {
         // Monitor crypto payments every 2 minutes
         $schedule->command('crypto:monitor')->everyTwoMinutes();
+        
+        // Update USD to PKR exchange rate every hour
+        $schedule->command('exchange:update-usd-pkr')->hourly();
     }
 
     /**

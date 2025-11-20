@@ -30,6 +30,76 @@ document.addEventListener('alpine:init', () => {
         resetPasswordUserEmail: '',
         resetPasswordFormAction: '',
         createUserModalOpen: false,
+        assignWalletLoading: false,
+        assignWalletModalOpen: false,
+        assignWalletUserId: null,
+        assignWalletUserName: '',
+        toast: {
+            visible: false,
+            message: '',
+            type: 'success' // success, error, warning, info
+        },
+        showToast(message, type = 'success') {
+            this.toast.message = message;
+            this.toast.type = type;
+            this.toast.visible = true;
+            setTimeout(() => {
+                this.toast.visible = false;
+            }, 3000);
+        },
+        openAssignWalletModal(userId, userName) {
+            this.assignWalletUserId = userId;
+            this.assignWalletUserName = userName;
+            this.assignWalletModalOpen = true;
+        },
+        closeAssignWalletModal() {
+            this.assignWalletModalOpen = false;
+            this.assignWalletUserId = null;
+            this.assignWalletUserName = '';
+        },
+        async copyWalletAddress(address) {
+            try {
+                await navigator.clipboard.writeText(address);
+                this.showToast('Wallet address copied to clipboard!', 'success');
+            } catch (err) {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = address;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                this.showToast('Wallet address copied to clipboard!', 'success');
+            }
+        },
+        async confirmAssignWalletAddress() {
+            if (!this.assignWalletUserId) return;
+            
+            this.assignWalletLoading = true;
+            try {
+                const response = await fetch(`{{ url('/dashboard/admin/users') }}/${this.assignWalletUserId}/assign-wallet`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    }
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    this.showToast('Wallet address assigned successfully!', 'success');
+                    this.closeAssignWalletModal();
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    this.showToast(data.message || 'Failed to assign wallet address', 'error');
+                }
+            } catch (error) {
+                this.showToast('An error occurred. Please try again.', 'error');
+            } finally {
+                this.assignWalletLoading = false;
+            }
+        },
         openEditModal(userId, userName, userEmail, userPhone, userRole) {
             this.editUserId = userId;
             this.editUserName = userName;
@@ -64,7 +134,7 @@ document.addEventListener('alpine:init', () => {
                 this.viewDetailsData = data;
             } catch (error) {
                 console.error('Error fetching user details:', error)
-                alert('Failed to load user details. Please try again.');
+                this.showToast('Failed to load user details. Please try again.', 'error');
             } finally {
                 this.viewDetailsLoading = false;
             }
@@ -225,26 +295,44 @@ document.addEventListener('alpine:init', () => {
         }
     }));
 });
+
+// Calculate total price for create user form
+function calculateCreateUserTotal() {
+    const quantity = parseFloat(document.getElementById('createUserCoinQuantity')?.value || 0);
+    const pricePerCoin = parseFloat(document.getElementById('createUserPricePerCoin')?.value || 0);
+    const totalPriceDiv = document.getElementById('createUserTotalPrice');
+    const totalPriceValue = document.getElementById('createUserTotalPriceValue');
+    const totalCoins = document.getElementById('createUserTotalCoins');
+    
+    if (quantity > 0 && pricePerCoin > 0) {
+        const totalPrice = quantity * pricePerCoin;
+        totalPriceValue.textContent = 'PKR ' + totalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        totalCoins.textContent = quantity.toLocaleString() + ' RWAMP';
+        totalPriceDiv.classList.remove('hidden');
+    } else {
+        totalPriceDiv.classList.add('hidden');
+    }
+}
 </script>
 
 <div class="min-h-screen bg-white" x-data="userManagement">
-    <section class="bg-gradient-to-r from-black to-secondary text-white py-12">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex items-center justify-between">
+    <section class="bg-gradient-to-r from-black to-secondary text-white py-8 sm:py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 class="text-3xl md:text-5xl font-montserrat font-bold">User Management</h1>
-                    <p class="text-white/80">Search, filter, and manage all users.</p>
+                    <h1 class="text-2xl sm:text-3xl md:text-5xl font-montserrat font-bold">User Management</h1>
+                    <p class="text-white/80 text-sm sm:text-base mt-1">Search, filter, and manage all users.</p>
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                     <button 
                         @click="createUserModalOpen = true"
-                        class="btn-primary flex items-center gap-2">
+                        class="btn-primary flex items-center justify-center gap-2 text-sm sm:text-base px-4 py-2 sm:px-6 sm:py-3">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                         </svg>
-                        Create New User
+                        <span class="whitespace-nowrap">Create New User</span>
                     </button>
-                    <a href="{{ route('dashboard.admin') }}" class="btn-secondary">Back to Dashboard</a>
+                    <a href="{{ route('dashboard.admin') }}" class="btn-secondary text-center text-sm sm:text-base px-4 py-2 sm:px-6 sm:py-3">Back to Dashboard</a>
                 </div>
             </div>
         </div>
@@ -263,14 +351,14 @@ document.addEventListener('alpine:init', () => {
         @endif
 
         <!-- Filters -->
-        <form method="GET" class="bg-white rounded-xl shadow p-4 grid md:grid-cols-4 gap-4">
-            <div class="md:col-span-2">
+        <form method="GET" class="bg-white rounded-xl shadow p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="sm:col-span-2">
                 <label class="block text-sm text-gray-600 mb-1">Search</label>
-                <input name="q" value="{{ request('q') }}" placeholder="Name, Email or Phone" class="rw-input w-full" />
+                <input name="q" value="{{ request('q') }}" placeholder="Name, Email or Phone" class="rw-input w-full text-sm sm:text-base" />
             </div>
             <div>
                 <label class="block text-sm text-gray-600 mb-1">Role</label>
-                <select name="role" class="rw-input w-full">
+                <select name="role" class="rw-input w-full text-sm sm:text-base">
                     <option value="">All</option>
                     <option value="investor" @selected(request('role')==='investor')>Investor</option>
                     <option value="reseller" @selected(request('role')==='reseller')>Reseller</option>
@@ -279,45 +367,108 @@ document.addEventListener('alpine:init', () => {
                 </select>
             </div>
             <div class="flex items-end">
-                <button class="btn-primary w-full">Apply</button>
+                <button class="btn-primary w-full text-sm sm:text-base px-4 py-2 sm:px-6 sm:py-3">Apply</button>
             </div>
-            <div class="md:col-span-4 flex items-center gap-3">
-                <label class="text-sm text-gray-600">Sort by:</label>
+            <div class="sm:col-span-2 lg:col-span-4 flex flex-wrap items-center gap-2 sm:gap-3">
+                <label class="text-xs sm:text-sm text-gray-600 whitespace-nowrap">Sort by:</label>
                 @php
                     $qs = request()->except(['sort', 'dir', 'page']);
                 @endphp
-                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'created_at', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" class="rw-badge">Date</a>
-                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'name', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" class="rw-badge">Name</a>
-                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'email', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" class="rw-badge">Email</a>
-                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'role', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" class="rw-badge">Role</a>
+                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'created_at', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" class="rw-badge text-xs sm:text-sm">Date</a>
+                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'name', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" class="rw-badge text-xs sm:text-sm">Name</a>
+                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'email', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" class="rw-badge text-xs sm:text-sm">Email</a>
+                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'role', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" class="rw-badge text-xs sm:text-sm">Role</a>
+                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'token_balance', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" class="rw-badge text-xs sm:text-sm">Balance</a>
             </div>
         </form>
 
         <!-- Users table -->
-        <div class="bg-white rounded-xl shadow px-4 py-6">
-            <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
-                    <thead>
-                        <tr class="text-left text-gray-600 border-b">
-                            <th class="py-3 pr-6">Name</th>
-                            <th class="py-3 pr-6">Email</th>
-                            <th class="py-3 pr-6">Phone</th>
-                            <th class="py-3 pr-6">Role</th>
-                            <th class="py-3 pr-6">Reseller</th>
-                            <th class="py-3 pr-6">Created</th>
-                            <th class="py-3 pr-6">Actions</th>
+        <div class="bg-white rounded-xl shadow overflow-hidden">
+            <div class="overflow-x-auto -mx-4 sm:mx-0">
+                <div class="inline-block min-w-full align-middle">
+                    <div class="overflow-hidden">
+                        <table class="min-w-full text-xs sm:text-sm divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr class="text-left text-gray-600">
+                            <th class="px-3 sm:px-6 py-3 text-xs sm:text-sm font-medium text-gray-700 uppercase tracking-wider">Name</th>
+                            <th class="px-3 sm:px-6 py-3 text-xs sm:text-sm font-medium text-gray-700 uppercase tracking-wider hidden sm:table-cell">Email</th>
+                            <th class="px-3 sm:px-6 py-3 text-xs sm:text-sm font-medium text-gray-700 uppercase tracking-wider hidden md:table-cell">Phone</th>
+                            <th class="px-3 sm:px-6 py-3 text-xs sm:text-sm font-medium text-gray-700 uppercase tracking-wider">Role</th>
+                            <th class="px-3 sm:px-6 py-3 text-xs sm:text-sm font-medium text-gray-700 uppercase tracking-wider">Balance</th>
+                            <th class="px-3 sm:px-6 py-3 text-xs sm:text-sm font-medium text-gray-700 uppercase tracking-wider hidden md:table-cell">Wallet Address</th>
+                            <th class="px-3 sm:px-6 py-3 text-xs sm:text-sm font-medium text-gray-700 uppercase tracking-wider hidden lg:table-cell">Reseller</th>
+                            <th class="px-3 sm:px-6 py-3 text-xs sm:text-sm font-medium text-gray-700 uppercase tracking-wider hidden md:table-cell">Created</th>
+                            <th class="px-3 sm:px-6 py-3 text-xs sm:text-sm font-medium text-gray-700 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="bg-white divide-y divide-gray-200">
                         @forelse($users as $u)
-                        <tr class="border-b">
-                            <td class="py-3 pr-6">{{ $u->name }}</td>
-                            <td class="py-3 pr-6">{{ $u->email }}</td>
-                            <td class="py-3 pr-6">{{ $u->phone ?? '—' }}</td>
-                            <td class="py-3 pr-6">
-                                <span class="rw-badge">{{ ucfirst($u->role ?? 'user') }}</span>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-3 sm:px-6 py-3 whitespace-nowrap">
+                                <div class="text-xs sm:text-sm font-medium text-gray-900">{{ $u->name }}</div>
+                                <div class="text-xs text-gray-500 sm:hidden">{{ $u->email }}</div>
+                                @if($u->wallet_address)
+                                    <div class="text-xs text-gray-500 sm:hidden mt-1">
+                                        <span class="font-mono">Wallet: {{ $u->wallet_address }}</span>
+                                        <button 
+                                            @click="copyWalletAddress('{{ $u->wallet_address }}')"
+                                            class="ml-1 inline-flex items-center px-1 py-0.5 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs"
+                                            title="Copy">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                @else
+                                    <div class="text-xs sm:hidden mt-1">
+                                        <button 
+                                            @click="openAssignWalletModal({{ $u->id }}, '{{ addslashes($u->name) }}')"
+                                            class="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-500 hover:bg-purple-600 text-white rounded text-xs font-semibold">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                            </svg>
+                                            Assign Wallet
+                                        </button>
+                                    </div>
+                                @endif
                             </td>
-                            <td class="py-3 pr-6">
+                            <td class="px-3 sm:px-6 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden sm:table-cell">{{ $u->email }}</td>
+                            <td class="px-3 sm:px-6 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden md:table-cell">{{ $u->phone ?? '—' }}</td>
+                            <td class="px-3 sm:px-6 py-3 whitespace-nowrap">
+                                <span class="rw-badge text-xs">{{ ucfirst($u->role ?? 'user') }}</span>
+                            </td>
+                            <td class="px-3 sm:px-6 py-3 whitespace-nowrap">
+                                <span class="text-xs sm:text-sm font-semibold text-gray-900">
+                                    {{ number_format($u->token_balance ?? 0, 0) }} RWAMP
+                                </span>
+                            </td>
+                            <td class="px-3 sm:px-6 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden md:table-cell">
+                                @if($u->wallet_address)
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span class="font-mono text-xs break-all">{{ $u->wallet_address }}</span>
+                                        <button 
+                                            @click="copyWalletAddress('{{ $u->wallet_address }}')"
+                                            class="inline-flex items-center gap-1 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow flex-shrink-0"
+                                            title="Copy wallet address">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                            </svg>
+                                            <span class="hidden xl:inline">Copy</span>
+                                        </button>
+                                    </div>
+                                @else
+                                    <button 
+                                        @click="openAssignWalletModal({{ $u->id }}, '{{ addslashes($u->name) }}')"
+                                        class="inline-flex items-center gap-1 px-2 py-1 bg-purple-500 hover:bg-purple-600 text-white rounded text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow"
+                                        title="Assign wallet address">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                        </svg>
+                                        <span>Assign</span>
+                                    </button>
+                                @endif
+                            </td>
+                            <td class="px-3 sm:px-6 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden lg:table-cell">
                                 @if($u->reseller)
                                     <div class="text-xs">
                                         <div class="font-semibold text-blue-600">{{ $u->reseller->name }}</div>
@@ -329,38 +480,38 @@ document.addEventListener('alpine:init', () => {
                                     <span class="text-gray-400">—</span>
                                 @endif
                             </td>
-                            <td class="py-3 pr-6">{{ $u->created_at?->format('Y-m-d') }}</td>
-                            <td class="py-3 pr-6">
-                                <div class="flex items-center gap-2">
+                            <td class="px-3 sm:px-6 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden md:table-cell">{{ $u->created_at?->format('Y-m-d') }}</td>
+                            <td class="px-3 sm:px-6 py-3 whitespace-nowrap text-xs sm:text-sm">
+                                <div class="flex flex-wrap items-center gap-1 sm:gap-2">
                                     <!-- Edit Button -->
                                     <button 
                                         @click="openEditModal({{ $u->id }}, '{{ addslashes($u->name) }}', '{{ addslashes($u->email) }}', '{{ addslashes($u->phone ?? '') }}', '{{ $u->role }}')"
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        class="inline-flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow">
+                                        <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                         </svg>
-                                        Edit
+                                        <span class="hidden sm:inline">Edit</span>
                                     </button>
                                     
                                     <!-- Reset Password Button -->
                                     <button 
                                         @click="openResetPasswordModal({{ $u->id }}, '{{ addslashes($u->name) }}', '{{ addslashes($u->email) }}')"
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        class="inline-flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow">
+                                        <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
                                         </svg>
-                                        Reset
+                                        <span class="hidden sm:inline">Reset</span>
                                     </button>
                                     
                                     <!-- View Details Button -->
                                     <button 
                                         @click="openViewDetailsModal({{ $u->id }})"
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        class="inline-flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow">
+                                        <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                         </svg>
-                                        View
+                                        <span class="hidden sm:inline">View</span>
                                     </button>
                                     
                                     <!-- Delete Button -->
@@ -376,7 +527,7 @@ document.addEventListener('alpine:init', () => {
                             </td>
                         </tr>
                         @empty
-                        <tr><td colspan="6" class="py-6 text-center text-gray-500">No users found.</td></tr>
+                        <tr><td colspan="9" class="py-6 text-center text-gray-500">No users found.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -389,7 +540,7 @@ document.addEventListener('alpine:init', () => {
     <div x-show="editModalOpen" 
          x-cloak
          @keydown.escape.window="editModalOpen = false"
-         class="fixed inset-0 z-50 overflow-y-auto"
+         class="fixed inset-0 z-50 overflow-y-auto p-4"
          style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             <div x-show="editModalOpen"
@@ -409,7 +560,7 @@ document.addEventListener('alpine:init', () => {
                  x-transition:leave="ease-in duration-200"
                  x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                  x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                 class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border-4 border-primary">
+                 class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full max-w-full border-4 border-primary">
                 
                 <div class="bg-gradient-to-r from-black via-gray-900 to-secondary px-8 py-6 border-b-4 border-primary relative">
                     <div class="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent"></div>
@@ -546,28 +697,38 @@ document.addEventListener('alpine:init', () => {
                             </div>
 
                             <!-- Action Buttons -->
-                            <div class="flex justify-end gap-3 pt-4 border-t-2 border-gray-300">
-                                <button 
-                                    @click="editModalOpen = false"
-                                    type="button"
-                                    class="btn-secondary px-6 py-2.5 text-sm">
-                                    <span class="flex items-center gap-2">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                        </svg>
-                                        Cancel
-                                    </span>
-                                </button>
-                                <button 
-                                    type="submit" 
-                                    class="btn-primary px-6 py-2.5 text-sm">
-                                    <span class="flex items-center gap-2">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                        </svg>
-                                        Save Changes
-                                    </span>
-                                </button>
+                            <div class="flex justify-between items-center pt-4 border-t-2 border-gray-300">
+                                <a 
+                                    :href="'{{ route('admin.sell') }}?user_id=' + editUserId"
+                                    class="inline-flex items-center gap-2 px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Sell Coins to User
+                                </a>
+                                <div class="flex gap-3">
+                                    <button 
+                                        @click="editModalOpen = false"
+                                        type="button"
+                                        class="btn-secondary px-6 py-2.5 text-sm">
+                                        <span class="flex items-center gap-2">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                            </svg>
+                                            Cancel
+                                        </span>
+                                    </button>
+                                    <button 
+                                        type="submit" 
+                                        class="btn-primary px-6 py-2.5 text-sm">
+                                        <span class="flex items-center gap-2">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                            Save Changes
+                                        </span>
+                                    </button>
+                                </div>
                             </div>
                         </form>
                     </div>
@@ -580,7 +741,7 @@ document.addEventListener('alpine:init', () => {
     <div x-show="resetPasswordModalOpen" 
          x-cloak
          @keydown.escape.window="resetPasswordModalOpen = false"
-         class="fixed inset-0 z-50 overflow-y-auto"
+         class="fixed inset-0 z-50 overflow-y-auto p-4"
          style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             <div x-show="resetPasswordModalOpen"
@@ -600,7 +761,7 @@ document.addEventListener('alpine:init', () => {
                  x-transition:leave="ease-in duration-200"
                  x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                  x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                 class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border-4 border-primary">
+                 class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full max-w-full border-4 border-primary">
                 
                 <div class="bg-gradient-to-r from-black via-gray-900 to-secondary px-8 py-6 border-b-4 border-primary relative">
                     <div class="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent"></div>
@@ -758,7 +919,7 @@ document.addEventListener('alpine:init', () => {
     <div x-show="deleteModalOpen" 
          x-cloak
          @keydown.escape.window="deleteModalOpen = false"
-         class="fixed inset-0 z-50 overflow-y-auto"
+         class="fixed inset-0 z-50 overflow-y-auto p-4"
          style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             <div x-show="deleteModalOpen"
@@ -778,7 +939,7 @@ document.addEventListener('alpine:init', () => {
                  x-transition:leave="ease-in duration-200"
                  x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                  x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                 class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border-4 border-primary">
+                 class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full max-w-full border-4 border-primary">
                 
                 <div class="bg-gradient-to-r from-black via-primary/20 to-primary px-8 py-6 border-b-4 border-primary relative">
                     <div class="absolute inset-0 bg-gradient-to-r from-primary/20 to-primary/10"></div>
@@ -919,7 +1080,7 @@ document.addEventListener('alpine:init', () => {
     <div x-show="viewDetailsModalOpen" 
          x-cloak
          @keydown.escape.window="closeViewDetailsModal()"
-         class="fixed inset-0 z-50 overflow-y-auto"
+         class="fixed inset-0 z-50 overflow-y-auto p-4"
          style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             <div x-show="viewDetailsModalOpen"
@@ -939,7 +1100,7 @@ document.addEventListener('alpine:init', () => {
                  x-transition:leave="ease-in duration-200"
                  x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                  x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                 class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full border-4 border-primary">
+                 class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl w-full max-w-full border-4 border-primary">
                 
                 <div class="bg-gradient-to-r from-black via-gray-900 to-secondary px-8 py-6 border-b-4 border-primary relative">
                     <div class="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent"></div>
@@ -1132,7 +1293,9 @@ document.addEventListener('alpine:init', () => {
                                         <tr class="text-left text-gray-600 border-b">
                                             <th class="py-2 pr-4">Date</th>
                                             <th class="py-2 pr-4">Type</th>
-                                            <th class="py-2 pr-4">Amount</th>
+                                            <th class="py-2 pr-4">Coins</th>
+                                            <th class="py-2 pr-4">Price/Coin</th>
+                                            <th class="py-2 pr-4">Total Price</th>
                                             <th class="py-2 pr-4">Status</th>
                                             <th class="py-2 pr-4">Reference</th>
                                         </tr>
@@ -1144,7 +1307,15 @@ document.addEventListener('alpine:init', () => {
                                                 <td class="py-2 pr-4">
                                                     <span class="rw-badge" x-text="formatTransactionType(transaction.type)"></span>
                                                 </td>
-                                                <td class="py-2 pr-4 font-semibold" x-text="formatTransactionAmount(transaction.amount)"></td>
+                                                <td class="py-2 pr-4 font-semibold" x-text="formatTransactionAmount(Math.abs(transaction.amount || 0))"></td>
+                                                <td class="py-2 pr-4">
+                                                    <span x-show="transaction.price_per_coin" x-text="'PKR ' + (transaction.price_per_coin || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})"></span>
+                                                    <span x-show="!transaction.price_per_coin" class="text-gray-400">—</span>
+                                                </td>
+                                                <td class="py-2 pr-4">
+                                                    <span x-show="transaction.total_price" x-text="'PKR ' + (transaction.total_price || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})"></span>
+                                                    <span x-show="!transaction.total_price" class="text-gray-400">—</span>
+                                                </td>
                                                 <td class="py-2 pr-4">
                                                     <span class="rw-badge" 
                                                           :class="getTransactionStatusClass(transaction.status)"
@@ -1234,7 +1405,7 @@ document.addEventListener('alpine:init', () => {
     <div x-show="createUserModalOpen" 
          x-cloak
          @keydown.escape.window="createUserModalOpen = false"
-         class="fixed inset-0 z-50 overflow-y-auto"
+         class="fixed inset-0 z-50 overflow-y-auto p-4"
          style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             <div x-show="createUserModalOpen"
@@ -1254,7 +1425,7 @@ document.addEventListener('alpine:init', () => {
                  x-transition:leave="ease-in duration-200"
                  x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                  x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                 class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border-4 border-primary">
+                 class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full max-w-full border-4 border-primary">
                 
                 <div class="bg-gradient-to-r from-black via-gray-900 to-secondary px-8 py-6 border-b-4 border-primary relative">
                     <div class="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent"></div>
@@ -1390,6 +1561,74 @@ document.addEventListener('alpine:init', () => {
                                 <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                             @enderror
                         </div>
+                        
+                        <!-- Coin Assignment Section -->
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <h4 class="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Optional: Assign Coins to User
+                            </h4>
+                            <p class="text-xs text-blue-700 mb-4">You can optionally assign coins to this user during account creation. This will be recorded as a transaction.</p>
+                            
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        Coin Quantity (RWAMP)
+                                    </label>
+                                    <input 
+                                        name="coin_quantity" 
+                                        type="number" 
+                                        value="{{ old('coin_quantity') }}"
+                                        class="rw-input w-full" 
+                                        placeholder="Enter quantity (optional)"
+                                        min="0"
+                                        step="1"
+                                        id="createUserCoinQuantity"
+                                        oninput="calculateCreateUserTotal()"
+                                    />
+                                    <p class="text-xs text-gray-500 mt-1.5">Number of RWAMP tokens to assign</p>
+                                    @error('coin_quantity')
+                                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        Price per Coin (PKR)
+                                    </label>
+                                    <input 
+                                        name="price_per_coin" 
+                                        type="number" 
+                                        value="{{ old('price_per_coin', $defaultPrice ?? 3) }}"
+                                        class="rw-input w-full" 
+                                        placeholder="Enter price per coin"
+                                        min="0.01"
+                                        step="0.01"
+                                        id="createUserPricePerCoin"
+                                        oninput="calculateCreateUserTotal()"
+                                    />
+                                    <p class="text-xs text-gray-500 mt-1.5">Price per RWAMP token in PKR</p>
+                                    @error('price_per_coin')
+                                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            </div>
+                            
+                            <div id="createUserTotalPrice" class="hidden mt-4 p-3 bg-white border border-blue-300 rounded-lg">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-xs text-gray-600">Total Price:</p>
+                                        <p class="text-lg font-bold text-blue-900" id="createUserTotalPriceValue">PKR 0.00</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-xs text-gray-600">Coins:</p>
+                                        <p class="text-sm font-semibold text-blue-800" id="createUserTotalCoins">0 RWAMP</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                         <!-- Guidelines Box -->
                         <div class="bg-accent/10 border-l-4 border-accent p-4 rounded-r-lg">
@@ -1440,7 +1679,158 @@ document.addEventListener('alpine:init', () => {
             </div>
         </div>
     </div>
-</div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div x-show="toast.visible" 
+         x-cloak
+         x-transition:enter="ease-out duration-300"
+         x-transition:enter-start="opacity-0 transform translate-x-full"
+         x-transition:enter-end="opacity-100 transform translate-x-0"
+         x-transition:leave="ease-in duration-200"
+         x-transition:leave-start="opacity-100 transform translate-x-0"
+         x-transition:leave-end="opacity-0 transform translate-x-full"
+         class="fixed top-4 right-4 z-[60] max-w-sm w-full"
+         style="display: none;">
+        <div :class="{
+            'bg-white border-l-4 border-green-500': toast.type === 'success',
+            'bg-white border-l-4 border-red-500': toast.type === 'error',
+            'bg-white border-l-4 border-yellow-500': toast.type === 'warning',
+            'bg-white border-l-4 border-blue-500': toast.type === 'info'
+        }" class="rounded-lg shadow-lg p-4 flex items-center justify-between">
+            <div class="flex items-center">
+                <div class="mr-3">
+                    <svg x-show="toast.type === 'success'" class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <svg x-show="toast.type === 'error'" class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <svg x-show="toast.type === 'warning'" class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                    <svg x-show="toast.type === 'info'" class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <p x-text="toast.message" class="text-sm font-medium text-gray-900"></p>
+            </div>
+            <button @click="toast.visible = false" class="ml-4 text-gray-400 hover:text-gray-600 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Assign Wallet Address Confirmation Modal -->
+    <div x-show="assignWalletModalOpen" 
+         x-cloak
+         @keydown.escape.window="closeAssignWalletModal()"
+         class="fixed inset-0 z-50 overflow-y-auto p-4"
+         style="display: none;">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="assignWalletModalOpen"
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 @click="closeAssignWalletModal()"
+                 class="fixed inset-0 transition-opacity bg-gray-900/70 backdrop-blur-sm"></div>
+
+            <div x-show="assignWalletModalOpen"
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full max-w-full border-4 border-primary">
+                
+                <div class="bg-gradient-to-r from-black via-gray-900 to-secondary px-8 py-6 border-b-4 border-primary relative">
+                    <div class="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent"></div>
+                    <div class="relative z-10">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <div class="flex-shrink-0 w-14 h-14 bg-purple-500 rounded-xl flex items-center justify-center shadow-xl ring-4 ring-purple-500/20">
+                                    <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
+                                    </svg>
+                                </div>
+                                <div class="border-l-2 border-primary/30 pl-4">
+                                    <h3 class="text-3xl font-montserrat font-bold text-white tracking-tight">Assign Wallet Address</h3>
+                                    <p class="text-sm text-white/90 mt-1 font-medium">Generate wallet address for user</p>
+                                </div>
+                            </div>
+                            <button @click="closeAssignWalletModal()" class="text-white/90 hover:text-white transition-all duration-200 p-2.5 hover:bg-white/20 rounded-xl hover:rotate-90">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-6 py-6 bg-white">
+                    <!-- Description Section -->
+                    <div class="mb-6 p-4 bg-purple-50 border-l-4 border-purple-500 rounded-r-lg">
+                        <p class="text-sm text-gray-800 leading-relaxed font-medium">
+                            <span class="text-purple-600 font-bold">💳 Note:</span> A unique 16-digit wallet address will be automatically generated and assigned to this user. This action cannot be undone.
+                        </p>
+                    </div>
+
+                    <!-- User Info Display -->
+                    <div class="mb-6 bg-gray-50 rounded-lg p-4 border-2 border-gray-300">
+                        <p class="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                            User Information
+                        </p>
+                        <div class="space-y-2">
+                            <div>
+                                <p class="text-xs text-gray-500 mb-1">Name</p>
+                                <p class="text-sm font-medium text-gray-900" x-text="assignWalletUserName"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex justify-end gap-3 pt-4 border-t-2 border-gray-300">
+                        <button 
+                            @click="closeAssignWalletModal()"
+                            type="button"
+                            :disabled="assignWalletLoading"
+                            class="btn-secondary px-6 py-2.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span class="flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                                Cancel
+                            </span>
+                        </button>
+                        <button 
+                            @click="confirmAssignWalletAddress()"
+                            :disabled="assignWalletLoading"
+                            class="btn-primary px-6 py-2.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed bg-purple-500 hover:bg-purple-600">
+                            <span class="flex items-center gap-2">
+                                <svg x-show="!assignWalletLoading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                <svg x-show="assignWalletLoading" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span x-text="assignWalletLoading ? 'Assigning...' : 'Assign Wallet'"></span>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 

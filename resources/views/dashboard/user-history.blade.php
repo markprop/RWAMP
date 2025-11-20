@@ -217,6 +217,7 @@
                                     Amount @if(request('transaction_sort') === 'amount') {{ request('transaction_dir') === 'asc' ? '↑' : '↓' }} @endif
                                 </a>
                             </th>
+                            <th class="py-3 pr-6">Price (Rs)</th>
                             <th class="py-3 pr-6">Reference</th>
                             <th class="py-3 pr-6">
                                 <a href="{{ request()->fullUrlWithQuery(array_merge(request()->except(['transaction_sort', 'transaction_dir', 'transactions_page']), ['transaction_sort' => 'status', 'transaction_dir' => request('transaction_dir') === 'asc' ? 'desc' : 'asc'])) }}" class="hover:text-primary">
@@ -231,6 +232,13 @@
                                 <td class="py-3 pr-6">{{ $t->created_at->format('Y-m-d H:i') }}</td>
                                 <td class="py-3 pr-6">{{ ucfirst(str_replace('_', ' ', $t->type)) }}</td>
                                 <td class="py-3 pr-6 font-semibold">{{ number_format($t->amount) }}</td>
+                                <td class="py-3 pr-6">
+                                    @if($t->price_per_coin && $t->price_per_coin > 0)
+                                        {{ number_format($t->price_per_coin, 2) }}
+                                    @else
+                                        <span class="text-gray-400">—</span>
+                                    @endif
+                                </td>
                                 <td class="py-3 pr-6">
                                     @php
                                         $ref = trim((string)($t->reference ?? ''));
@@ -256,12 +264,144 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="py-6 text-center text-gray-500">No transactions found.</td></tr>
+                            <tr><td colspan="6" class="py-6 text-center text-gray-500">No transactions found.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
             <div class="mt-4">{{ $transactions->links() }}</div>
+        </div>
+
+        <!-- Buy Request Submissions -->
+        <div class="bg-white rounded-xl shadow-xl p-6 card-hover">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="font-montserrat font-bold text-xl">Request Submission History</h3>
+                    <p class="text-gray-600 text-sm">Your buy requests submitted to resellers.</p>
+                </div>
+                <span class="rw-badge">{{ $buyRequests->total() }} total</span>
+            </div>
+
+            <!-- Buy Request Filters -->
+            <div class="mb-4 pb-4 border-b">
+                <form method="GET" action="{{ route('user.history') }}" class="grid md:grid-cols-4 gap-4">
+                    <input type="hidden" name="payments_page" value="{{ request('payments_page') }}">
+                    <input type="hidden" name="payment_search" value="{{ request('payment_search') }}">
+                    <input type="hidden" name="payment_status" value="{{ request('payment_status') }}">
+                    <input type="hidden" name="payment_network" value="{{ request('payment_network') }}">
+                    <input type="hidden" name="payment_sort" value="{{ request('payment_sort') }}">
+                    <input type="hidden" name="payment_dir" value="{{ request('payment_dir') }}">
+                    <input type="hidden" name="transactions_page" value="{{ request('transactions_page') }}">
+                    <input type="hidden" name="transaction_search" value="{{ request('transaction_search') }}">
+                    <input type="hidden" name="transaction_type" value="{{ request('transaction_type') }}">
+                    <input type="hidden" name="transaction_status" value="{{ request('transaction_status') }}">
+                    <input type="hidden" name="transaction_sort" value="{{ request('transaction_sort') }}">
+                    <input type="hidden" name="transaction_dir" value="{{ request('transaction_dir') }}">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                        <input 
+                            type="text" 
+                            name="buy_request_search" 
+                            value="{{ request('buy_request_search') }}" 
+                            placeholder="Reseller name or email"
+                            class="form-input w-full"
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                        <select name="buy_request_status" class="form-input w-full">
+                            <option value="">All Statuses</option>
+                            <option value="pending" {{ request('buy_request_status') === 'pending' ? 'selected' : '' }}>Pending</option>
+                            <option value="approved" {{ request('buy_request_status') === 'approved' ? 'selected' : '' }}>Approved</option>
+                            <option value="rejected" {{ request('buy_request_status') === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                            <option value="completed" {{ request('buy_request_status') === 'completed' ? 'selected' : '' }}>Completed</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end gap-2">
+                        <button type="submit" class="btn-primary flex-1">Filter</button>
+                        <a href="{{ route('user.history') }}" class="btn-secondary">Clear</a>
+                    </div>
+                </form>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-gray-600 border-b">
+                            <th class="py-3 pr-6">
+                                <a href="{{ request()->fullUrlWithQuery(array_merge(request()->except(['buy_request_sort', 'buy_request_dir', 'buy_requests_page']), ['buy_request_sort' => 'created_at', 'buy_request_dir' => request('buy_request_dir') === 'asc' ? 'desc' : 'asc'])) }}" class="hover:text-primary">
+                                    Date @if(request('buy_request_sort') === 'created_at') {{ request('buy_request_dir') === 'asc' ? '↑' : '↓' }} @endif
+                                </a>
+                            </th>
+                            <th class="py-3 pr-6">Reseller Name</th>
+                            <th class="py-3 pr-6">
+                                <a href="{{ request()->fullUrlWithQuery(array_merge(request()->except(['buy_request_sort', 'buy_request_dir', 'buy_requests_page']), ['buy_request_sort' => 'coin_quantity', 'buy_request_dir' => request('buy_request_dir') === 'asc' ? 'desc' : 'asc'])) }}" class="hover:text-primary">
+                                    Coin Quantity @if(request('buy_request_sort') === 'coin_quantity') {{ request('buy_request_dir') === 'asc' ? '↑' : '↓' }} @endif
+                                </a>
+                            </th>
+                            <th class="py-3 pr-6">Coin Price (Rs)</th>
+                            <th class="py-3 pr-6">
+                                <a href="{{ request()->fullUrlWithQuery(array_merge(request()->except(['buy_request_sort', 'buy_request_dir', 'buy_requests_page']), ['buy_request_sort' => 'total_amount', 'buy_request_dir' => request('buy_request_dir') === 'asc' ? 'desc' : 'asc'])) }}" class="hover:text-primary">
+                                    Total Price (Rs) @if(request('buy_request_sort') === 'total_amount') {{ request('buy_request_dir') === 'asc' ? '↑' : '↓' }} @endif
+                                </a>
+                            </th>
+                            <th class="py-3 pr-6">
+                                <a href="{{ request()->fullUrlWithQuery(array_merge(request()->except(['buy_request_sort', 'buy_request_dir', 'buy_requests_page']), ['buy_request_sort' => 'status', 'buy_request_dir' => request('buy_request_dir') === 'asc' ? 'desc' : 'asc'])) }}" class="hover:text-primary">
+                                    Status @if(request('buy_request_sort') === 'status') {{ request('buy_request_dir') === 'asc' ? '↑' : '↓' }} @endif
+                                </a>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($buyRequests as $br)
+                            <tr class="border-b">
+                                <td class="py-3 pr-6">{{ $br->created_at->format('Y-m-d H:i') }}</td>
+                                <td class="py-3 pr-6">
+                                    @if($br->reseller)
+                                        <div class="font-semibold">{{ $br->reseller->name }}</div>
+                                        <div class="text-xs text-gray-500">{{ $br->reseller->email }}</div>
+                                    @else
+                                        <span class="text-gray-400">N/A</span>
+                                    @endif
+                                </td>
+                                <td class="py-3 pr-6 font-semibold">{{ number_format($br->coin_quantity, 0) }} RWAMP</td>
+                                <td class="py-3 pr-6">PKR {{ number_format($br->coin_price, 2) }}</td>
+                                <td class="py-3 pr-6 font-semibold">PKR {{ number_format($br->total_amount, 2) }}</td>
+                                <td class="py-3 pr-6">
+                                    @php
+                                        $statusLower = strtolower($br->status ?? '');
+                                        if ($statusLower === 'pending') {
+                                            $statusLabel = 'Pending Approval';
+                                            $statusClass = 'bg-yellow-100 text-yellow-800';
+                                        } elseif ($statusLower === 'approved') {
+                                            $statusLabel = 'Approved';
+                                            $statusClass = 'bg-blue-100 text-blue-800';
+                                        } elseif ($statusLower === 'rejected') {
+                                            $statusLabel = 'Rejected';
+                                            $statusClass = 'bg-red-100 text-red-800';
+                                        } elseif ($statusLower === 'completed') {
+                                            $statusLabel = 'Completed';
+                                            $statusClass = 'bg-green-100 text-green-800';
+                                        } else {
+                                            $statusLabel = ucfirst($br->status ?? 'Pending');
+                                            $statusClass = 'bg-gray-100 text-gray-800';
+                                        }
+                                    @endphp
+                                    <span class="rw-badge {{ $statusClass }}">{{ $statusLabel }}</span>
+                                    @if($br->rejection_reason && $statusLower === 'rejected')
+                                        <div class="text-xs text-red-600 mt-1" title="{{ $br->rejection_reason }}">
+                                            {{ \Illuminate\Support\Str::limit($br->rejection_reason, 30) }}
+                                        </div>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="6" class="py-6 text-center text-gray-500">No buy requests found.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4">{{ $buyRequests->links() }}</div>
         </div>
     </div>
 </div>

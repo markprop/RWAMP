@@ -1,5 +1,24 @@
 import './bootstrap';
 import Alpine from '@alpinejs/csp';
+import Echo from 'laravel-echo';
+import Pusher from 'pusher-js';
+
+// Initialize Laravel Echo for real-time messaging
+window.Pusher = Pusher;
+
+window.Echo = new Echo({
+    broadcaster: 'pusher',
+    key: import.meta.env.VITE_PUSHER_APP_KEY || process.env.MIX_PUSHER_APP_KEY,
+    cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER || process.env.MIX_PUSHER_APP_CLUSTER || 'ap2',
+    forceTLS: true,
+    encrypted: true,
+    authEndpoint: '/broadcasting/auth',
+    auth: {
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+        }
+    }
+});
 
 // Countdown Timer Component
 Alpine.data('countdown', () => ({
@@ -243,8 +262,277 @@ Alpine.data('newsletterForm', () => ({
 // Signup tabs component
 Alpine.data('signupTabs', () => ({
     tab: 'investor',
+    tooltip: null,
+    emailStatus: { investor: null, reseller: null },
+    emailMessage: { investor: '', reseller: '' },
+    emailValidated: { investor: false, reseller: false },
+    phoneStatus: { investor: null, reseller: null },
+    phoneMessage: { investor: '', reseller: '' },
+    phoneValidated: { investor: false, reseller: false },
+    passwordCriteria: { 
+        investor: { 
+            hasUpperCase: false, 
+            hasLowerCase: false, 
+            hasNumber: false, 
+            hasSpecialChar: false, 
+            minLength: false,
+            hasValue: false
+        },
+        reseller: { 
+            hasUpperCase: false, 
+            hasLowerCase: false, 
+            hasNumber: false, 
+            hasSpecialChar: false, 
+            minLength: false,
+            hasValue: false
+        }
+    },
+    nameStatus: { investor: null, reseller: null },
+    nameMessage: { investor: '', reseller: '' },
+    nameValidated: { investor: false, reseller: false },
+    validationTimeout: { email: { investor: null, reseller: null }, phone: { investor: null, reseller: null } },
+    init() {
+        // Ensure tooltip is null on init
+        this.tooltip = null;
+        // Reset validation states
+        this.emailStatus = { investor: null, reseller: null };
+        this.emailMessage = { investor: '', reseller: '' };
+        this.emailValidated = { investor: false, reseller: false };
+        this.phoneStatus = { investor: null, reseller: null };
+        this.phoneMessage = { investor: '', reseller: '' };
+        this.phoneValidated = { investor: false, reseller: false };
+        this.passwordCriteria = { 
+            investor: { 
+                hasUpperCase: false, 
+                hasLowerCase: false, 
+                hasNumber: false, 
+                hasSpecialChar: false, 
+                minLength: false,
+                hasValue: false
+            },
+            reseller: { 
+                hasUpperCase: false, 
+                hasLowerCase: false, 
+                hasNumber: false, 
+                hasSpecialChar: false, 
+                minLength: false,
+                hasValue: false
+            }
+        };
+        this.nameStatus = { investor: null, reseller: null };
+        this.nameMessage = { investor: '', reseller: '' };
+        this.nameValidated = { investor: false, reseller: false };
+        
+        // Auto-validate if referral code is pre-filled from URL
+        this.$nextTick(() => {
+            const referralInput = document.getElementById('referralCode');
+            if (referralInput && referralInput.value) {
+                this.validateReferralCode(referralInput.value);
+            }
+        });
+    },
     tabClass(name) {
-        return `px-4 py-2 rounded-lg border-2 ${this.tab === name ? 'border-primary text-primary' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`;
+        return this.tab === name 
+            ? 'border-primary text-primary bg-primary/5' 
+            : 'border-gray-200 text-gray-700 hover:border-gray-300';
+    },
+    showTooltip(tooltipName, event) {
+        // Prevent event propagation
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+        // Close other tooltips and toggle current one
+        if (this.tooltip === tooltipName) {
+            this.tooltip = null;
+        } else {
+            this.tooltip = tooltipName;
+        }
+    },
+    async validateEmail(email, type) {
+        // Clear previous timeout
+        if (this.validationTimeout.email[type]) {
+            clearTimeout(this.validationTimeout.email[type]);
+        }
+
+        // Reset status if empty
+        if (!email || email.trim() === '') {
+            this.emailStatus[type] = null;
+            this.emailMessage[type] = '';
+            this.emailValidated[type] = false;
+            return;
+        }
+
+        // Only validate if email length is reasonable (at least 5 chars for basic format)
+        if (email.trim().length < 5) {
+            this.emailStatus[type] = null;
+            this.emailMessage[type] = '';
+            this.emailValidated[type] = false;
+            return;
+        }
+
+        // Debounce validation - wait 500ms after user stops typing
+        this.validationTimeout.email[type] = setTimeout(async () => {
+            this.emailStatus[type] = 'checking';
+            this.emailMessage[type] = 'Checking email...';
+            this.emailValidated[type] = true;
+
+            try {
+                const response = await fetch(`/api/check-email?email=${encodeURIComponent(email)}`);
+                const data = await response.json();
+                
+                if (data.valid && !data.exists) {
+                    this.emailStatus[type] = 'valid';
+                    this.emailMessage[type] = data.message || 'Email is valid and available';
+                } else if (data.exists) {
+                    this.emailStatus[type] = 'invalid';
+                    this.emailMessage[type] = data.message || 'This email is already registered';
+                } else {
+                    this.emailStatus[type] = 'invalid';
+                    this.emailMessage[type] = data.message || 'Please enter a valid email address';
+                }
+            } catch (error) {
+                this.emailStatus[type] = null;
+                this.emailMessage[type] = '';
+                this.emailValidated[type] = false;
+            }
+        }, 500);
+    },
+    async validatePhone(phone, type) {
+        // Clear previous timeout
+        if (this.validationTimeout.phone[type]) {
+            clearTimeout(this.validationTimeout.phone[type]);
+        }
+
+        // Reset status if empty
+        if (!phone || phone.trim() === '') {
+            this.phoneStatus[type] = null;
+            this.phoneMessage[type] = '';
+            this.phoneValidated[type] = false;
+            return;
+        }
+
+        // Only validate if phone starts with + and has reasonable length
+        if (!phone.trim().startsWith('+') || phone.trim().length < 8) {
+            this.phoneStatus[type] = null;
+            this.phoneMessage[type] = '';
+            this.phoneValidated[type] = false;
+            return;
+        }
+
+        // Debounce validation - wait 500ms after user stops typing
+        this.validationTimeout.phone[type] = setTimeout(async () => {
+            this.phoneStatus[type] = 'checking';
+            this.phoneMessage[type] = 'Checking phone number...';
+            this.phoneValidated[type] = true;
+
+            try {
+                const response = await fetch(`/api/check-phone?phone=${encodeURIComponent(phone)}`);
+                const data = await response.json();
+                
+                if (data.valid && !data.exists) {
+                    this.phoneStatus[type] = 'valid';
+                    this.phoneMessage[type] = data.message || 'Phone number is valid and available';
+                } else if (data.exists) {
+                    this.phoneStatus[type] = 'invalid';
+                    this.phoneMessage[type] = data.message || 'This phone number is already registered';
+                } else {
+                    this.phoneStatus[type] = 'invalid';
+                    this.phoneMessage[type] = data.message || 'Please enter a valid phone number';
+                }
+            } catch (error) {
+                this.phoneStatus[type] = null;
+                this.phoneMessage[type] = '';
+                this.phoneValidated[type] = false;
+            }
+        }, 500);
+    },
+    validateName(name, type) {
+        if (!name || name.trim() === '') {
+            this.nameStatus[type] = null;
+            this.nameMessage[type] = '';
+            this.nameValidated[type] = false;
+            return;
+        }
+
+        const trimmedName = name.trim();
+        
+        // Check if name has at least 2 characters
+        if (trimmedName.length < 2) {
+            this.nameStatus[type] = 'invalid';
+            this.nameMessage[type] = 'Name must be at least 2 characters long';
+            this.nameValidated[type] = true;
+            return;
+        }
+
+        // Check if name contains at least first and last name (has space)
+        if (!trimmedName.includes(' ')) {
+            this.nameStatus[type] = 'invalid';
+            this.nameMessage[type] = 'Please enter your full name (First Name and Last Name)';
+            this.nameValidated[type] = true;
+            return;
+        }
+
+        // Check if name contains only letters and spaces
+        if (!/^[a-zA-Z\s]+$/.test(trimmedName)) {
+            this.nameStatus[type] = 'invalid';
+            this.nameMessage[type] = 'Name can only contain letters and spaces';
+            this.nameValidated[type] = true;
+            return;
+        }
+
+        // Check if name has proper format (at least 2 words with 2+ chars each)
+        const nameParts = trimmedName.split(/\s+/).filter(part => part.length > 0);
+        if (nameParts.length < 2) {
+            this.nameStatus[type] = 'invalid';
+            this.nameMessage[type] = 'Please enter both first name and last name';
+            this.nameValidated[type] = true;
+            return;
+        }
+
+        if (nameParts.some(part => part.length < 2)) {
+            this.nameStatus[type] = 'invalid';
+            this.nameMessage[type] = 'Each name part must be at least 2 characters';
+            this.nameValidated[type] = true;
+            return;
+        }
+
+        // Valid name
+        this.nameStatus[type] = 'valid';
+        this.nameMessage[type] = 'Name format is valid';
+        this.nameValidated[type] = true;
+    },
+    validatePassword(password, type) {
+        if (!password || password === '') {
+            // Reset all criteria
+            this.passwordCriteria[type] = {
+                hasUpperCase: false,
+                hasLowerCase: false,
+                hasNumber: false,
+                hasSpecialChar: false,
+                minLength: false,
+                hasValue: false
+            };
+            return;
+        }
+
+        // Check each criteria
+        this.passwordCriteria[type] = {
+            hasUpperCase: /[A-Z]/.test(password),
+            hasLowerCase: /[a-z]/.test(password),
+            hasNumber: /[0-9]/.test(password),
+            hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
+            minLength: password.length >= 8,
+            hasValue: true
+        };
+    },
+    isPasswordValid(type) {
+        const criteria = this.passwordCriteria[type];
+        return criteria.hasUpperCase && 
+               criteria.hasLowerCase && 
+               criteria.hasNumber && 
+               criteria.hasSpecialChar && 
+               criteria.minLength;
     },
     async validateReferralCode(code) {
         const statusEl = document.getElementById('referralCodeStatus');
@@ -295,15 +583,6 @@ Alpine.data('signupTabs', () => ({
             statusEl.classList.add('hidden');
             inputEl.classList.remove('border-green-500', 'border-red-500');
         }
-    },
-    init() {
-        // Auto-validate if referral code is pre-filled from URL
-        this.$nextTick(() => {
-            const referralInput = document.getElementById('referralCode');
-            if (referralInput && referralInput.value) {
-                this.validateReferralCode(referralInput.value);
-            }
-        });
     }
 }));
 
@@ -370,6 +649,27 @@ Alpine.data('kycForm', (initialIdType = '') => ({
 
 // Purchase flow component - moved to individual pages to avoid conflicts
 
+// Login form component
+Alpine.data('loginForm', () => ({
+    tooltip: null,
+    init() {
+        this.tooltip = null;
+    },
+    showTooltip(tooltipName, event) {
+        // Prevent event propagation
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+        // Close other tooltips and toggle current one
+        if (this.tooltip === tooltipName) {
+            this.tooltip = null;
+        } else {
+            this.tooltip = tooltipName;
+        }
+    }
+}));
+
 // Image Viewer Modal Component (for KYC admin review)
 Alpine.data('imageViewer', () => ({
     imageModal: { open: false, src: '', title: '' },
@@ -384,6 +684,21 @@ Alpine.data('imageViewer', () => ({
         this.imageModal.src = '';
         this.imageModal.title = '';
         document.body.style.overflow = '';
+    }
+}));
+
+// Investor Dashboard Component
+Alpine.data('investorDashboard', () => ({
+    purchaseModalOpen: false,
+    init() {
+        // Check if URL has ?open=purchase parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('open') === 'purchase') {
+            const self = this;
+            setTimeout(function() {
+                self.purchaseModalOpen = true;
+            }, 0);
+        }
     }
 }));
 
