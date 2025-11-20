@@ -257,3 +257,30 @@ select.bg-gray-800 option {
 .rw-select {
   @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white;
 }
+
+/* Assign button styles - ensure text is always visible */
+button[title="Assign wallet address"],
+button[title*="Assign"] {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+button[title="Assign wallet address"] span,
+button[title*="Assign"] span {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+button[title="Assign wallet address"]:hover,
+button[title*="Assign"]:hover {
+  background-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+
+button[title="Assign wallet address"] svg,
+button[title*="Assign"] svg {
+  color: #ffffff !important;
+  fill: none !important;
+  stroke: currentColor !important;
+}

@@ -77,25 +77,51 @@ document.addEventListener('alpine:init', () => {
             
             this.assignWalletLoading = true;
             try {
-                const response = await fetch(`{{ url('/dashboard/admin/users') }}/${this.assignWalletUserId}/assign-wallet`, {
+                const url = `/dashboard/admin/users/${this.assignWalletUserId}/assign-wallet`;
+                console.log('Assigning wallet address to user:', this.assignWalletUserId);
+                console.log('Request URL:', url);
+                
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    }
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin'
                 });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text);
+                    this.showToast('Server returned an invalid response. Please check the console.', 'error');
+                    this.assignWalletLoading = false;
+                    return;
+                }
+                
                 const data = await response.json();
-                if (response.ok) {
-                    this.showToast('Wallet address assigned successfully!', 'success');
+                console.log('Response data:', data);
+                
+                if (response.ok && data.success) {
+                    this.showToast(data.message || 'Wallet address assigned successfully!', 'success');
                     this.closeAssignWalletModal();
                     setTimeout(() => {
                         location.reload();
                     }, 1000);
                 } else {
-                    this.showToast(data.message || 'Failed to assign wallet address', 'error');
+                    const errorMessage = data.message || data.error || 'Failed to assign wallet address';
+                    console.error('Error response:', data);
+                    this.showToast(errorMessage, 'error');
                 }
             } catch (error) {
-                this.showToast('An error occurred. Please try again.', 'error');
+                console.error('Exception during wallet assignment:', error);
+                this.showToast('Network error: ' + (error.message || 'Please check your connection and try again.'), 'error');
             } finally {
                 this.assignWalletLoading = false;
             }
@@ -423,11 +449,15 @@ function calculateCreateUserTotal() {
                                     <div class="text-xs sm:hidden mt-1">
                                         <button 
                                             @click="openAssignWalletModal({{ $u->id }}, '{{ addslashes($u->name) }}')"
-                                            class="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-500 hover:bg-purple-600 text-white rounded text-xs font-semibold">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                            class="inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap w-full"
+                                            style="background-color: #2563eb; color: #ffffff; border: none;"
+                                            onmouseover="this.style.backgroundColor='#1d4ed8'"
+                                            onmouseout="this.style.backgroundColor='#2563eb'"
+                                            title="Assign wallet address">
+                                            <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: #ffffff;">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
                                             </svg>
-                                            Assign Wallet
+                                            <span style="color: #ffffff; font-weight: 700; font-size: 12px;">Assign Wallet</span>
                                         </button>
                                     </div>
                                 @endif
@@ -459,12 +489,15 @@ function calculateCreateUserTotal() {
                                 @else
                                     <button 
                                         @click="openAssignWalletModal({{ $u->id }}, '{{ addslashes($u->name) }}')"
-                                        class="inline-flex items-center gap-1 px-2 py-1 bg-purple-500 hover:bg-purple-600 text-white rounded text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow"
+                                        class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all duration-200 shadow-md hover:shadow-lg whitespace-nowrap min-w-[100px]"
+                                        style="background-color: #2563eb; color: #ffffff; border: none;"
+                                        onmouseover="this.style.backgroundColor='#1d4ed8'"
+                                        onmouseout="this.style.backgroundColor='#2563eb'"
                                         title="Assign wallet address">
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: #ffffff;">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
                                         </svg>
-                                        <span>Assign</span>
+                                        <span style="color: #ffffff; font-weight: 700; font-size: 13px;">Assign</span>
                                     </button>
                                 @endif
                             </td>

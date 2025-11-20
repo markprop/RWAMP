@@ -997,8 +997,20 @@ class AdminController extends Controller
     public function assignWalletAddress(Request $request, User $user)
     {
         try {
+            \Log::info('Assign wallet address request received', [
+                'admin_id' => Auth::id(),
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'has_wallet' => !empty($user->wallet_address)
+            ]);
+
             // Check if user already has a wallet address
             if ($user->wallet_address) {
+                \Log::warning('User already has wallet address', [
+                    'user_id' => $user->id,
+                    'wallet_address' => $user->wallet_address
+                ]);
+                
                 return response()->json([
                     'success' => false,
                     'message' => 'User already has a wallet address: ' . $user->wallet_address
@@ -1007,13 +1019,31 @@ class AdminController extends Controller
 
             // Generate unique wallet address
             $walletAddress = $this->generateUniqueWalletAddress();
-
-            // Assign wallet address to user
-            $user->update([
+            
+            \Log::info('Generated wallet address', [
                 'wallet_address' => $walletAddress
             ]);
 
-            \Log::info('Wallet address assigned by admin', [
+            // Assign wallet address to user
+            $updated = $user->update([
+                'wallet_address' => $walletAddress
+            ]);
+
+            if (!$updated) {
+                \Log::error('Failed to update user with wallet address', [
+                    'user_id' => $user->id
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to save wallet address. Please try again.'
+                ], 500);
+            }
+
+            // Refresh user model to get updated data
+            $user->refresh();
+
+            \Log::info('Wallet address assigned successfully', [
                 'admin_id' => Auth::id(),
                 'user_id' => $user->id,
                 'user_email' => $user->email,
@@ -1024,17 +1054,19 @@ class AdminController extends Controller
                 'success' => true,
                 'message' => 'Wallet address assigned successfully',
                 'wallet_address' => $walletAddress
-            ]);
+            ], 200);
         } catch (\Exception $e) {
-            \Log::error('Error assigning wallet address: ' . $e->getMessage(), [
-                'user_id' => $user->id,
+            \Log::error('Error assigning wallet address', [
+                'user_id' => $user->id ?? null,
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to assign wallet address. Please try again.'
+                'message' => 'Failed to assign wallet address: ' . $e->getMessage()
             ], 500);
         }
     }
