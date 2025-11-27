@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Transaction;
 use App\Helpers\PriceHelper;
+use App\Traits\GeneratesWalletAddress;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 
 class AdminUserController extends Controller
 {
+    use GeneratesWalletAddress;
     /**
      * Display list of users with search and filters
      */
@@ -296,18 +298,6 @@ class AdminUserController extends Controller
         $user->delete();
 
         return back()->with('success', "User '{$userName}' ({$userEmail}) has been deleted successfully.");
-    }
-
-    /**
-     * Generate a unique 16-digit wallet address
-     */
-    private function generateUniqueWalletAddress(): string
-    {
-        do {
-            $wallet = str_pad(random_int(1000000000000000, 9999999999999999), 16, '0', STR_PAD_LEFT);
-        } while (User::where('wallet_address', $wallet)->exists());
-
-        return $wallet;
     }
 }
 

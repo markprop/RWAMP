@@ -11,6 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // In some environments (especially testing with sqlite) the users table
+        // may not exist yet or migrations may run in a different order.
+        // Guard against that to avoid "no such table: users" errors.
+        if (! Schema::hasTable('users')) {
+            return;
+        }
+
         Schema::table('users', function (Blueprint $table) {
             $table->text('two_factor_secret')
                 ->after('password')
@@ -31,6 +38,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (! Schema::hasTable('users')) {
+            return;
+        }
+
         Schema::table('users', function (Blueprint $table) {
             $table->dropColumn([
                 'two_factor_secret',
