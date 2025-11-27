@@ -136,7 +136,7 @@
                             </div>
                         </div>
                     </label>
-                    <input name="email" type="email" value="{{ old('email') }}" class="form-input text-sm sm:text-base" required autocomplete="email" />
+                    <input name="email" type="email" value="{{ old('email') }}" x-model="email" @input="email = $event.target.value" class="form-input text-sm sm:text-base" required autocomplete="email" />
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">

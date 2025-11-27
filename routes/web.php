@@ -189,9 +189,12 @@ Route::middleware(['auth'])->group(function () {
     // Investor Dashboard
     Route::get('/dashboard/investor', [InvestorDashboardController::class, 'index'])->middleware(['role:investor', 'kyc.approved'])->name('dashboard.investor');
     
+    // Legacy reseller dashboard route for backward compatibility (must be before route group)
+    Route::get('/dashboard/reseller', [ResellerDashboardController::class, 'index'])->middleware('role:reseller')->name('dashboard.reseller');
+    
     // Reseller Routes
     Route::middleware('role:reseller')->prefix('dashboard/reseller')->name('dashboard.reseller.')->group(function () {
-        Route::get('/', [ResellerDashboardController::class, 'index'])->name('index');
+        // Note: index route is defined above as 'dashboard.reseller' for backward compatibility
         
         // Users
         Route::get('/users', [ResellerUserController::class, 'index'])->name('users');
@@ -236,11 +239,23 @@ Route::middleware(['auth'])->group(function () {
     });
     
     // Admin Dashboard
-    Route::get('/dashboard/admin', [AdminDashboardController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('dashboard.admin');
+    Route::get('/dashboard/admin', [AdminController::class, 'dashboard'])->middleware(['role:admin','admin.2fa'])->name('dashboard.admin');
+    
+    // Legacy admin route aliases for backward compatibility (views use these names)
+    // These must be registered BEFORE route groups to avoid conflicts
+    Route::get('/dashboard/admin/users', [AdminUserController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.users');
+    Route::get('/dashboard/admin/sell', [AdminSellController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.sell');
+    Route::get('/dashboard/admin/applications', [AdminResellerApplicationController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.applications');
+    Route::get('/dashboard/admin/crypto-payments', [AdminCryptoPaymentController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.crypto.payments');
+    Route::get('/dashboard/admin/withdrawals', [AdminWithdrawalController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.withdrawals');
+    Route::get('/dashboard/admin/kyc', [AdminKycController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.kyc.list');
+    Route::get('/dashboard/admin/prices', [AdminPriceController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.prices');
+    Route::get('/dashboard/admin/history', [AdminCryptoPaymentController::class, 'history'])->middleware(['role:admin','admin.2fa'])->name('admin.history');
+    Route::post('/dashboard/admin/regenerate-recovery-codes', [Admin2FAController::class, 'regenerateRecoveryCodes'])->middleware(['role:admin','admin.2fa'])->name('admin.regenerate-recovery-codes');
     
     // Admin Crypto Payments
     Route::prefix('dashboard/admin/crypto-payments')->middleware(['role:admin','admin.2fa'])->name('admin.crypto.payments.')->group(function () {
-        Route::get('/', [AdminCryptoPaymentController::class, 'index'])->name('index');
+        // Note: index route is defined above as 'admin.crypto.payments' for backward compatibility
         Route::get('/{payment}/details', [AdminCryptoPaymentController::class, 'show'])->name('details');
         Route::get('/{payment}/screenshot', [AdminCryptoPaymentController::class, 'downloadScreenshot'])->name('screenshot');
         Route::put('/{payment}', [AdminCryptoPaymentController::class, 'update'])->name('update');
@@ -249,16 +264,16 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{payment}/reject', [AdminCryptoPaymentController::class, 'reject'])->name('reject');
     });
     
-    // Legacy crypto payment routes for backward compatibility
-    Route::post('/admin/crypto-payments/{payment}/approve', [AdminCryptoPaymentController::class, 'approve'])->middleware(['role:admin','admin.2fa'])->name('admin.crypto.approve');
-    Route::post('/admin/crypto-payments/{payment}/reject', [AdminCryptoPaymentController::class, 'reject'])->middleware(['role:admin','admin.2fa'])->name('admin.crypto.reject');
+    // Legacy crypto payment routes for backward compatibility (commented out - route group above handles these)
+    // Route::post('/admin/crypto-payments/{payment}/approve', [AdminCryptoPaymentController::class, 'approve'])->middleware(['role:admin','admin.2fa'])->name('admin.crypto.approve');
+    // Route::post('/admin/crypto-payments/{payment}/reject', [AdminCryptoPaymentController::class, 'reject'])->middleware(['role:admin','admin.2fa'])->name('admin.crypto.reject');
     
     // Admin History
     Route::get('/dashboard/admin/history', [AdminCryptoPaymentController::class, 'history'])->middleware(['role:admin','admin.2fa'])->name('admin.history');
     
     // Admin Applications
     Route::prefix('dashboard/admin/applications')->middleware(['role:admin','admin.2fa'])->name('admin.applications.')->group(function () {
-        Route::get('/', [AdminResellerApplicationController::class, 'index'])->name('index');
+        // Note: index route is defined above as 'admin.applications' for backward compatibility
         Route::get('/{application}/details', [AdminResellerApplicationController::class, 'show'])->name('details');
         Route::put('/{application}/approve', [AdminResellerApplicationController::class, 'approve'])->name('approve');
         Route::put('/{application}/reject', [AdminResellerApplicationController::class, 'reject'])->name('reject');
@@ -266,29 +281,31 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{application}', [AdminResellerApplicationController::class, 'destroy'])->name('delete');
     });
     
-    // Legacy application routes for backward compatibility
-    Route::get('/dashboard/admin/applications', [AdminResellerApplicationController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.applications');
-    Route::put('/admin/applications/{application}/approve', [AdminResellerApplicationController::class, 'approve'])->middleware(['role:admin','admin.2fa'])->name('admin.applications.approve');
-    Route::put('/admin/applications/{application}/reject', [AdminResellerApplicationController::class, 'reject'])->middleware(['role:admin','admin.2fa'])->name('admin.applications.reject');
+    // Legacy application routes for backward compatibility (using different names to avoid conflicts)
+    // Note: The route group above already handles these, so these are just for backward compatibility
+    // Route::get('/dashboard/admin/applications', [AdminResellerApplicationController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.applications');
+    // Route::put('/admin/applications/{application}/approve', [AdminResellerApplicationController::class, 'approve'])->middleware(['role:admin','admin.2fa'])->name('admin.applications.approve');
+    // Route::put('/admin/applications/{application}/reject', [AdminResellerApplicationController::class, 'reject'])->middleware(['role:admin','admin.2fa'])->name('admin.applications.reject');
     // Admin User Management
     Route::middleware(['role:admin','admin.2fa'])->prefix('dashboard/admin/users')->name('admin.users.')->group(function () {
-        Route::get('/', [AdminUserController::class, 'index'])->name('index');
+        // Note: index route is defined above as 'admin.users' for backward compatibility
         Route::post('/', [AdminUserController::class, 'store'])->name('store');
         Route::get('/{user}', [AdminUserController::class, 'show'])->name('show');
+        Route::get('/{user}/details', [AdminUserController::class, 'show'])->name('details'); // Alias for backward compatibility with views
         Route::put('/{user}', [AdminUserController::class, 'update'])->name('update');
         Route::delete('/{user}', [AdminUserController::class, 'destroy'])->name('destroy');
         Route::post('/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('reset-password');
         Route::post('/{user}/assign-wallet', [AdminUserController::class, 'assignWalletAddress'])->name('assign-wallet');
     });
     
-    // Legacy admin user routes (for backward compatibility)
-    Route::get('/dashboard/admin/users', [AdminUserController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.users');
-    Route::post('/dashboard/admin/users', [AdminUserController::class, 'store'])->middleware(['role:admin','admin.2fa'])->name('admin.users.store');
-    Route::get('/dashboard/admin/users/{user}/details', [AdminUserController::class, 'show'])->middleware(['role:admin','admin.2fa'])->name('admin.users.details');
-    Route::put('/dashboard/admin/users/{user}', [AdminUserController::class, 'update'])->middleware(['role:admin','admin.2fa'])->name('admin.users.update');
-    Route::post('/dashboard/admin/users/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->middleware(['role:admin','admin.2fa'])->name('admin.users.reset');
-    Route::post('/dashboard/admin/users/{user}/assign-wallet', [AdminUserController::class, 'assignWalletAddress'])->middleware(['role:admin','admin.2fa'])->name('admin.users.assign-wallet');
-    Route::delete('/dashboard/admin/users/{user}', [AdminUserController::class, 'destroy'])->middleware(['role:admin','admin.2fa'])->name('admin.users.delete');
+    // Legacy admin user routes for backward compatibility (commented out - route group above handles these)
+    // Route::get('/dashboard/admin/users', [AdminUserController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.users');
+    // Route::post('/dashboard/admin/users', [AdminUserController::class, 'store'])->middleware(['role:admin','admin.2fa'])->name('admin.users.store');
+    // Route::get('/dashboard/admin/users/{user}/details', [AdminUserController::class, 'show'])->middleware(['role:admin','admin.2fa'])->name('admin.users.details');
+    // Route::put('/dashboard/admin/users/{user}', [AdminUserController::class, 'update'])->middleware(['role:admin','admin.2fa'])->name('admin.users.update');
+    // Route::post('/dashboard/admin/users/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->middleware(['role:admin','admin.2fa'])->name('admin.users.reset');
+    // Route::post('/dashboard/admin/users/{user}/assign-wallet', [AdminUserController::class, 'assignWalletAddress'])->middleware(['role:admin','admin.2fa'])->name('admin.users.assign-wallet');
+    // Route::delete('/dashboard/admin/users/{user}', [AdminUserController::class, 'destroy'])->middleware(['role:admin','admin.2fa'])->name('admin.users.delete');
     
     // User History
     Route::get('/dashboard/history', [InvestorHistoryController::class, 'index'])->name('user.history');
@@ -309,26 +326,26 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{user}/download/{type}', [AdminKycController::class, 'downloadFile'])->name('download');
     });
     
-    // Legacy KYC routes for backward compatibility
-    Route::post('/admin/kyc/{user}/approve', [AdminKycController::class, 'approve'])->middleware(['role:admin','admin.2fa'])->name('admin.kyc.approve');
-    Route::post('/admin/kyc/{user}/reject', [AdminKycController::class, 'reject'])->middleware(['role:admin','admin.2fa'])->name('admin.kyc.reject');
-    Route::put('/admin/kyc/{user}/update', [AdminKycController::class, 'update'])->middleware(['role:admin','admin.2fa'])->name('admin.kyc.update');
-    Route::delete('/admin/kyc/{user}/delete', [AdminKycController::class, 'destroy'])->middleware(['role:admin','admin.2fa'])->name('admin.kyc.delete');
-    Route::get('/admin/kyc/{user}/download/{type}', [AdminKycController::class, 'downloadFile'])->middleware(['role:admin','admin.2fa'])->name('admin.kyc.download');
+    // Legacy KYC routes for backward compatibility (commented out - route group above handles these)
+    // Route::post('/admin/kyc/{user}/approve', [AdminKycController::class, 'approve'])->middleware(['role:admin','admin.2fa'])->name('admin.kyc.approve');
+    // Route::post('/admin/kyc/{user}/reject', [AdminKycController::class, 'reject'])->middleware(['role:admin','admin.2fa'])->name('admin.kyc.reject');
+    // Route::put('/admin/kyc/{user}/update', [AdminKycController::class, 'update'])->middleware(['role:admin','admin.2fa'])->name('admin.kyc.update');
+    // Route::delete('/admin/kyc/{user}/delete', [AdminKycController::class, 'destroy'])->middleware(['role:admin','admin.2fa'])->name('admin.kyc.delete');
+    // Route::get('/admin/kyc/{user}/download/{type}', [AdminKycController::class, 'downloadFile'])->middleware(['role:admin','admin.2fa'])->name('admin.kyc.download');
     
     // Admin Price Management routes
     Route::prefix('dashboard/admin/prices')->middleware(['role:admin','admin.2fa'])->name('admin.prices.')->group(function () {
-        Route::get('/', [AdminPriceController::class, 'index'])->name('index');
+        // Note: index route is defined above as 'admin.prices' for backward compatibility
         Route::post('/update', [AdminPriceController::class, 'update'])->name('update');
     });
     
-    // Legacy price routes for backward compatibility
-    Route::get('/dashboard/admin/prices', [AdminPriceController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.prices');
-    Route::post('/dashboard/admin/prices/update', [AdminPriceController::class, 'update'])->middleware(['role:admin','admin.2fa'])->name('admin.prices.update');
+    // Legacy price routes for backward compatibility (commented out - route group above handles these)
+    // Route::get('/dashboard/admin/prices', [AdminPriceController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.prices');
+    // Route::post('/dashboard/admin/prices/update', [AdminPriceController::class, 'update'])->middleware(['role:admin','admin.2fa'])->name('admin.prices.update');
     
     // Admin Withdrawal Management routes
     Route::prefix('dashboard/admin/withdrawals')->middleware(['role:admin','admin.2fa'])->name('admin.withdrawals.')->group(function () {
-        Route::get('/', [AdminWithdrawalController::class, 'index'])->name('index');
+        // Note: index route is defined above as 'admin.withdrawals' for backward compatibility
         Route::get('/{withdrawal}', [AdminWithdrawalController::class, 'show'])->name('show');
         Route::post('/{withdrawal}/approve', [AdminWithdrawalController::class, 'approve'])->name('approve');
         Route::post('/{withdrawal}/reject', [AdminWithdrawalController::class, 'reject'])->name('reject');
@@ -337,18 +354,18 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{withdrawal}', [AdminWithdrawalController::class, 'destroy'])->name('delete');
     });
     
-    // Legacy withdrawal routes for backward compatibility
-    Route::get('/dashboard/admin/withdrawals', [AdminWithdrawalController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.withdrawals');
-    Route::get('/dashboard/admin/withdrawals/{withdrawal}', [AdminWithdrawalController::class, 'show'])->middleware(['role:admin','admin.2fa'])->name('admin.withdrawals.show');
-    Route::post('/dashboard/admin/withdrawals/{withdrawal}/approve', [AdminWithdrawalController::class, 'approve'])->middleware(['role:admin','admin.2fa'])->name('admin.withdrawals.approve');
-    Route::post('/dashboard/admin/withdrawals/{withdrawal}/reject', [AdminWithdrawalController::class, 'reject'])->middleware(['role:admin','admin.2fa'])->name('admin.withdrawals.reject');
-    Route::post('/dashboard/admin/withdrawals/{withdrawal}/submit-receipt', [AdminWithdrawalController::class, 'submitReceipt'])->middleware(['role:admin','admin.2fa'])->name('admin.withdrawals.submit-receipt');
-    Route::put('/dashboard/admin/withdrawals/{withdrawal}', [AdminWithdrawalController::class, 'update'])->middleware(['role:admin','admin.2fa'])->name('admin.withdrawals.update');
-    Route::delete('/dashboard/admin/withdrawals/{withdrawal}', [AdminWithdrawalController::class, 'destroy'])->middleware(['role:admin','admin.2fa'])->name('admin.withdrawals.delete');
+    // Legacy withdrawal routes for backward compatibility (commented out - route group above handles these)
+    // Route::get('/dashboard/admin/withdrawals', [AdminWithdrawalController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.withdrawals');
+    // Route::get('/dashboard/admin/withdrawals/{withdrawal}', [AdminWithdrawalController::class, 'show'])->middleware(['role:admin','admin.2fa'])->name('admin.withdrawals.show');
+    // Route::post('/dashboard/admin/withdrawals/{withdrawal}/approve', [AdminWithdrawalController::class, 'approve'])->middleware(['role:admin','admin.2fa'])->name('admin.withdrawals.approve');
+    // Route::post('/dashboard/admin/withdrawals/{withdrawal}/reject', [AdminWithdrawalController::class, 'reject'])->middleware(['role:admin','admin.2fa'])->name('admin.withdrawals.reject');
+    // Route::post('/dashboard/admin/withdrawals/{withdrawal}/submit-receipt', [AdminWithdrawalController::class, 'submitReceipt'])->middleware(['role:admin','admin.2fa'])->name('admin.withdrawals.submit-receipt');
+    // Route::put('/dashboard/admin/withdrawals/{withdrawal}', [AdminWithdrawalController::class, 'update'])->middleware(['role:admin','admin.2fa'])->name('admin.withdrawals.update');
+    // Route::delete('/dashboard/admin/withdrawals/{withdrawal}', [AdminWithdrawalController::class, 'destroy'])->middleware(['role:admin','admin.2fa'])->name('admin.withdrawals.delete');
     
     // Admin Sell Coins routes
     Route::prefix('dashboard/admin/sell')->middleware(['role:admin','admin.2fa'])->name('admin.sell.')->group(function () {
-        Route::get('/', [AdminSellController::class, 'index'])->name('index');
+        // Note: index route is defined above as 'admin.sell' for backward compatibility
         Route::post('/', [AdminSellController::class, 'store'])->name('store');
     });
     
@@ -359,7 +376,6 @@ Route::middleware(['auth'])->group(function () {
     });
     
     // Legacy sell routes for backward compatibility
-    Route::get('/dashboard/admin/sell', [AdminSellController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.sell');
     Route::post('/api/admin/sell-coins', [AdminSellController::class, 'store'])->middleware(['role:admin','admin.2fa'])->name('admin.sell-coins');
     
     // ============================================
@@ -412,7 +428,7 @@ Route::prefix('api')->group(function () {
     Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:3,60');
     Route::post('/reseller', [ResellerController::class, 'store'])->middleware('throttle:3,60');
     Route::post('/newsletter', [NewsletterController::class, 'store'])->middleware('throttle:6,60');
-    Route::get('/check-referral-code', [RegisterController::class, 'checkReferralCode'])->name('api.check.referral.code');
+    Route::get('/check-referral-code', [AuthController::class, 'checkReferralCode'])->name('api.check.referral.code');
     Route::get('/check-email', [RegisterController::class, 'checkEmail'])->name('api.check.email');
     Route::get('/check-phone', [RegisterController::class, 'checkPhone'])->name('api.check.phone');
     
@@ -508,6 +524,8 @@ Route::middleware('guest')->group(function () {
     })->name('password.update');
 });
 
+// Custom logout route with tab session handling
+// Note: Fortify also registers a logout route, but this one takes precedence when both GET and POST are used
 Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
 // Profile & Account
