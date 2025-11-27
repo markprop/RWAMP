@@ -203,7 +203,11 @@
                 </div>
             </div>
             
-            <form method="POST" action="{{ route('reseller.update-coin-price') }}" class="max-w-md">
+            <!-- Price Form and Profit Calculator Side by Side -->
+            <div class="grid md:grid-cols-2 gap-6 mb-6">
+                <!-- Left: Price Form -->
+                <div>
+                    <form method="POST" action="{{ route('reseller.update-coin-price') }}">
                 @csrf
                 @method('PUT')
                 <div class="mb-4">
@@ -246,15 +250,76 @@
                         </button>
                     @endif
                 </div>
-            </form>
-            
-            @if($resellerPrice)
-                <form id="remove-price-form" method="POST" action="{{ route('reseller.update-coin-price') }}" class="hidden">
-                    @csrf
-                    @method('PUT')
-                    <input type="hidden" name="coin_price" value="">
-                </form>
-            @endif
+                    </form>
+                    
+                    @if($resellerPrice)
+                        <form id="remove-price-form" method="POST" action="{{ route('reseller.update-coin-price') }}" class="hidden">
+                            @csrf
+                            @method('PUT')
+                            <input type="hidden" name="coin_price" value="">
+                        </form>
+                    @endif
+                </div>
+                
+                <!-- Right: Profit Calculator -->
+                <div class="bg-gradient-to-r from-accent to-yellow-500 rounded-lg p-4 text-black" x-data="profitCalculator">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-2">
+                                <h4 class="font-montserrat font-bold text-base">Profit Calculator</h4>
+                                <div class="relative group">
+                                    <svg class="h-4 w-4 text-black/60 cursor-pointer hover:text-black transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" @click.stop="showInfo = !showInfo">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <div x-show="showInfo" @click.away="showInfo = false" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 transform scale-100" x-transition:leave-end="opacity-0 transform scale-95" class="absolute z-50 w-72 p-3 text-xs text-white bg-gray-900 rounded-lg shadow-lg bottom-full left-0 mb-2" style="display: none;">
+                                        <p class="mb-2"><strong>How It Works:</strong></p>
+                                        <ul class="list-disc list-inside space-y-1 text-xs">
+                                            <li><strong>Buy:</strong> Enter the price you paid per token (your purchase price)</li>
+                                            <li><strong>Sell:</strong> Enter the price you're selling per token (your selling price)</li>
+                                            <li><strong>Profit:</strong> Automatically calculated as (Sell Price - Buy Price)</li>
+                                        </ul>
+                                        <p class="mt-2 text-xs text-yellow-300"><strong>Example:</strong> If you buy at Rs 1.50 and sell at Rs 2.50, your profit per token is Rs 1.00</p>
+                                        <div class="absolute top-full left-4 -mt-1">
+                                            <div class="border-4 border-transparent border-t-gray-900"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3 text-sm">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-medium">Buy:</span>
+                                    <input 
+                                        type="number" 
+                                        x-model="buyPrice" 
+                                        step="0.01" 
+                                        min="0"
+                                        placeholder="0.00"
+                                        class="w-20 px-2 py-1 text-right text-sm font-mono font-bold bg-white/90 border border-black/20 rounded text-black"
+                                    />
+                                </div>
+                                <span class="text-black/60">-</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-medium">Sell:</span>
+                                    <input 
+                                        type="number" 
+                                        x-model="sellPrice" 
+                                        step="0.01" 
+                                        min="0"
+                                        placeholder="0.00"
+                                        class="w-20 px-2 py-1 text-right text-sm font-mono font-bold bg-white/90 border border-black/20 rounded text-black"
+                                    />
+                                </div>
+                                <span class="text-black/60">=</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-medium">Profit:</span>
+                                    <span class="font-mono font-bold text-base" x-text="'Rs ' + profitPerToken">Rs 0.00</span>
+                                </div>
+                            </div>
+                            <p class="text-xs text-black/70 mt-2">Enter buy and sell prices to calculate profit per token</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- My Users Section -->

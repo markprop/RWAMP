@@ -821,6 +821,43 @@ function purchaseFlow() {
             this.toast.type = type;
             this.toast.visible = true;
             setTimeout(() => { this.toast.visible = false; }, 3000);
+        },
+
+        openOfflinePaymentChat() {
+            // Close the purchase modal
+            this.purchaseModalOpen = false;
+            
+            // Wait a bit for modal to close, then open Tawk.to chat
+            setTimeout(() => {
+                if (typeof Tawk_API !== 'undefined') {
+                    try {
+                        // Maximize the chat widget
+                        if (Tawk_API.maximize) {
+                            Tawk_API.maximize();
+                        } else if (Tawk_API.toggle) {
+                            // Fallback to toggle if maximize is not available
+                            Tawk_API.toggle();
+                        }
+                    } catch (error) {
+                        console.error('Failed to open Tawk.to chat:', error);
+                        // Show user-friendly message
+                        this.showToast('Please click the chat icon in the bottom right corner to contact support.', 'info');
+                    }
+                } else {
+                    // If Tawk.to is not loaded yet, wait a bit and try again
+                    setTimeout(() => {
+                        if (typeof Tawk_API !== 'undefined') {
+                            if (Tawk_API.maximize) {
+                                Tawk_API.maximize();
+                            } else if (Tawk_API.toggle) {
+                                Tawk_API.toggle();
+                            }
+                        } else {
+                            this.showToast('Chat is loading. Please wait a moment and click the chat icon in the bottom right corner.', 'info');
+                        }
+                    }, 1000);
+                }
+            }, 300);
         }
     }
 }

@@ -2,40 +2,40 @@
     <div class="max-w-7xl mx-auto px-4">
         <div class="grid lg:grid-cols-2 gap-12 items-center">
             <!-- Left side - Illustration -->
-            <div class="relative animate-fadeInUp">
+            <div class="relative animate-on-scroll" data-animation="fadeInLeft">
                 <div class="relative bg-gradient-to-br from-primary/10 to-accent/10 rounded-2xl p-8">
-                    <!-- Token illustration -->
-                    <div class="flex justify-center items-center mb-8">
+                    <!-- Token illustration with rotating logo -->
+                    <div class="flex justify-center items-center mb-8 animate-on-scroll" data-animation="zoomIn" style="animation-delay: 0.2s;">
                         <div class="relative">
-                            <div class="w-32 h-32 rounded-full overflow-hidden shadow-2xl">
+                            <div class="w-48 h-48 md:w-60 md:h-60 rounded-full overflow-hidden shadow-2xl about-logo-container transition-transform duration-300 hover:scale-105">
                                 <img 
                                     src="{{ asset('images/logo.jpeg') }}" 
                                     alt="RWAMP Logo" 
-                                    class="w-full h-full object-cover"
+                                    class="w-full h-full object-contain about-logo-rotating"
                                 />
                             </div>
-                            <div class="absolute -top-2 -right-2 w-8 h-8 bg-success rounded-full flex items-center justify-center">
-                                <span class="text-white text-sm">✓</span>
+                            <div class="absolute -top-2 -right-2 w-12 h-12 bg-success rounded-full flex items-center justify-center shadow-lg animate-badge-bounce animate-on-scroll" data-animation="zoomIn" style="animation-delay: 0.5s;">
+                                <span class="text-white text-lg font-bold">✓</span>
                             </div>
                         </div>
                     </div>
                     
                     <!-- Property icons -->
-                    <div class="grid grid-cols-3 gap-4">
-                        <div class="text-center">
-                            <div class="w-16 h-16 bg-primary/20 rounded-lg flex items-center justify-center mx-auto mb-2">
+                    <div class="grid grid-cols-3 gap-4" data-stagger data-animation="zoomIn">
+                        <div class="text-center animate-on-scroll">
+                            <div class="w-16 h-16 bg-primary/20 rounded-lg flex items-center justify-center mx-auto mb-2 transition-transform duration-300 hover:scale-110">
                                 <span class="text-2xl">🏢</span>
                             </div>
                             <p class="text-sm font-montserrat font-semibold text-gray-700">Dubai</p>
                         </div>
-                        <div class="text-center">
-                            <div class="w-16 h-16 bg-accent/20 rounded-lg flex items-center justify-center mx-auto mb-2">
+                        <div class="text-center animate-on-scroll">
+                            <div class="w-16 h-16 bg-accent/20 rounded-lg flex items-center justify-center mx-auto mb-2 transition-transform duration-300 hover:scale-110">
                                 <span class="text-2xl">🏗️</span>
                             </div>
                             <p class="text-sm font-montserrat font-semibold text-gray-700">Pakistan</p>
                         </div>
-                        <div class="text-center">
-                            <div class="w-16 h-16 bg-success/20 rounded-lg flex items-center justify-center mx-auto mb-2">
+                        <div class="text-center animate-on-scroll">
+                            <div class="w-16 h-16 bg-success/20 rounded-lg flex items-center justify-center mx-auto mb-2 transition-transform duration-300 hover:scale-110">
                                 <span class="text-2xl">🏘️</span>
                             </div>
                             <p class="text-sm font-montserrat font-semibold text-gray-700">Saudi Arabia</p>
@@ -48,7 +48,7 @@
             </div>
             
             <!-- Right side - Text content -->
-            <div class="space-y-6 animate-fadeInUp">
+            <div class="space-y-6 animate-on-scroll" data-animation="fadeInRight">
                 <h2 class="text-4xl md:text-5xl font-montserrat font-bold text-gray-900 mb-6">
                     About <span class="text-primary">RWAMP</span>
                 </h2>
@@ -60,7 +60,7 @@
                     <span class="font-semibold text-success"> Saudi Arabia</span>.
                 </p>
                 
-                <div class="space-y-4">
+                <div class="space-y-4" data-stagger data-animation="fadeInUp">
                     <div class="flex items-start space-x-3">
                         <div class="w-6 h-6 bg-primary rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                             <span class="text-white text-sm">✓</span>
@@ -89,10 +89,10 @@
                     </div>
                 </div>
                 
-                <div class="pt-6">
-                    <div class="bg-gradient-to-r from-primary/10 to-accent/10 rounded-lg p-6">
+                <div class="pt-6 animate-on-scroll" data-animation="fadeInUp" style="animation-delay: 0.4s;">
+                    <div class="bg-gradient-to-r from-primary/10 to-accent/10 rounded-lg p-6 transition-all duration-300 hover:shadow-lg">
                         <h3 class="font-montserrat font-bold text-xl text-gray-900 mb-2">
-                            Powered by Mark Properties
+                            Marketed by Mark Properties
                         </h3>
                         <p class="text-gray-700">
                             Your trusted partner in real estate investment with years of experience 

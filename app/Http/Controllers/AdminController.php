@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Transaction;
 use App\Models\CryptoPayment;
 use App\Models\Chat;
+use App\Models\WithdrawRequest;
 use App\Helpers\PriceHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -29,13 +30,17 @@ class AdminController extends Controller
                 'new_users_7' => User::where('created_at','>=',$now->copy()->subDays(7))->count(),
                 'new_users_30' => User::where('created_at','>=',$now->copy()->subDays(30))->count(),
                 'pending_applications' => ResellerApplication::where('status','pending')->count(),
+                'total_applications' => ResellerApplication::count(),
                 'approved_applications' => ResellerApplication::where('status','approved')->count(),
                 'rejected_applications' => ResellerApplication::where('status','rejected')->count(),
                 'pending_kyc' => User::where('kyc_status','pending')->count(),
+                'total_kyc' => User::whereIn('kyc_status', ['pending', 'approved', 'rejected'])->count(),
                 'contacts' => \App\Models\Contact::count(),
                 'coin_price' => \App\Helpers\PriceHelper::getRwampPkrPrice(),
                 'crypto_payments' => CryptoPayment::count(),
                 'pending_crypto_payments' => CryptoPayment::where('status','pending')->count(),
+                'withdrawal_requests' => WithdrawRequest::count(),
+                'pending_withdrawals' => WithdrawRequest::where('status','pending')->count(),
             ];
 
             return view('dashboard.admin', [
@@ -58,13 +63,17 @@ class AdminController extends Controller
                     'new_users_7' => 0,
                     'new_users_30' => 0,
                     'pending_applications' => 0,
+                    'total_applications' => 0,
                     'approved_applications' => 0,
                     'rejected_applications' => 0,
                     'pending_kyc' => 0,
+                    'total_kyc' => 0,
                     'contacts' => 0,
                     'coin_price' => 0,
                     'crypto_payments' => 0,
                     'pending_crypto_payments' => 0,
+                    'withdrawal_requests' => 0,
+                    'pending_withdrawals' => 0,
                 ],
                 'applications' => collect([]),
                 'error' => config('app.debug') ? $e->getMessage() : 'An error occurred while loading the dashboard. Please check the logs.',
@@ -82,8 +91,16 @@ class AdminController extends Controller
         // Mark application approved
         $application->update(['status' => 'approved']);
 
-        // Use password from application (already hashed)
+        // Default password for new resellers
+        $defaultPassword = 'RWAMP@agent';
+        $hashedPassword = \Hash::make($defaultPassword);
+        
+        // Use password from application if exists, otherwise use default
+        $passwordToUse = $application->password ? $application->password : $hashedPassword;
+        
         $user = User::where('email', $application->email)->first();
+        $isNewUser = !$user;
+        
         if (!$user) {
             // Generate unique 16-digit wallet address
             $walletAddress = $this->generateUniqueWalletAddress();
@@ -93,7 +110,7 @@ class AdminController extends Controller
                 'email' => $application->email,
                 'phone' => $application->phone,
                 'role' => 'reseller',
-                'password' => $application->password, // Use password from application
+                'password' => $passwordToUse,
                 'company_name' => $application->company,
                 'investment_capacity' => $application->investment_capacity,
                 'experience' => $application->experience,
@@ -109,7 +126,7 @@ class AdminController extends Controller
             
             $user->update([
                 'role' => 'reseller',
-                'password' => $application->password, // Use password from application
+                'password' => $passwordToUse,
                 'company_name' => $application->company,
                 'investment_capacity' => $application->investment_capacity,
                 'experience' => $application->experience,
@@ -124,13 +141,36 @@ class AdminController extends Controller
             ]);
         }
 
-        // Send email notification
+        // Set password reset required flag in cache (expires in 30 days)
+        \Illuminate\Support\Facades\Cache::put('password_reset_required_user_' . $user->id, true, now()->addDays(30));
+
+        // Generate secure password reset token instead of sending password in plaintext
+        $resetToken = null;
+        $resetUrl = null;
+        try {
+            // Generate password reset token using Laravel's Password broker token repository
+            $tokenRepository = \Illuminate\Support\Facades\Password::getRepository();
+            $resetToken = $tokenRepository->create($user);
+            $resetUrl = route('password.reset', ['token' => $resetToken, 'email' => $user->email]);
+        } catch (\Throwable $e) {
+            \Log::error('Failed to generate password reset token: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+            ]);
+            // Continue without reset token - user can use "Forgot Password" instead
+        }
+
+        // Send email notification with secure password reset link (NOT the password)
         try {
             if (!empty($user->email)) {
                 $loginUrl = route('login');
                 \Mail::send('emails.reseller-approved', [
                     'user' => $user,
                     'loginUrl' => $loginUrl,
+                    'resetUrl' => $resetUrl, // Secure password reset link
+                    'hasResetToken' => !empty($resetToken),
+                    'isNewUser' => $isNewUser,
                 ], function($m) use ($user) {
                     $m->to($user->email, $user->name)
                       ->subject('RWAMP Reseller Application Approved - Welcome!');
@@ -141,7 +181,7 @@ class AdminController extends Controller
             // Continue even if email fails
         }
 
-        return back()->with('success', 'Application approved and reseller account created.');
+        return back()->with('success', 'Application approved and reseller account created. Email sent with secure password setup link.');
     }
 
     public function reject(ResellerApplication $application)
@@ -1256,6 +1296,15 @@ class AdminController extends Controller
     }
 
     /**
+     * Show withdrawal request details
+     */
+    public function showWithdrawal(\App\Models\WithdrawRequest $withdrawal)
+    {
+        $withdrawal->load('user');
+        return view('dashboard.admin-withdrawal-details', compact('withdrawal'));
+    }
+
+    /**
      * Approve withdrawal request (manual transfer by admin)
      */
     public function approveWithdrawal(Request $request, \App\Models\WithdrawRequest $withdrawal)
@@ -1266,27 +1315,456 @@ class AdminController extends Controller
 
         $user = $withdrawal->user;
 
-        // Verify user has sufficient balance
-        if ($user->token_balance < $withdrawal->token_amount) {
-            return back()->with('error', 'User has insufficient balance.');
-        }
+        // Note: Tokens are already deducted when withdrawal request is submitted
+        // We just need to approve the request and admin will transfer manually
 
         // Update withdrawal status
-        $withdrawal->update(['status' => 'approved']);
+        $withdrawal->update([
+            'status' => 'approved',
+            'notes' => $request->input('notes', $withdrawal->notes)
+        ]);
 
-        // Deduct tokens from user (manual transfer means admin handles external transfer)
-        $user->deductTokens($withdrawal->token_amount, 'Withdrawal approved - manual transfer');
+        // Log transaction (tokens already deducted on submission)
+        try {
+            Transaction::create([
+                'user_id' => $user->id,
+                'type' => 'withdrawal_approved',
+                'amount' => (int) $withdrawal->token_amount,
+                'status' => 'completed',
+                'reference' => 'WDR-APPROVED-' . $withdrawal->id,
+            ]);
+        } catch (\Exception $e) {
+            \Log::warning('Failed to log withdrawal approval transaction', [
+                'error' => $e->getMessage(),
+                'withdrawal_id' => $withdrawal->id,
+            ]);
+            // Continue even if transaction logging fails
+        }
+
+        // Send email notification
+        try {
+            // Refresh withdrawal to ensure we have latest data
+            $withdrawal->refresh();
+            
+            // Use Mail facade with explicit configuration - same pattern as working emails (reject, update, delete)
+            \Mail::send('emails.withdrawal-approved', [
+                'user' => $user,
+                'withdrawal' => $withdrawal,
+            ], function($m) use ($user) {
+                $m->from(config('mail.from.address', 'no-reply@rwamp.com'), config('mail.from.name', 'RWAMP'))
+                  ->to($user->email, $user->name)
+                  ->subject('Withdrawal Request Approved - RWAMP');
+            });
+            
+            \Log::info('Withdrawal approval email sent successfully', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'withdrawal_id' => $withdrawal->id,
+                'mail_driver' => config('mail.default'),
+                'mail_from' => config('mail.from.address'),
+                'mail_host' => config('mail.mailers.smtp.host'),
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Failed to send withdrawal approval email', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'withdrawal_id' => $withdrawal->id,
+                'mail_driver' => config('mail.default'),
+                'mail_from' => config('mail.from.address'),
+                'mail_host' => config('mail.mailers.smtp.host'),
+            ]);
+            // Don't fail the request if email fails, but log it
+        }
+
+        return back()->with('success', 'Withdrawal approved. Tokens were already deducted on submission. Admin will transfer manually within 24 hours. User will be notified via email.');
+    }
+
+    /**
+     * Submit receipt for withdrawal transfer
+     */
+    public function submitReceipt(Request $request, \App\Models\WithdrawRequest $withdrawal)
+    {
+        if ($withdrawal->status !== 'approved') {
+            return back()->with('error', 'Can only submit receipt for approved withdrawals.');
+        }
+
+        $validated = $request->validate([
+            'receipt' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120', // 5MB max
+            'transaction_hash' => 'nullable|string|max:255',
+        ]);
+
+        $user = $withdrawal->user;
+
+        try {
+            // Store receipt file
+            $receiptPath = $request->file('receipt')->store('withdrawal-receipts', 'public');
+
+            // Update withdrawal with receipt and transaction hash
+            $withdrawal->update([
+                'receipt_path' => $receiptPath,
+                'transaction_hash' => $validated['transaction_hash'] ?? null,
+                'transfer_completed_at' => now(),
+            ]);
+
+            // Refresh withdrawal to get updated data
+            $withdrawal->refresh();
+
+            // Send email notification to user - inside try block but after update
+            try {
+                // Use Mail facade with explicit configuration - same pattern as working emails
+                \Mail::send('emails.withdrawal-completed', [
+                    'user' => $user,
+                    'withdrawal' => $withdrawal,
+                ], function($m) use ($user) {
+                    $m->from(config('mail.from.address', 'no-reply@rwamp.com'), config('mail.from.name', 'RWAMP'))
+                      ->to($user->email, $user->name)
+                      ->subject('Withdrawal Transfer Completed - RWAMP');
+                });
+                
+                \Log::info('Withdrawal completion email sent successfully', [
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'withdrawal_id' => $withdrawal->id,
+                    'mail_driver' => config('mail.default'),
+                    'mail_from' => config('mail.from.address'),
+                    'mail_host' => config('mail.mailers.smtp.host'),
+                ]);
+            } catch (\Throwable $e) {
+                \Log::error('Failed to send withdrawal completion email', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'withdrawal_id' => $withdrawal->id,
+                    'mail_driver' => config('mail.default'),
+                    'mail_from' => config('mail.from.address'),
+                    'mail_host' => config('mail.mailers.smtp.host'),
+                ]);
+                // Don't fail the request if email fails, but log it
+            }
+
+            return back()->with('success', 'Receipt submitted successfully. User has been notified via email.');
+        } catch (\Exception $e) {
+            \Log::error('Failed to submit withdrawal receipt', [
+                'error' => $e->getMessage(),
+                'withdrawal_id' => $withdrawal->id,
+            ]);
+            return back()->with('error', 'Failed to submit receipt. Please try again.');
+        }
+    }
+
+    /**
+     * Reject withdrawal request
+     */
+    public function rejectWithdrawal(Request $request, \App\Models\WithdrawRequest $withdrawal)
+    {
+        if ($withdrawal->status !== 'pending') {
+            return back()->with('error', 'Withdrawal already processed.');
+        }
+
+        $validated = $request->validate([
+            'rejection_reason' => 'nullable|string|max:500',
+        ]);
+
+        $user = $withdrawal->user;
+
+        // Update withdrawal status
+        $withdrawal->update([
+            'status' => 'rejected',
+            'notes' => $validated['rejection_reason'] ?? 'Withdrawal request rejected by admin.'
+        ]);
+
+        // Return tokens to user since withdrawal was rejected
+        // Tokens were deducted on submission, so we need to add them back
+        $user->addTokens($withdrawal->token_amount, 'Withdrawal request rejected - tokens refunded - WDR-' . $withdrawal->id);
 
         // Log transaction
         Transaction::create([
             'user_id' => $user->id,
-            'type' => 'withdrawal',
+            'type' => 'withdrawal_refund',
             'amount' => (int) $withdrawal->token_amount,
             'status' => 'completed',
-            'reference' => 'WDR-' . $withdrawal->id,
+            'reference' => 'WDR-REFUND-' . $withdrawal->id,
         ]);
 
-        return back()->with('success', 'Withdrawal approved. Tokens deducted from user balance.');
+        // Send email notification
+        try {
+            // Refresh withdrawal to ensure we have latest data
+            $withdrawal->refresh();
+            
+            // Use Mail facade with explicit configuration
+            \Mail::send('emails.withdrawal-rejected', [
+                'user' => $user,
+                'withdrawal' => $withdrawal,
+                'reason' => $validated['rejection_reason'] ?? 'Withdrawal request rejected by admin.',
+            ], function($m) use ($user) {
+                $m->from(config('mail.from.address', 'no-reply@rwamp.com'), config('mail.from.name', 'RWAMP'))
+                  ->to($user->email, $user->name)
+                  ->subject('Withdrawal Request Rejected - RWAMP');
+            });
+            
+            \Log::info('Withdrawal rejection email sent successfully', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'withdrawal_id' => $withdrawal->id,
+                'mail_driver' => config('mail.default'),
+                'mail_from' => config('mail.from.address'),
+                'mail_host' => config('mail.mailers.smtp.host'),
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Failed to send withdrawal rejection email', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'withdrawal_id' => $withdrawal->id,
+                'mail_driver' => config('mail.default'),
+                'mail_from' => config('mail.from.address'),
+                'mail_host' => config('mail.mailers.smtp.host'),
+            ]);
+            // Don't fail the request if email fails, but log it
+        }
+
+        return back()->with('success', 'Withdrawal rejected. User will be notified via email.');
+    }
+
+    /**
+     * Update withdrawal request
+     */
+    public function updateWithdrawal(Request $request, \App\Models\WithdrawRequest $withdrawal)
+    {
+        if ($withdrawal->status !== 'pending') {
+            return back()->with('error', 'Cannot edit processed withdrawal.');
+        }
+
+        $validated = $request->validate([
+            'wallet_address' => 'required|string|max:255',
+            'token_amount' => 'required|numeric|min:0.01',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $user = $withdrawal->user;
+        $oldAmount = $withdrawal->token_amount;
+        $newAmount = $validated['token_amount'];
+        $amountDifference = $newAmount - $oldAmount;
+
+        // Use database transaction to ensure atomicity
+        \DB::beginTransaction();
+        try {
+            if ($amountDifference > 0) {
+                // Amount increased - deduct additional tokens
+                $additionalAmount = $amountDifference;
+                
+                // Verify user has sufficient balance for the additional amount
+                if ($user->token_balance < $additionalAmount) {
+                    \DB::rollBack();
+                    return back()->with('error', 'User has insufficient balance for the increased amount. User has ' . number_format($user->token_balance, 2) . ' RWAMP tokens available.');
+                }
+
+                // Deduct additional tokens
+                $user->deductTokens($additionalAmount, 'Withdrawal request amount increased - additional tokens deducted - WDR-' . $withdrawal->id);
+
+                // Log transaction
+                Transaction::create([
+                    'user_id' => $user->id,
+                    'type' => 'withdrawal_adjustment',
+                    'amount' => (int) $additionalAmount,
+                    'status' => 'completed',
+                    'reference' => 'WDR-INCREASE-' . $withdrawal->id,
+                ]);
+            } elseif ($amountDifference < 0) {
+                // Amount decreased - refund the difference
+                $refundAmount = abs($amountDifference);
+                
+                // Refund tokens to user
+                $user->addTokens($refundAmount, 'Withdrawal request amount decreased - tokens refunded - WDR-' . $withdrawal->id);
+
+                // Log transaction
+                Transaction::create([
+                    'user_id' => $user->id,
+                    'type' => 'withdrawal_refund',
+                    'amount' => (int) $refundAmount,
+                    'status' => 'completed',
+                    'reference' => 'WDR-DECREASE-REFUND-' . $withdrawal->id,
+                ]);
+            }
+            // If amountDifference == 0, no token adjustment needed
+
+            // Store old data for email comparison
+            $oldWalletAddress = $withdrawal->wallet_address;
+            $oldNotes = $withdrawal->notes;
+
+            // Update withdrawal request
+            $withdrawal->update($validated);
+
+            // Refresh to get updated data
+            $withdrawal->refresh();
+
+            \DB::commit();
+
+            // Send email notification
+            try {
+                $changes = [];
+                if ($oldAmount != $newAmount) {
+                    $changes[] = 'Amount changed from ' . number_format($oldAmount, 2) . ' to ' . number_format($newAmount, 2) . ' RWAMP';
+                }
+                if ($oldWalletAddress != $validated['wallet_address']) {
+                    $changes[] = 'Wallet address updated';
+                }
+                if ($oldNotes != ($validated['notes'] ?? '')) {
+                    $changes[] = 'Notes updated';
+                }
+
+                // Use Mail facade with explicit configuration
+                \Mail::send('emails.withdrawal-updated', [
+                    'user' => $user,
+                    'withdrawal' => $withdrawal,
+                    'oldAmount' => $oldAmount,
+                    'newAmount' => $newAmount,
+                    'amountDifference' => $amountDifference,
+                    'changes' => $changes,
+                ], function($m) use ($user) {
+                    $m->from(config('mail.from.address', 'no-reply@rwamp.com'), config('mail.from.name', 'RWAMP'))
+                      ->to($user->email, $user->name)
+                      ->subject('Withdrawal Request Updated - RWAMP');
+                });
+                
+                \Log::info('Withdrawal update email sent successfully', [
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'withdrawal_id' => $withdrawal->id,
+                    'mail_driver' => config('mail.default'),
+                    'mail_from' => config('mail.from.address'),
+                ]);
+            } catch (\Throwable $e) {
+                \Log::error('Failed to send withdrawal update email', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'withdrawal_id' => $withdrawal->id,
+                    'mail_driver' => config('mail.default'),
+                    'mail_from' => config('mail.from.address'),
+                ]);
+                // Don't fail the request if email fails, but log it
+            }
+
+            $message = 'Withdrawal request updated successfully.';
+            if ($amountDifference > 0) {
+                $message .= ' ' . number_format($additionalAmount, 2) . ' additional RWAMP tokens have been deducted from the user\'s balance.';
+            } elseif ($amountDifference < 0) {
+                $message .= ' ' . number_format($refundAmount, 2) . ' RWAMP tokens have been refunded to the user\'s balance.';
+            }
+            $message .= ' User has been notified via email.';
+
+            return back()->with('success', $message);
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Failed to update withdrawal request', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'withdrawal_id' => $withdrawal->id,
+                'user_id' => $user->id ?? null,
+                'old_amount' => $oldAmount,
+                'new_amount' => $newAmount,
+            ]);
+            return back()->with('error', 'Failed to update withdrawal request. Please try again.');
+        }
+    }
+
+    /**
+     * Delete withdrawal request
+     */
+    public function deleteWithdrawal(Request $request, \App\Models\WithdrawRequest $withdrawal)
+    {
+        if ($withdrawal->status !== 'pending') {
+            return back()->with('error', 'Cannot delete processed withdrawal.');
+        }
+
+        $validated = $request->validate([
+            'deletion_reason' => 'nullable|string|max:500',
+        ]);
+
+        $user = $withdrawal->user;
+        $tokenAmount = $withdrawal->token_amount;
+        $withdrawalId = $withdrawal->id;
+        $deletionReason = $validated['deletion_reason'] ?? 'Withdrawal request deleted by admin.';
+
+        // Store withdrawal data before deletion for email
+        $withdrawalData = [
+            'id' => $withdrawal->id,
+            'token_amount' => $withdrawal->token_amount,
+            'wallet_address' => $withdrawal->wallet_address,
+            'created_at' => $withdrawal->created_at,
+        ];
+
+        // Use database transaction to ensure atomicity
+        \DB::beginTransaction();
+        try {
+            // Refund tokens to user before deletion
+            // Tokens were deducted on submission, so we need to add them back
+            $user->addTokens($tokenAmount, 'Withdrawal request deleted - tokens refunded - WDR-' . $withdrawalId);
+
+            // Log transaction for audit trail
+            \App\Models\Transaction::create([
+                'user_id' => $user->id,
+                'type' => 'withdrawal_refund',
+                'amount' => (int) $tokenAmount,
+                'status' => 'completed',
+                'reference' => 'WDR-DELETE-REFUND-' . $withdrawalId,
+            ]);
+
+            // Delete the withdrawal request
+            $withdrawal->delete();
+
+            \DB::commit();
+
+            // Send email notification
+            try {
+                // Use Mail facade with explicit configuration
+                \Mail::send('emails.withdrawal-deleted', [
+                    'user' => $user,
+                    'withdrawal' => (object) $withdrawalData, // Convert array to object for template
+                    'reason' => $deletionReason,
+                ], function($m) use ($user) {
+                    $m->from(config('mail.from.address', 'no-reply@rwamp.com'), config('mail.from.name', 'RWAMP'))
+                      ->to($user->email, $user->name)
+                      ->subject('Withdrawal Request Deleted - RWAMP');
+                });
+                
+                \Log::info('Withdrawal deletion email sent successfully', [
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'withdrawal_id' => $withdrawalId,
+                    'mail_driver' => config('mail.default'),
+                    'mail_from' => config('mail.from.address'),
+                ]);
+            } catch (\Throwable $e) {
+                \Log::error('Failed to send withdrawal deletion email', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'withdrawal_id' => $withdrawalId,
+                    'mail_driver' => config('mail.default'),
+                    'mail_from' => config('mail.from.address'),
+                ]);
+                // Don't fail the request if email fails, but log it
+            }
+
+            return back()->with('success', 'Withdrawal request deleted successfully. ' . number_format($tokenAmount, 2) . ' RWAMP tokens have been refunded to the user. User has been notified via email.');
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Failed to delete withdrawal request', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'withdrawal_id' => $withdrawalId,
+                'user_id' => $user->id ?? null,
+            ]);
+            return back()->with('error', 'Failed to delete withdrawal request. Please try again.');
+        }
     }
 
     /**

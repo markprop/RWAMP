@@ -66,29 +66,56 @@
                 </div>
             </div>
         </div>
-        <div class="flex items-center justify-end gap-3">
-            <button 
-                x-show="!isWalletConnected" 
-                @click="connectWallet()" 
-                :disabled="isConnecting || !canConnectWallet()" 
-                class="btn-primary px-6 py-3 disabled:opacity-60 disabled:cursor-not-allowed"
-                :title="getConnectButtonTooltip()"
-            >
-                <span x-show="!isConnecting">Connect Wallet</span>
-                <span x-show="isConnecting">Connecting...</span>
-            </button>
-            <button 
-                x-show="isWalletConnected" 
-                @click="executePayment()" 
-                :disabled="!canPay() || isProcessingPayment" 
-                class="btn-primary px-6 py-3 disabled:opacity-60 disabled:cursor-not-allowed"
-                :title="getPayButtonTooltip()"
-            >
-                <span x-show="!isProcessingPayment">
-                    Pay <span x-text="getUsdtAmountForPayment()"></span> USDT
-                </span>
-                <span x-show="isProcessingPayment">Processing...</span>
-            </button>
+        <div class="space-y-3">
+            <!-- Offline Payment Option -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div class="flex items-start gap-3">
+                    <div class="flex-shrink-0 mt-1">
+                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="text-sm font-semibold text-blue-900 mb-1">Don't Have USDT?</h4>
+                        <p class="text-xs text-blue-700 mb-3">Pay through offline methods. Contact our support team via chat to arrange payment through bank transfer, JazzCash, EasyPaisa, or other convenient payment methods.</p>
+                        <button 
+                            @click="openOfflinePaymentChat()" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-semibold transition-colors duration-200 shadow-md hover:shadow-lg flex items-center gap-2"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                            </svg>
+                            <span>Offline Pay</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Crypto Payment Buttons -->
+            <div class="flex items-center justify-end gap-3">
+                <button 
+                    x-show="!isWalletConnected" 
+                    @click="connectWallet()" 
+                    :disabled="isConnecting || !canConnectWallet()" 
+                    class="btn-primary px-6 py-3 disabled:opacity-60 disabled:cursor-not-allowed"
+                    :title="getConnectButtonTooltip()"
+                >
+                    <span x-show="!isConnecting">Connect Wallet</span>
+                    <span x-show="isConnecting">Connecting...</span>
+                </button>
+                <button 
+                    x-show="isWalletConnected" 
+                    @click="executePayment()" 
+                    :disabled="!canPay() || isProcessingPayment" 
+                    class="btn-primary px-6 py-3 disabled:opacity-60 disabled:cursor-not-allowed"
+                    :title="getPayButtonTooltip()"
+                >
+                    <span x-show="!isProcessingPayment">
+                        Pay <span x-text="getUsdtAmountForPayment()"></span> USDT
+                    </span>
+                    <span x-show="isProcessingPayment">Processing...</span>
+                </button>
+            </div>
         </div>
         <!-- Helpful messages explaining why button might be disabled -->
         <div x-show="!canConnectWallet() && !isWalletConnected" class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">

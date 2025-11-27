@@ -332,6 +332,49 @@ class EmailVerificationController extends Controller
         // Auto-login the user
         Auth::login($user);
 
+        // Check if reseller is using default password (first-time login after approval)
+        if ($user->role === 'reseller') {
+            $defaultPassword = 'RWAMP@agent';
+            // Check if the password matches the default password
+            if (\Illuminate\Support\Facades\Hash::check($defaultPassword, $user->password)) {
+                // Set password reset required flag in cache
+                Cache::put('password_reset_required_user_' . $user->id, true, now()->addDays(30));
+                
+                // Clear intended action since password reset takes priority
+                $request->session()->forget('intended_action');
+                
+                // Check if this is an AJAX request
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => __('Email verified successfully! Please set your password.'),
+                        'redirect' => route('password.change.required'),
+                    ]);
+                }
+                
+                return redirect()->route('password.change.required')
+                    ->with('success', __('Email verified successfully! Please set your password for security.'));
+            }
+        }
+
+        // Check if password reset is required (from cache flag)
+        if (Cache::get('password_reset_required_user_' . $user->id)) {
+            // Clear intended action since password reset takes priority
+            $request->session()->forget('intended_action');
+            
+            // Check if this is an AJAX request
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => __('Email verified successfully! Please set your password.'),
+                    'redirect' => route('password.change.required'),
+                ]);
+            }
+            
+            return redirect()->route('password.change.required')
+                ->with('success', __('Email verified successfully! Please set your password.'));
+        }
+
         // Redirect to dashboard based on role
         $dashboardRoute = match ($user->role) {
             'admin' => 'dashboard.admin',

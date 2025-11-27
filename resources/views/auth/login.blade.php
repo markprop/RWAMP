@@ -108,13 +108,18 @@
                 <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">{{ $errors->first() }}</div>
             @endif
 
-            <form method="POST" action="{{ route('login.post') }}" class="space-y-4" novalidate x-data="loginForm">
+            <form method="POST" action="{{ route('login.post') }}" class="space-y-4" novalidate x-data="loginForm" @submit="validateRole($event)">
                 @csrf
-                <div class="flex gap-2 justify-center">
-                    <button type="button" onclick="document.getElementById('login-role').value='investor'; this.classList.add('border-primary','text-primary','bg-primary/5'); document.getElementById('role-reseller').classList.remove('border-primary','text-primary','bg-primary/5'); document.getElementById('role-reseller').classList.add('border-gray-200','text-gray-700');" id="role-investor" class="flex-1 px-4 py-2.5 rounded-lg border-2 border-primary text-primary bg-primary/5 font-medium transition-all duration-200 text-sm sm:text-base">Investor</button>
-                    <button type="button" onclick="document.getElementById('login-role').value='reseller'; this.classList.add('border-primary','text-primary','bg-primary/5'); document.getElementById('role-investor').classList.remove('border-primary','text-primary','bg-primary/5'); document.getElementById('role-investor').classList.add('border-gray-200','text-gray-700');" id="role-reseller" class="flex-1 px-4 py-2.5 rounded-lg border-2 border-gray-200 text-gray-700 font-medium transition-all duration-200 text-sm sm:text-base">Reseller</button>
+                <!-- Role Selection (Required for Investor/Reseller, Hidden for Admin) -->
+                <div class="flex gap-2 justify-center" x-show="!isAdmin">
+                    <button type="button" @click="selectRole('investor')" :class="selectedRole === 'investor' ? 'border-primary text-primary bg-primary/5' : 'border-gray-200 text-gray-700'" class="flex-1 px-4 py-2.5 rounded-lg border-2 font-medium transition-all duration-200 text-sm sm:text-base">Investor</button>
+                    <button type="button" @click="selectRole('reseller')" :class="selectedRole === 'reseller' ? 'border-primary text-primary bg-primary/5' : 'border-gray-200 text-gray-700'" class="flex-1 px-4 py-2.5 rounded-lg border-2 font-medium transition-all duration-200 text-sm sm:text-base">Reseller</button>
                 </div>
-                <input type="hidden" name="role" id="login-role" value="">
+                <input type="hidden" name="role" x-model="selectedRole">
+                <div x-show="!isAdmin && !selectedRole" class="text-sm text-red-600 mb-2">Please select your role (Investor or Reseller)</div>
+                @error('role')
+                    <div class="text-sm text-red-600 mb-2">{{ $message }}</div>
+                @enderror
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                         Email
@@ -153,7 +158,7 @@
                 </div>
                 <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
                     <label class="inline-flex items-center gap-2 text-xs sm:text-sm text-gray-700">
-                        <input type="checkbox" name="remember" class="rounded border-gray-300 w-4 h-4" /> Remember me
+                        <input type="checkbox" name="remember" value="1" class="rounded border-gray-300 w-4 h-4" /> Remember me
                     </label>
                     <a href="{{ route('password.request') }}" class="text-xs sm:text-sm text-primary hover:underline">Forgot Password?</a>
                 </div>

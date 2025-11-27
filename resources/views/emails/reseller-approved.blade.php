@@ -99,34 +99,42 @@
             <p>Your RWAMP reseller application has been <strong>approved</strong>. You can now access your reseller dashboard and start selling RWAMP tokens to your network.</p>
 
             <div class="credentials-box">
-                <h3 style="color: #ffffff; margin-top: 0; margin-bottom: 20px;">Your Login Credentials</h3>
+                <h3 style="color: #ffffff; margin-top: 0; margin-bottom: 20px;">Your Account Information</h3>
                 <div class="credential-item">
                     <span class="credential-label">Email:</span>
                     <span class="credential-value">{{ $user->email }}</span>
                 </div>
-                <div class="credential-item">
-                    <span class="credential-label">Password:</span>
-                    <span class="credential-value">Use the password you set during application</span>
-                </div>
             </div>
+
+            @if(isset($hasResetToken) && $hasResetToken && isset($resetUrl))
+            <div class="password-box" style="background-color: #e7f3ff; border-left-color: #2196F3;">
+                <strong>🔐 Secure Password Setup</strong>
+                <p style="margin: 10px 0 15px 0;">For your security, we've generated a secure password setup link. Click the button below to set your password:</p>
+                <div style="text-align: center; margin-top: 15px;">
+                    <a href="{{ $resetUrl }}" class="btn" style="background-color: #2196F3; display: inline-block; padding: 12px 24px; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold;">Set Your Password</a>
+                </div>
+                <p style="margin: 15px 0 0 0; font-size: 12px; color: #666;"><strong>Note:</strong> This link will expire in 60 minutes for security reasons. If it expires, you can use the "Forgot Password" option on the login page.</p>
+            </div>
+            @else
+            <div class="password-box">
+                <strong>🔐 Password Setup</strong>
+                <p style="margin: 10px 0 0 0;">To set your password, please use the "Forgot Password" option on the login page. You'll receive a secure link to set your password.</p>
+            </div>
+            @endif
 
             <div class="password-box">
                 <p><strong>Important:</strong> When you log in for the first time, you will be required to verify your email address through OTP verification. Please check your email for the verification code after logging in.</p>
             </div>
 
-            <div class="password-box" style="display: none;">
-                <strong>🔒 Security Notice</strong>
-                <p style="margin: 10px 0 0 0;">For your security, you <strong>must change your password</strong> immediately after your first login. The system will automatically prompt you to set a new password.</p>
-            </div>
-
             <div style="text-align: center; margin: 30px 0;">
-                <a href="{{ $loginUrl }}" class="btn">Login to Your Dashboard</a>
+                <a href="{{ $loginUrl }}" class="btn">Go to Login Page</a>
             </div>
 
             <h3 style="color: #000; margin-top: 30px;">What's Next?</h3>
             <ul style="color: #666; line-height: 1.8;">
-                <li>Log in using the credentials above</li>
-                <li>Change your password when prompted</li>
+                <li>Set your password using the secure link above (or use "Forgot Password" on the login page)</li>
+                <li>Log in using your email and the password you set</li>
+                <li>Verify your email address when prompted</li>
                 <li>Explore your reseller dashboard</li>
                 <li>Start selling RWAMP tokens to your network</li>
                 <li>Earn commissions on direct purchases</li>

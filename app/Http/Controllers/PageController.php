@@ -19,12 +19,48 @@ class PageController extends Controller
         $tokenPricePkr = PriceHelper::getRwampPkrPrice();
         
         // Calculate total tokens sold from:
-        // 1. Credit transactions (crypto payments)
+        // 1. Credit transactions (crypto payments) - EXCLUDING refunds
         // 2. Admin transfer credit transactions (admin sales to resellers/users)
         // 3. Crypto purchase transactions (alternative crypto payment type)
-        $totalTokensSold = Transaction::whereIn('type', ['credit', 'admin_transfer_credit', 'crypto_purchase'])
-            ->where('status', 'completed')
+        // 
+        // IMPORTANT: Exclude withdrawal refunds and any credit transactions related to refunds
+        // because these are not new sales - they're just returning tokens that were already sold
+        // 
+        // Note: When refunds happen, TWO transactions are created:
+        // 1. addTokens() creates a 'credit' transaction (no reference)
+        // 2. Transaction::create() creates a 'withdrawal_refund' transaction (with reference)
+        // We need to exclude both!
+        $totalTokensSold = Transaction::where('status', 'completed')
             ->where('amount', '>', 0) // Only count positive amounts (credits)
+            ->where(function($query) {
+                // Include admin transfers and crypto purchases (these are always sales)
+                $query->whereIn('type', ['admin_transfer_credit', 'crypto_purchase'])
+                      // Include credit transactions that are NOT refunds
+                      ->orWhere(function($q) {
+                          $q->where('type', 'credit')
+                            // Exclude credit transactions that correspond to withdrawal refunds
+                            // A refund credit transaction will have a matching withdrawal_refund transaction
+                            // with the same user_id, amount, and created_at date (same day)
+                            // Since refunds happen immediately, checking same day is sufficient
+                            ->whereNotExists(function($subQuery) {
+                                $subQuery->select(\DB::raw(1))
+                                    ->from('transactions as refund_tx')
+                                    ->whereColumn('refund_tx.user_id', 'transactions.user_id')
+                                    ->whereColumn('refund_tx.amount', 'transactions.amount')
+                                    ->where('refund_tx.type', 'withdrawal_refund')
+                                    ->whereRaw('DATE(refund_tx.created_at) = DATE(transactions.created_at)');
+                            })
+                            // Also exclude credit transactions with withdrawal refund references (if any exist)
+                            ->where(function($refundQuery) {
+                                $refundQuery->whereNull('reference')
+                                           ->orWhere('reference', 'not like', 'WDR-REFUND-%')
+                                           ->orWhere('reference', 'not like', 'WDR-DELETE-REFUND-%')
+                                           ->orWhere('reference', 'not like', 'WDR-DECREASE-REFUND-%');
+                            });
+                      });
+            })
+            // Explicitly exclude withdrawal_refund type transactions
+            ->where('type', '!=', 'withdrawal_refund')
             ->sum('amount') ?? 0;
         
         // Get USD to PKR exchange rate (automatically fetched from API if needed)

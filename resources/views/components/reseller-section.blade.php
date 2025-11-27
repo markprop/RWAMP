@@ -26,7 +26,8 @@
                     <div class="bg-gray-800 rounded-lg p-6 flex-1">
                         <h4 class="font-montserrat font-bold text-lg mb-2">Bulk Buy</h4>
                         <p class="text-gray-300">Purchase RWAMP tokens at wholesale prices</p>
-                        <div class="mt-2 text-accent font-mono font-bold">Rs 0.70 per token</div>
+                        <div class="mt-2 text-accent font-mono font-bold">40% to 60% Discount</div>
+                        <p class="text-xs text-gray-400 mt-1">Special reseller pricing available</p>
                     </div>
                 </div>
                 
@@ -42,8 +43,9 @@
                     </div>
                     <div class="bg-gray-800 rounded-lg p-6 flex-1">
                         <h4 class="font-montserrat font-bold text-lg mb-2">Resell</h4>
-                        <p class="text-gray-300">Sell tokens to your network at market price</p>
-                        <div class="mt-2 text-accent font-mono font-bold">Rs 0.90 per token</div>
+                        <p class="text-gray-300">Set your own price (or you can use official price)</p>
+                        <div class="mt-2 text-accent font-mono font-bold">Your Selling Price</div>
+                        <p class="text-xs text-gray-400 mt-1">Flexible pricing strategy</p>
                     </div>
                 </div>
                 
@@ -60,26 +62,41 @@
                     <div class="bg-gray-800 rounded-lg p-6 flex-1">
                         <h4 class="font-montserrat font-bold text-lg mb-2">Profit</h4>
                         <p class="text-gray-300">Keep the difference as your profit</p>
-                        <div class="mt-2 text-success font-mono font-bold">Rs 0.20 per token</div>
+                        <div class="mt-2 text-success font-mono font-bold">Calculated automatically</div>
+                        <p class="text-xs text-gray-400 mt-1">See calculator below</p>
                     </div>
                 </div>
                 
-                <!-- Highlight Box -->
-                <div class="bg-gradient-to-r from-accent to-yellow-500 rounded-lg p-6 text-black">
+                <!-- Highlight Box - Dynamic Profit Calculator -->
+                <div class="bg-gradient-to-r from-accent to-yellow-500 rounded-lg p-6 text-black" x-data="profitCalculator">
                     <div class="text-center">
-                        <h4 class="font-montserrat font-bold text-xl mb-2">Profit Calculator</h4>
-                        <div class="space-y-2">
-                            <div class="flex justify-between">
-                                <span>Buy at:</span>
-                                <span class="font-mono font-bold">Rs 0.70</span>
+                        <h4 class="font-montserrat font-bold text-xl mb-4">Profit Calculator</h4>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="font-semibold">Buy at:</span>
+                                <input 
+                                    type="number" 
+                                    x-model="buyPrice" 
+                                    step="0.01" 
+                                    min="0"
+                                    placeholder="0.00"
+                                    class="w-24 px-2 py-1 text-right font-mono font-bold bg-white/90 border border-black/20 rounded text-black"
+                                />
                             </div>
-                            <div class="flex justify-between">
-                                <span>Sell at:</span>
-                                <span class="font-mono font-bold">Rs 0.90</span>
+                            <div class="flex justify-between items-center">
+                                <span class="font-semibold">Sell at:</span>
+                                <input 
+                                    type="number" 
+                                    x-model="sellPrice" 
+                                    step="0.01" 
+                                    min="0"
+                                    placeholder="0.00"
+                                    class="w-24 px-2 py-1 text-right font-mono font-bold bg-white/90 border border-black/20 rounded text-black"
+                                />
                             </div>
-                            <div class="border-t border-black pt-2 flex justify-between font-bold text-lg">
+                            <div class="border-t-2 border-black pt-3 flex justify-between items-center font-bold text-lg">
                                 <span>Profit per token:</span>
-                                <span class="font-mono">Rs 0.20</span>
+                                <span class="font-mono" x-text="'Rs ' + profitPerToken">Rs 0.00</span>
                             </div>
                         </div>
                     </div>
@@ -95,24 +112,6 @@
                     Fill out the form below to apply for our partner program
                 </p>
 
-                <!-- Form Guidelines -->
-                <div class="mb-6 p-4 bg-blue-900/30 border border-blue-500/30 rounded-lg">
-                    <h4 class="text-white font-bold text-sm mb-2 flex items-center gap-2">
-                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        How to Fill This Form
-                    </h4>
-                    <ul class="text-xs text-gray-300 space-y-1.5 list-disc list-inside">
-                        <li><span class="font-semibold text-white">Full Name:</span> Enter your complete legal name as it appears on official documents</li>
-                        <li><span class="font-semibold text-white">Phone Number:</span> Include country code (e.g., +92 300 1234567)</li>
-                        <li><span class="font-semibold text-white">Email Address:</span> Use a valid email you check regularly</li>
-                        <li><span class="font-semibold text-white">Company Name:</span> Optional - leave blank if you're an individual</li>
-                        <li><span class="font-semibold text-white">Investment Capacity:</span> Select the range that matches your investment budget</li>
-                        <li><span class="font-semibold text-white">Message:</span> Tell us about your experience and goals (optional but recommended)</li>
-                    </ul>
-                </div>
-
                 @if(session('success'))
                     <div class="mb-4 p-4 bg-green-600 text-white rounded-lg text-center">
                         {{ session('success') }} Your request is pending admin approval.
@@ -124,7 +123,7 @@
                     </div>
                 @endif
                 
-                <form @submit.prevent="submitForm" class="space-y-6">
+                <form @submit.prevent="submitForm" class="space-y-6" data-reseller-form>
                     <!-- Honeypot to deter bots -->
                     <div class="hidden" aria-hidden="true">
                         <label class="block text-sm">Do not fill this field</label>
@@ -132,50 +131,126 @@
                     </div>
                     <input type="hidden" x-ref="recaptcha" />
                     <div>
-                        <label class="block text-sm font-semibold text-white mb-2">
+                        <label class="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
                             Full Name <span class="text-red-400">*</span>
+                            <div class="relative group">
+                                <svg class="h-4 w-4 text-gray-400 cursor-pointer hover:text-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" @click.stop="showTooltip('name', $event)">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <div x-show="tooltip === 'name'" @click.away="tooltip = null" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 transform scale-100" x-transition:leave-end="opacity-0 transform scale-95" class="absolute z-50 w-64 p-3 text-xs text-white bg-gray-900 rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2 mb-2" style="display: none;">
+                                    <p><strong>Full Name:</strong> Enter your complete legal name as it appears on official documents. Format: First Name Last Name (e.g., John Doe or Muhammad Ali)</p>
+                                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
+                                        <div class="border-4 border-transparent border-t-gray-900"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </label>
-                        <input
-                            type="text"
-                            x-model="formData.name"
-                            required
-                            class="w-full px-4 py-3 rounded-lg border border-gray-600 bg-gray-800 text-white placeholder-gray-400 focus:border-accent focus:ring-2 focus:ring-accent/30 focus:outline-none transition-all duration-300"
-                            placeholder="Enter your complete legal name"
-                        />
-                        <p class="text-xs text-gray-400 mt-1">As it appears on official documents</p>
+                        <div class="relative">
+                            <input
+                                type="text"
+                                x-model="formData.name"
+                                required
+                                class="w-full px-4 py-3 rounded-lg border border-gray-600 bg-gray-800 text-white placeholder-gray-400 focus:border-accent focus:ring-2 focus:ring-accent/30 focus:outline-none transition-all duration-300"
+                                placeholder="Enter your complete legal name"
+                                x-on:input="validateName($event.target.value)"
+                                x-on:blur="validateName($event.target.value)"
+                            />
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                <span x-show="nameValidated && nameStatus === 'valid' && formData.name.trim().length > 0" class="text-green-500">✓</span>
+                                <span x-show="nameValidated && nameStatus === 'invalid' && formData.name.trim().length > 0" class="text-red-500">✗</span>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">Format: First Name Last Name (e.g., John Doe)</p>
+                        <p x-show="nameValidated && nameStatus === 'invalid' && formData.name.trim().length > 0" x-cloak class="text-xs text-red-400 mt-1" x-text="nameMessage"></p>
+                        <p x-show="nameValidated && nameStatus === 'valid' && formData.name.trim().length > 0" x-cloak class="text-xs text-green-400 mt-1" x-text="nameMessage"></p>
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-semibold text-white mb-2">
+                        <label class="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
                             Phone Number <span class="text-red-400">*</span>
+                            <div class="relative group">
+                                <svg class="h-4 w-4 text-gray-400 cursor-pointer hover:text-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" @click.stop="showTooltip('phone', $event)">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <div x-show="tooltip === 'phone'" @click.away="tooltip = null" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 transform scale-100" x-transition:leave-end="opacity-0 transform scale-95" class="absolute z-50 w-64 p-3 text-xs text-white bg-gray-900 rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2 mb-2" style="display: none;">
+                                    <p><strong>Phone Number:</strong> Enter your phone number with country code. The system will auto-format it to Pakistan format (+92) if applicable. Examples: +92 300 1234567, 03001234567, 3001234567</p>
+                                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
+                                        <div class="border-4 border-transparent border-t-gray-900"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </label>
-                        <input
-                            type="tel"
-                            x-model="formData.phone"
-                            required
-                            class="w-full px-4 py-3 rounded-lg border border-gray-600 bg-gray-800 text-white placeholder-gray-400 focus:border-accent focus:ring-2 focus:ring-accent/30 focus:outline-none transition-all duration-300"
-                            placeholder="+92 300 1234567"
-                        />
-                        <p class="text-xs text-gray-400 mt-1">Include country code (e.g., +92 for Pakistan)</p>
+                        <div class="relative">
+                            <input
+                                type="tel"
+                                x-model="formData.phone"
+                                required
+                                class="w-full px-4 py-3 rounded-lg border border-gray-600 bg-gray-800 text-white placeholder-gray-400 focus:border-accent focus:ring-2 focus:ring-accent/30 focus:outline-none transition-all duration-300"
+                                placeholder="+92 300 1234567"
+                                x-on:input="formatPhone($event.target)"
+                                x-on:blur="validatePhone($event.target.value)"
+                            />
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                <span x-show="phoneStatus === 'checking' && formData.phone.trim().length > 0" class="animate-spin text-gray-400">⟳</span>
+                                <span x-show="phoneValidated && phoneStatus === 'valid' && formData.phone.trim().length > 0 && phoneStatus !== 'checking'" class="text-green-500">✓</span>
+                                <span x-show="phoneValidated && phoneStatus === 'invalid' && formData.phone.trim().length > 0 && phoneStatus !== 'checking'" class="text-red-500">✗</span>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">Auto-formats to Pakistan code (+92). Accepts any format.</p>
+                        <p x-show="phoneValidated && phoneStatus === 'invalid' && formData.phone.trim().length > 0 && phoneStatus !== 'checking'" x-cloak class="text-xs text-red-400 mt-1" x-text="phoneMessage"></p>
+                        <p x-show="phoneValidated && phoneStatus === 'valid' && formData.phone.trim().length > 0 && phoneStatus !== 'checking'" x-cloak class="text-xs text-green-400 mt-1" x-text="phoneMessage"></p>
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-semibold text-white mb-2">
+                        <label class="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
                             Email Address <span class="text-red-400">*</span>
+                            <div class="relative group">
+                                <svg class="h-4 w-4 text-gray-400 cursor-pointer hover:text-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" @click.stop="showTooltip('email', $event)">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <div x-show="tooltip === 'email'" @click.away="tooltip = null" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 transform scale-100" x-transition:leave-end="opacity-0 transform scale-95" class="absolute z-50 w-64 p-3 text-xs text-white bg-gray-900 rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2 mb-2" style="display: none;">
+                                    <p><strong>Email Address:</strong> Enter a valid email address. The system will verify that the email exists and is available. Format: user@example.com. You'll receive application notifications at this email.</p>
+                                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
+                                        <div class="border-4 border-transparent border-t-gray-900"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </label>
-                        <input
-                            type="email"
-                            x-model="formData.email"
-                            required
-                            class="w-full px-4 py-3 rounded-lg border border-gray-600 bg-gray-800 text-white placeholder-gray-400 focus:border-accent focus:ring-2 focus:ring-accent/30 focus:outline-none transition-all duration-300"
-                            placeholder="your.email@example.com"
-                        />
-                        <p class="text-xs text-gray-400 mt-1">We'll send updates to this email</p>
+                        <div class="relative">
+                            <input
+                                type="email"
+                                x-model="formData.email"
+                                required
+                                class="w-full px-4 py-3 rounded-lg border border-gray-600 bg-gray-800 text-white placeholder-gray-400 focus:border-accent focus:ring-2 focus:ring-accent/30 focus:outline-none transition-all duration-300"
+                                placeholder="your.email@example.com"
+                                x-on:input.debounce.500ms="validateEmail($event.target.value)"
+                                x-on:blur="validateEmail($event.target.value)"
+                            />
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                <span x-show="emailStatus === 'checking' && formData.email.trim().length > 0" class="animate-spin text-gray-400">⟳</span>
+                                <span x-show="emailValidated && emailStatus === 'valid' && formData.email.trim().length > 0 && emailStatus !== 'checking'" class="text-green-500">✓</span>
+                                <span x-show="emailValidated && emailStatus === 'invalid' && formData.email.trim().length > 0 && emailStatus !== 'checking'" class="text-red-500">✗</span>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">Format: valid email address (e.g., user@example.com)</p>
+                        <p x-show="emailValidated && emailStatus === 'invalid' && formData.email.trim().length > 0 && emailStatus !== 'checking'" x-cloak class="text-xs text-red-400 mt-1" x-text="emailMessage"></p>
+                        <p x-show="emailValidated && emailStatus === 'valid' && formData.email.trim().length > 0 && emailStatus !== 'checking'" x-cloak class="text-xs text-green-400 mt-1" x-text="emailMessage"></p>
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-semibold text-white mb-2">
+                        <label class="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
                             Company Name <span class="text-gray-400 text-xs">(Optional)</span>
+                            <div class="relative group">
+                                <svg class="h-4 w-4 text-gray-400 cursor-pointer hover:text-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" @click.stop="showTooltip('company', $event)">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <div x-show="tooltip === 'company'" @click.away="tooltip = null" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 transform scale-100" x-transition:leave-end="opacity-0 transform scale-95" class="absolute z-50 w-64 p-3 text-xs text-white bg-gray-900 rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2 mb-2" style="display: none;">
+                                    <p><strong>Company Name:</strong> Enter your business or company name if you're applying as a business entity. This field is optional - leave blank if you're an individual.</p>
+                                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
+                                        <div class="border-4 border-transparent border-t-gray-900"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </label>
                         <input
                             type="text"
@@ -187,8 +262,19 @@
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-semibold text-white mb-2">
+                        <label class="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
                             Investment Capacity <span class="text-red-400">*</span>
+                            <div class="relative group">
+                                <svg class="h-4 w-4 text-gray-400 cursor-pointer hover:text-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" @click.stop="showTooltip('investment', $event)">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <div x-show="tooltip === 'investment'" @click.away="tooltip = null" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 transform scale-100" x-transition:leave-end="opacity-0 transform scale-95" class="absolute z-50 w-64 p-3 text-xs text-white bg-gray-900 rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2 mb-2" style="display: none;">
+                                    <p><strong>Investment Capacity:</strong> Select the range that matches your investment budget. This helps us understand your business scale and provide appropriate support.</p>
+                                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
+                                        <div class="border-4 border-transparent border-t-gray-900"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </label>
                         <select
                             x-model="formData.investmentCapacity"
@@ -205,8 +291,19 @@
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-semibold text-white mb-2">
+                        <label class="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
                             Message <span class="text-gray-400 text-xs">(Optional)</span>
+                            <div class="relative group">
+                                <svg class="h-4 w-4 text-gray-400 cursor-pointer hover:text-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" @click.stop="showTooltip('message', $event)">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <div x-show="tooltip === 'message'" @click.away="tooltip = null" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 transform scale-100" x-transition:leave-end="opacity-0 transform scale-95" class="absolute z-50 w-64 p-3 text-xs text-white bg-gray-900 rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2 mb-2" style="display: none;">
+                                    <p><strong>Message:</strong> Tell us about your experience, goals, and why you want to become a partner. This field is optional but recommended as it helps with your application review.</p>
+                                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
+                                        <div class="border-4 border-transparent border-t-gray-900"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </label>
                         <textarea
                             x-model="formData.message"
@@ -230,15 +327,24 @@
                 @if (config('services.recaptcha.site_key'))
                 <script src="https://www.google.com/recaptcha/api.js?render={{ config('services.recaptcha.site_key') }}"></script>
                 <script>
-                document.addEventListener('alpine:init', () => {
-                    const container = document.currentScript.closest('[x-data]');
-                    container.__x && (container.__x.$data.getRecaptcha = function(action){
-                        return new Promise((resolve) => {
-                            grecaptcha.ready(function(){
-                                grecaptcha.execute('{{ config('services.recaptcha.site_key') }}', {action}).then(resolve);
-                            });
-                        })
-                    });
+                document.addEventListener('DOMContentLoaded', () => {
+                    // Wait for Alpine to initialize, then find the resellerForm component
+                    setTimeout(() => {
+                        const container = document.querySelector('[x-data="resellerForm"]');
+                        if (container && container.__x && container.__x.$data) {
+                            container.__x.$data.getRecaptcha = function(action){
+                                return new Promise((resolve) => {
+                                    if (window.grecaptcha) {
+                                        grecaptcha.ready(function(){
+                                            grecaptcha.execute('{{ config('services.recaptcha.site_key') }}', {action}).then(resolve);
+                                        });
+                                    } else {
+                                        resolve('');
+                                    }
+                                });
+                            };
+                        }
+                    }, 100);
                 });
                 </script>
                 @endif

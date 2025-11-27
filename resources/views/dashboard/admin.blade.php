@@ -78,14 +78,13 @@
             <a href="{{ route('admin.applications', ['status' => 'pending']) }}" class="bg-white rounded-xl shadow-xl p-6 card-hover block">
                 <div class="text-sm text-gray-600">Pending Applications</div>
                 <div class="text-3xl font-bold">{{ $metrics['pending_applications'] ?? '—' }}</div>
+                <div class="mt-1 text-xs text-gray-500">
+                    of {{ $metrics['total_applications'] ?? 0 }} total
+                </div>
             </a>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-            <a href="{{ route('admin.users', ['days' => 7]) }}" class="bg-white rounded-xl shadow-xl p-6 card-hover block">
-                <div class="text-sm text-gray-600">New Users (7d)</div>
-                <div class="text-3xl font-bold">{{ $metrics['new_users_7'] ?? '—' }}</div>
-            </a>
             <a href="{{ route('admin.users', ['days' => 30]) }}" class="bg-white rounded-xl shadow-xl p-6 card-hover block">
                 <div class="text-sm text-gray-600">New Users (30d)</div>
                 <div class="text-3xl font-bold">{{ $metrics['new_users_30'] ?? '—' }}</div>
@@ -93,18 +92,43 @@
             <a href="{{ route('admin.kyc.list', ['status' => 'pending']) }}" class="bg-white rounded-xl shadow-xl p-6 card-hover block">
                 <div class="text-sm text-gray-600">Pending KYC</div>
                 <div class="text-3xl font-bold">{{ $metrics['pending_kyc'] ?? '—' }}</div>
+                <div class="mt-1 text-xs text-gray-500">
+                    of {{ $metrics['total_kyc'] ?? 0 }} total
+                </div>
             </a>
             <a href="{{ route('admin.crypto.payments') }}" class="bg-white rounded-xl shadow-xl p-6 card-hover block">
                 <div class="text-sm text-gray-600">Crypto Payments</div>
-                <div class="text-3xl font-bold">{{ $metrics['crypto_payments'] ?? '—' }}</div>
+                <div class="text-3xl font-bold">{{ $metrics['pending_crypto_payments'] ?? '—' }}</div>
+                <div class="mt-1 text-xs text-gray-500">
+                    pending of {{ $metrics['crypto_payments'] ?? 0 }} total
+                </div>
+            </a>
+            <a href="{{ route('admin.withdrawals') }}" class="bg-white rounded-xl shadow-xl p-6 card-hover block">
+                <div class="text-sm text-gray-600">Withdrawal Requests</div>
+                <div class="text-3xl font-bold">{{ $metrics['pending_withdrawals'] ?? '—' }}</div>
+                <div class="mt-1 text-xs text-gray-500">
+                    pending of {{ $metrics['withdrawal_requests'] ?? 0 }} total
+                </div>
             </a>
         </div>
+
 
         <!-- Crypto Payments Link -->
         <div class="bg-white rounded-xl shadow-xl p-4 sm:p-6 card-hover mb-6 sm:mb-8">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                 <h3 class="font-montserrat font-bold text-lg sm:text-xl">Crypto Payments</h3>
                 <a href="{{ route('admin.crypto.payments') }}" class="btn-secondary text-center text-sm sm:text-base px-4 py-2 sm:px-6 sm:py-3">View Pending</a>
+            </div>
+        </div>
+
+        <!-- Withdrawal Requests Link -->
+        <div class="bg-white rounded-xl shadow-xl p-4 sm:p-6 card-hover mb-6 sm:mb-8">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                <div>
+                    <h3 class="font-montserrat font-bold text-lg sm:text-xl">Withdrawal Requests</h3>
+                    <p class="text-gray-600 text-xs sm:text-sm mt-1">Review and process user withdrawal requests</p>
+                </div>
+                <a href="{{ route('admin.withdrawals') }}" class="btn-secondary text-center text-sm sm:text-base px-4 py-2 sm:px-6 sm:py-3 whitespace-nowrap">Manage Withdrawals</a>
             </div>
         </div>
 

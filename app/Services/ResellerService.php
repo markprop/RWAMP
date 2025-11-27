@@ -17,6 +17,7 @@ class ResellerService
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'phone' => $data['phone'],
+                'password' => null, // Password will be set when admin approves
                 'company' => $data['company'] ?? null,
                 'investment_capacity' => $data['investmentCapacity'],
                 'message' => $data['message'] ?? null,

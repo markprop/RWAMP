@@ -230,7 +230,12 @@ Route::middleware(['auth'])->group(function () {
     // Admin Withdrawal Management routes
     Route::middleware(['role:admin','admin.2fa'])->group(function () {
         Route::get('/dashboard/admin/withdrawals', [AdminController::class, 'withdrawals'])->name('admin.withdrawals');
+        Route::get('/dashboard/admin/withdrawals/{withdrawal}', [AdminController::class, 'showWithdrawal'])->name('admin.withdrawals.show');
         Route::post('/dashboard/admin/withdrawals/{withdrawal}/approve', [AdminController::class, 'approveWithdrawal'])->name('admin.withdrawals.approve');
+        Route::post('/dashboard/admin/withdrawals/{withdrawal}/reject', [AdminController::class, 'rejectWithdrawal'])->name('admin.withdrawals.reject');
+        Route::post('/dashboard/admin/withdrawals/{withdrawal}/submit-receipt', [AdminController::class, 'submitReceipt'])->name('admin.withdrawals.submit-receipt');
+        Route::put('/dashboard/admin/withdrawals/{withdrawal}', [AdminController::class, 'updateWithdrawal'])->name('admin.withdrawals.update');
+        Route::delete('/dashboard/admin/withdrawals/{withdrawal}', [AdminController::class, 'deleteWithdrawal'])->name('admin.withdrawals.delete');
     });
     
     // Admin Sell Coins routes
@@ -323,7 +328,9 @@ Route::prefix('api')->group(function () {
         Route::get('/user/buy-from-reseller', [CryptoPaymentController::class, 'buyFromResellerPage'])->name('buy.from.reseller');
         Route::post('/user/buy-from-reseller/request', [CryptoPaymentController::class, 'createBuyFromResellerRequest'])->name('buy.from.reseller.request');
         Route::post('/user/buy-from-reseller/send-otp', [CryptoPaymentController::class, 'sendOtpForBuyRequest'])->name('buy.from.reseller.send-otp');
-        Route::post('/user/withdraw', [WithdrawController::class, 'store']);
+        Route::post('/user/withdraw', [WithdrawController::class, 'store'])->name('user.withdraw.store');
+        Route::get('/user/withdrawals', [WithdrawController::class, 'index'])->name('user.withdrawals');
+        Route::get('/user/withdrawals/{withdrawal}/receipt', [WithdrawController::class, 'viewReceipt'])->name('user.withdrawals.receipt');
         
         // Reseller search API (accessible to authenticated users)
         Route::get('/resellers/search', [CryptoPaymentController::class, 'searchResellers'])->name('api.resellers.search');

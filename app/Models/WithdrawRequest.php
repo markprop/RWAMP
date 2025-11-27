@@ -15,10 +15,14 @@ class WithdrawRequest extends Model
         'token_amount',
         'status',
         'notes',
+        'receipt_path',
+        'transaction_hash',
+        'transfer_completed_at',
     ];
 
     protected $casts = [
         'token_amount' => 'decimal:2',
+        'transfer_completed_at' => 'datetime',
     ];
 
     public function user()

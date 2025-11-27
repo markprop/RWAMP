@@ -89,6 +89,22 @@
     @stack('head')
 </head>
 <body class="font-roboto antialiased">
+    @php
+        $tabId = request()->cookie('tab_session_id');
+    @endphp
+
+    @if(auth()->check() && $tabId)
+        <div class="w-full bg-gray-900 text-gray-300 text-xs px-4 py-1 flex items-center justify-end gap-2">
+            <span class="opacity-75">
+                Tab: {{ substr($tabId, 0, 8) }}
+            </span>
+            <span class="opacity-75">&bull;</span>
+            <span class="font-semibold">
+                {{ auth()->user()->name }}
+            </span>
+        </div>
+    @endif
+
     @include('components.navbar')
     
     <main class="pt-16">

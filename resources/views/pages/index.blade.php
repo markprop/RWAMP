@@ -8,8 +8,8 @@
 ">
     @include('components.hero-section', ['presaleData' => $presaleData ?? []])
     @include('components.about-section')
-    @include('components.why-invest-section')
     @include('components.roadmap-section')
+    @include('components.why-invest-section')
     @include('components.signup-section')
     @include('components.footer')
     

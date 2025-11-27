@@ -29,7 +29,7 @@ $features = [
 
 <section id="why-invest" class="py-20 bg-gray-50">
     <div class="max-w-7xl mx-auto px-4">
-        <div class="text-center mb-16 animate-fadeInUp">
+        <div class="text-center mb-16 animate-on-scroll" data-animation="fadeInDown">
             <h2 class="text-4xl md:text-5xl font-montserrat font-bold text-gray-900 mb-6">
                 Why Invest in <span class="text-primary">RWAMP</span>?
             </h2>
@@ -38,9 +38,9 @@ $features = [
             </p>
         </div>
         
-        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8" data-stagger data-animation="zoomIn">
             @foreach($features as $index => $feature)
-            <div class="group animate-fadeInUp" style="animation-delay: {{ $index * 0.1 }}s">
+            <div class="group animate-on-scroll">
                 <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 card-hover h-full">
                     <div class="text-center">
                         <!-- Icon with gradient background -->
@@ -65,7 +65,7 @@ $features = [
         </div>
         
         <!-- Bottom CTA -->
-        <div class="text-center mt-16 animate-fadeInUp">
+        <div class="text-center mt-16 animate-on-scroll" data-animation="zoomIn">
             <div class="bg-gradient-to-r from-primary to-red-600 rounded-2xl p-8 text-white">
                 <h3 class="text-2xl md:text-3xl font-montserrat font-bold mb-4">
                     Ready to Start Your Investment Journey?

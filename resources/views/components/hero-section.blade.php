@@ -6,10 +6,10 @@
     <div class="relative z-10 w-full px-4 py-12 max-w-7xl mx-auto">
         <div class="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             <!-- Left Column: Hero Content -->
-            <div class="text-center lg:text-left text-white animate-fadeInUp">
+            <div class="text-center lg:text-left text-white">
                 <!-- Logo -->
-                <div class="mb-8 flex justify-center lg:justify-start">
-                    <div class="w-24 h-24 rounded-full overflow-hidden shadow-2xl">
+                <div class="mb-8 flex justify-center lg:justify-start animate-on-scroll" data-animation="zoomIn" style="animation-delay: 0.1s;">
+                    <div class="w-32 h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 rounded-full overflow-hidden shadow-2xl transition-transform duration-300 hover:scale-105">
                         <img 
                             src="{{ asset('images/logo.jpeg') }}" 
                             alt="RWAMP Logo" 
@@ -18,17 +18,17 @@
                     </div>
                 </div>
                 
-                <h1 class="text-4xl md:text-6xl lg:text-7xl font-montserrat font-bold mb-6">
+                <h1 class="text-4xl md:text-6xl lg:text-7xl font-montserrat font-bold mb-6 animate-on-scroll" data-animation="fadeInUp" style="animation-delay: 0.2s;">
                     RWAMP is Coming Soon 
-                    <span class="text-5xl md:text-6xl">🚀</span>
+                    <span class="text-5xl md:text-6xl inline-block animate-on-scroll" data-animation="zoomIn" style="animation-delay: 0.4s;">🚀</span>
                 </h1>
                 
-                <p class="text-lg md:text-xl lg:text-2xl mb-8 text-gray-200 max-w-2xl mx-auto lg:mx-0">
+                <p class="text-lg md:text-xl lg:text-2xl mb-8 text-gray-200 max-w-2xl mx-auto lg:mx-0 animate-on-scroll" data-animation="fadeInUp" style="animation-delay: 0.3s;">
                     The Currency of Real Estate Investments
                 </p>
                 
                 <!-- Countdown Timer -->
-                <div class="mb-8 lg:mb-12" x-data="countdown">
+                <div class="mb-8 lg:mb-12 animate-on-scroll" data-animation="fadeInUp" style="animation-delay: 0.5s;" x-data="countdown">
                     <div x-show="!completed" class="countdown-container">
                         <div class="countdown-item">
                             <div class="countdown-number" x-text="timeLeft.days"></div>
@@ -52,7 +52,7 @@
                     </div>
                 </div>
                 
-                <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center" x-data="smoothScroll">
+                <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center animate-on-scroll" data-animation="fadeInUp" style="animation-delay: 0.6s;" x-data="smoothScroll">
                     @auth
                         <a
                             href="{{ route('open.purchase') }}"

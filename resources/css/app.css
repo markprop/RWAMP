@@ -88,6 +88,138 @@ body {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* Scroll Animation Classes */
+.animate-on-scroll {
+  opacity: 0;
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.animate-on-scroll.animated {
+  opacity: 1;
+}
+
+/* Fade In Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Animation Classes */
+.animate-on-scroll.fadeInUp {
+  animation: fadeInUp 0.8s ease-out forwards;
+}
+
+.animate-on-scroll.fadeInDown {
+  animation: fadeInDown 0.8s ease-out forwards;
+}
+
+.animate-on-scroll.fadeInLeft {
+  animation: fadeInLeft 0.8s ease-out forwards;
+}
+
+.animate-on-scroll.fadeInRight {
+  animation: fadeInRight 0.8s ease-out forwards;
+}
+
+.animate-on-scroll.zoomIn {
+  animation: zoomIn 0.8s ease-out forwards;
+}
+
+.animate-on-scroll.slideInLeft {
+  animation: slideInLeft 0.8s ease-out forwards;
+}
+
+.animate-on-scroll.slideInRight {
+  animation: slideInRight 0.8s ease-out forwards;
+}
+
+.animate-on-scroll.scaleIn {
+  animation: scaleIn 0.8s ease-out forwards;
+}
+
 /* Button hover effects */
 .btn-primary {
   @apply bg-primary text-white px-8 py-4 rounded-lg font-montserrat font-bold text-lg transition-all duration-300 hover:bg-red-700 hover:scale-105 hover:shadow-lg;
@@ -283,4 +415,544 @@ button[title*="Assign"] svg {
   color: #ffffff !important;
   fill: none !important;
   stroke: currentColor !important;
+}
+
+/* About Section - Rotating Logo Animation */
+.about-logo-rotating {
+  animation: logo-rotate 20s linear infinite;
+  transition: transform 0.4s ease;
+}
+
+.about-logo-container:hover .about-logo-rotating {
+  animation-play-state: paused;
+  transform: scale(1.05);
+}
+
+@keyframes logo-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Badge Bounce Animation */
+@keyframes badge-bounce {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-5px) scale(1.05);
+  }
+}
+
+.animate-badge-bounce {
+  animation: badge-bounce 2s ease-in-out infinite;
+}
+
+/* Footer Social Links Styles */
+.social-link {
+  background: rgba(255, 255, 255, 0.1);
+  color: #D1D5DB;
+  position: relative;
+  overflow: hidden;
+}
+
+.social-link::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease, height 0.6s ease;
+}
+
+.social-link:hover::before {
+  width: 100%;
+  height: 100%;
+}
+
+.social-link:hover {
+  transform: translateY(-5px) scale(1.1);
+  border-color: currentColor;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.social-link svg {
+  position: relative;
+  z-index: 1;
+  transition: transform 0.3s ease;
+}
+
+.social-link:hover svg {
+  transform: scale(1.2) rotate(5deg);
+}
+
+/* Social Media Brand Colors */
+.social-facebook {
+  color: #1877F2;
+}
+
+.social-facebook:hover {
+  background: #1877F2;
+  color: white;
+  box-shadow: 0 8px 25px rgba(24, 119, 242, 0.4);
+}
+
+.social-instagram {
+  color: #E4405F;
+}
+
+.social-instagram:hover {
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  color: white;
+  box-shadow: 0 8px 25px rgba(228, 64, 95, 0.4);
+}
+
+.social-twitter {
+  color: #1DA1F2;
+}
+
+.social-twitter:hover {
+  background: #1DA1F2;
+  color: white;
+  box-shadow: 0 8px 25px rgba(29, 161, 242, 0.4);
+}
+
+.social-telegram {
+  color: #0088CC;
+}
+
+.social-telegram:hover {
+  background: #0088CC;
+  color: white;
+  box-shadow: 0 8px 25px rgba(0, 136, 204, 0.4);
+}
+
+/* Roadmap Section Styles */
+.roadmap-section {
+  position: relative;
+  overflow: hidden;
+}
+
+.roadmap-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(227, 6, 19, 0.3), rgba(255, 215, 0, 0.3), rgba(227, 6, 19, 0.3), transparent);
+  animation: line-flow 3s ease-in-out infinite;
+}
+
+.roadmap-section::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 30%, rgba(227, 6, 19, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(255, 215, 0, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes line-flow {
+  0%, 100% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  50% {
+    transform: translateX(100%);
+    opacity: 1;
+  }
+}
+
+.roadmap-container {
+  position: relative;
+  z-index: 1;
+}
+
+.roadmap-timeline-wrapper {
+  position: relative;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 1rem;
+}
+
+/* Timeline Line */
+.roadmap-timeline-line {
+  position: absolute;
+  top: 80px;
+  left: 10%;
+  right: 10%;
+  height: 4px;
+  background: #E5E7EB;
+  border-radius: 2px;
+  z-index: 1;
+}
+
+.timeline-line-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #E30613 0%, #FFD700 50%, #D1D5DB 100%);
+  border-radius: 2px;
+  width: 33.33%;
+  transition: width 1.5s ease-out;
+  box-shadow: 0 0 15px rgba(227, 6, 19, 0.4);
+}
+
+.roadmap-timeline {
+  position: relative;
+  z-index: 2;
+}
+
+.roadmap-phase {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Phase Number Circle */
+.phase-number-circle {
+  position: relative;
+  margin-bottom: 0.4rem;
+  z-index: 10;
+}
+
+.phase-number {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08), 0 0 0 2px #ffffff;
+  position: relative;
+  z-index: 2;
+  transition: all 0.4s ease;
+}
+
+.phase-glow {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  opacity: 0.35;
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.phase-glow-current {
+  background: radial-gradient(circle, rgba(227, 6, 19, 0.4) 0%, transparent 70%);
+  box-shadow: 0 0 30px rgba(227, 6, 19, 0.5);
+}
+
+.phase-glow-upcoming {
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.4) 0%, transparent 70%);
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
+}
+
+.phase-glow-future {
+  background: radial-gradient(circle, rgba(156, 163, 175, 0.3) 0%, transparent 70%);
+  box-shadow: 0 0 20px rgba(156, 163, 175, 0.3);
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+.roadmap-phase-current .phase-number {
+  background: #E30613;
+  color: white;
+  box-shadow: 0 3px 12px rgba(227, 6, 19, 0.25), 0 0 0 2px #ffffff, 0 0 18px rgba(227, 6, 19, 0.3);
+}
+
+.roadmap-phase-upcoming .phase-number {
+  background: #FFD700;
+  color: #000;
+  box-shadow: 0 3px 12px rgba(255, 215, 0, 0.18), 0 0 0 2px #ffffff;
+}
+
+.roadmap-phase-future .phase-number {
+  background: #9CA3AF;
+  color: white;
+  box-shadow: 0 3px 10px rgba(156, 163, 175, 0.12), 0 0 0 2px #ffffff;
+}
+
+/* Status Badge */
+.phase-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 1rem;
+  font-size: 1rem;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 900;
+  margin-bottom: 0.6rem;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.phase-status-current {
+  background: #E30613;
+  color: white;
+}
+
+.phase-status-upcoming {
+  background: #FFD700;
+  color: #000;
+}
+
+.phase-status-future {
+  background: #9CA3AF;
+  color: white;
+}
+
+.status-live,
+.status-upcoming,
+.status-future {
+  font-size: 0.75rem;
+  padding: 0.125rem 0.4rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.25px;
+  font-weight: 700;
+}
+
+.phase-status-upcoming .status-upcoming {
+  background: rgba(0, 0, 0, 0.2);
+  color: #000;
+}
+
+/* Phase Card */
+.phase-card {
+  background: #ffffff;
+  border-radius: 0.625rem;
+  padding: 1.5rem;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.04);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  max-width: 100%;
+  text-align: center;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.roadmap-phase-current .phase-card {
+  border: 1px solid rgba(227, 6, 19, 0.2);
+  box-shadow: 0 4px 15px rgba(227, 6, 19, 0.08);
+}
+
+.roadmap-phase-upcoming .phase-card {
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.06);
+}
+
+.roadmap-phase-future .phase-card {
+  border: 1px solid rgba(156, 163, 175, 0.2);
+  box-shadow: 0 4px 15px rgba(156, 163, 175, 0.05);
+}
+
+.phase-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Phase Icon Large */
+.phase-icon-large {
+  font-size: 3rem;
+  margin-bottom: 0.625rem;
+  display: block;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.08));
+  animation: icon-float 3s ease-in-out infinite;
+}
+
+@keyframes icon-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.phase-title {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 900;
+  color: #111827;
+  margin-bottom: 0.375rem;
+}
+
+.phase-description {
+  color: #6B7280;
+  margin-bottom: 0.75rem;
+  line-height: 1.4;
+}
+
+/* Phase Features List */
+.phase-features-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.phase-features-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #374151;
+  font-size: 0.875rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+  line-height: 1.5;
+  background: rgba(249, 250, 251, 0.6);
+  border-left: 3px solid transparent;
+}
+
+.roadmap-phase-current .phase-features-list li {
+  border-left-color: rgba(227, 6, 19, 0.3);
+}
+
+.roadmap-phase-current .phase-features-list li:hover {
+  background: rgba(227, 6, 19, 0.05);
+  border-left-color: #E30613;
+}
+
+.roadmap-phase-upcoming .phase-features-list li {
+  border-left-color: rgba(255, 215, 0, 0.3);
+}
+
+.roadmap-phase-upcoming .phase-features-list li:hover {
+  background: rgba(255, 215, 0, 0.05);
+  border-left-color: #FFD700;
+}
+
+.roadmap-phase-future .phase-features-list li {
+  border-left-color: rgba(156, 163, 175, 0.3);
+}
+
+.roadmap-phase-future .phase-features-list li:hover {
+  background: rgba(156, 163, 175, 0.05);
+  border-left-color: #9CA3AF;
+}
+
+.phase-features-list li:hover {
+  transform: translateX(3px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.feature-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  width: 1.5rem;
+  text-align: center;
+  display: inline-block;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+/* Roadmap CTA */
+.roadmap-cta {
+  text-align: center;
+}
+
+.roadmap-cta-content {
+  background: linear-gradient(to right, #111827, #000000);
+  border-radius: 1rem;
+  padding: 3rem 2rem;
+  color: white;
+}
+
+.roadmap-cta-title {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.roadmap-cta-text {
+  opacity: 0.9;
+  margin-bottom: 1.5rem;
+}
+
+.roadmap-cta-button {
+  background: #E30613;
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 0.5rem;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 1.125rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.roadmap-cta-button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.roadmap-cta-button:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+.roadmap-cta-button:hover {
+  background: #B91C1C;
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 10px 25px rgba(227, 6, 19, 0.4);
+}
+
+.roadmap-cta-button:active {
+  transform: translateY(0) scale(1.02);
+}
+
+/* Responsive adjustments for roadmap */
+@media (min-width: 1024px) {
+  .roadmap-timeline-line {
+    display: block;
+    top: 40px;
+  }
+  
+  .phase-card {
+    max-width: 100%;
+  }
+  
+  .phase-features-list li {
+    font-size: 1rem;
+    padding: 0.75rem 0.875rem;
+  }
+  
+  .feature-icon {
+    font-size: 1.5rem;
+    width: 2rem;
+  }
 }

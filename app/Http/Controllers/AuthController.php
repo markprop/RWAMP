@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Models\User;
+use App\Services\TabAuthService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -41,15 +42,43 @@ class AuthController extends Controller
 			'email' => ['required', 'email'],
 			'password' => ['required'],
 			'role' => ['nullable', 'in:investor,reseller,admin'],
+			'remember' => ['nullable', 'boolean'],
 			'g-recaptcha-response' => $requireRecaptcha ? ['required', 'recaptcha'] : ['nullable'],
 		], [
 			'g-recaptcha-response.required' => 'Please complete the reCAPTCHA verification.',
 			'g-recaptcha-response.recaptcha' => 'reCAPTCHA verification failed. Please try again.',
 		]);
 
-		if (Auth::attempt($request->only('email','password'), $request->boolean('remember'))) {
+		// Check if user exists first to determine if role selection is required
+		$user = User::where('email', $credentials['email'])->first();
+		
+		// Validate role selection for non-admin users
+		if ($user && $user->role !== 'admin') {
+			if (empty($credentials['role']) || !in_array($credentials['role'], ['investor', 'reseller'])) {
+				return back()->withErrors([
+					'role' => 'Please select your role (Investor or Reseller) before logging in.',
+				])->onlyInput('email');
+			}
+			
+			// Validate that selected role matches user's actual role
+			if ($credentials['role'] !== $user->role) {
+				return back()->withErrors([
+					'role' => 'The selected role does not match your account type. Please select the correct role.',
+				])->onlyInput('email');
+			}
+		}
+
+		// Attempt login with remember me functionality
+		$remember = $request->has('remember') && $request->input('remember') == '1';
+		if (Auth::attempt($request->only('email','password'), $remember)) {
 			$request->session()->regenerate();
 			$user = Auth::user();
+			
+			// Store tab-specific authentication if tab session ID exists
+			$tabId = $request->cookie('tab_session_id');
+			if ($tabId) {
+				TabAuthService::setTabUser($tabId, $user->id, 24);
+			}
 			
 			// Check if email is verified
 			if (!$user->email_verified_at) {
@@ -79,6 +108,18 @@ class AuthController extends Controller
 				
 				return redirect()->route('verify-email', ['email' => $normalizedEmail])
 					->with('error', 'Please verify your email address before logging in. A verification code has been sent to your email.');
+			}
+			
+			// Check if reseller is using default password (first-time login)
+			if ($user->role === 'reseller') {
+				$defaultPassword = 'RWAMP@agent';
+				// Check if the password matches the default password
+				if (Hash::check($defaultPassword, $user->password)) {
+					// Set password reset required flag in cache
+					Cache::put('password_reset_required_user_' . $user->id, true, now()->addDays(30));
+					return redirect()->route('password.change.required')
+						->with('warning', 'Please set your own password for security. This is your first login.');
+				}
 			}
 			
 			// If one-time password is set, force password change by redirecting to dedicated change password page
@@ -193,20 +234,32 @@ class AuthController extends Controller
 			return response()->json(['valid' => false, 'message' => 'Phone number is required']);
 		}
 
-		// Validate phone format: should start with + and contain digits
-		// Format: +[country code][space][number] or +[country code][number]
-		$phonePattern = '/^\+[1-9]\d{1,3}[\s]?\d{4,14}$/';
+		// Normalize phone: remove all spaces and non-digit characters except +
+		$normalized = preg_replace('/[^\d+]/', '', $phone);
 		
-		if (!preg_match($phonePattern, $phone)) {
+		// Validate phone format: should start with + and contain digits
+		// Format: +[country code][number] - allows flexible spacing in input
+		// After normalization, should be: +[1-4 digits][4-14 digits]
+		// General pattern: +[1-9][0-9]{0,3}[0-9]{4,14} (country code 1-4 digits, number 4-14 digits)
+		$phonePattern = '/^\+[1-9]\d{0,3}\d{4,14}$/';
+		
+		// Also check Pakistan-specific format: +92 followed by 10 digits
+		$pakistanPattern = '/^\+92\d{10}$/';
+		
+		if (!preg_match($phonePattern, $normalized) && !preg_match($pakistanPattern, $normalized)) {
 			return response()->json([
 				'valid' => false,
 				'message' => 'Please enter a valid phone number. Format: +[Country Code] [Number] (e.g., +92 300 1234567)'
 			]);
 		}
 
-		// Check if phone already exists
-		$existsInUsers = User::where('phone', $phone)->exists();
-		$existsInApplications = \App\Models\ResellerApplication::where('phone', $phone)->exists();
+		// Check if phone already exists (check both original and normalized formats)
+		$existsInUsers = User::where('phone', $phone)
+			->orWhere('phone', $normalized)
+			->exists();
+		$existsInApplications = \App\Models\ResellerApplication::where('phone', $phone)
+			->orWhere('phone', $normalized)
+			->exists();
 
 		if ($existsInUsers || $existsInApplications) {
 			return response()->json([
@@ -444,18 +497,58 @@ class AuthController extends Controller
 
 	public function logout(Request $request)
 	{
-		Auth::guard('web')->logout();
-		$request->session()->invalidate();
-		$request->session()->regenerateToken();
+		$tabId = $request->cookie('tab_session_id');
+
+		// If this request is tied to a tab session, clear only that tab's mapping by default.
+		if ($tabId) {
+			TabAuthService::clearTabUser($tabId);
+
+			// If caller explicitly wants a global logout, clear the main session as well.
+			if ($request->boolean('clear_all')) {
+				Auth::guard('web')->logout();
+				$request->session()->invalidate();
+				$request->session()->regenerateToken();
+			}
+		} else {
+			// Legacy behaviour (no per-tab cookie): log out completely.
+			Auth::guard('web')->logout();
+			$request->session()->invalidate();
+			$request->session()->regenerateToken();
+		}
+
 		return redirect()->route('home');
 	}
 
 	public function showChangePasswordRequired()
 	{
 		$user = Auth::user();
-		if (!$user || !\Illuminate\Support\Facades\Cache::get('password_reset_required_user_'.$user->id)) {
-			return redirect()->route('dashboard.reseller');
+		if (!$user) {
+			return redirect()->route('login');
 		}
+		
+		// Check if reseller is using default password
+		$requiresPasswordChange = false;
+		if ($user->role === 'reseller') {
+			$defaultPassword = 'RWAMP@agent';
+			if (Hash::check($defaultPassword, $user->password)) {
+				$requiresPasswordChange = true;
+				// Set cache flag
+				Cache::put('password_reset_required_user_' . $user->id, true, now()->addDays(30));
+			}
+		}
+		
+		// Also check cache flag
+		if (!$requiresPasswordChange && !Cache::get('password_reset_required_user_'.$user->id)) {
+			// Redirect based on role
+			$dashboardRoute = match ($user->role) {
+				'admin' => 'dashboard.admin',
+				'reseller' => 'dashboard.reseller',
+				'investor' => 'dashboard.investor',
+				default => 'home',
+			};
+			return redirect()->route($dashboardRoute);
+		}
+		
 		return view('auth.change-password-required');
 	}
 
@@ -463,8 +556,31 @@ class AuthController extends Controller
 	{
 		$user = Auth::user();
 		
-		if (!$user || !\Illuminate\Support\Facades\Cache::get('password_reset_required_user_'.$user->id)) {
-			return redirect()->route('dashboard.reseller');
+		if (!$user) {
+			return redirect()->route('login');
+		}
+		
+		// Check if reseller is using default password
+		$requiresPasswordChange = false;
+		if ($user->role === 'reseller') {
+			$defaultPassword = 'RWAMP@agent';
+			if (Hash::check($defaultPassword, $user->password)) {
+				$requiresPasswordChange = true;
+				// Set cache flag
+				Cache::put('password_reset_required_user_' . $user->id, true, now()->addDays(30));
+			}
+		}
+		
+		// Also check cache flag
+		if (!$requiresPasswordChange && !Cache::get('password_reset_required_user_'.$user->id)) {
+			// Redirect based on role
+			$dashboardRoute = match ($user->role) {
+				'admin' => 'dashboard.admin',
+				'reseller' => 'dashboard.reseller',
+				'investor' => 'dashboard.investor',
+				default => 'home',
+			};
+			return redirect()->route($dashboardRoute);
 		}
 
 		$validated = $request->validate([

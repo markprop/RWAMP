@@ -1,6 +1,6 @@
 <section id="signup" class="py-20 bg-gradient-to-br from-primary to-red-600">
     <div class="max-w-4xl mx-auto px-4">
-        <div class="text-center text-white animate-fadeInUp">
+        <div class="text-center text-white animate-on-scroll" data-animation="fadeInDown">
             <h2 class="text-4xl md:text-5xl font-montserrat font-bold mb-6">
                 Be the First to Know
             </h2>
@@ -8,7 +8,7 @@
                 Get exclusive updates about RWAMP launch, presale opportunities, and investment insights
             </p>
             
-            <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-8 md:p-12" x-data="newsletterForm" x-cloak>
+            <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-8 md:p-12 animate-on-scroll" data-animation="zoomIn" x-data="newsletterForm" x-cloak>
                 <div x-show="!success" x-cloak>
                     <form @submit.prevent="submitForm" class="space-y-6">
                         <!-- Honeypot field to trap bots -->
@@ -77,7 +77,7 @@
                 </div>
                 
                 <div class="mt-8 pt-6 border-t border-white/20">
-                    <div class="grid md:grid-cols-3 gap-6 text-center">
+                    <div class="grid md:grid-cols-3 gap-6 text-center" data-stagger data-animation="fadeInUp">
                         <div>
                             <div class="text-3xl mb-2">📧</div>
                             <h4 class="font-montserrat font-bold text-lg mb-2">Email Updates</h4>
@@ -98,17 +98,17 @@
             </div>
             
             <!-- Trust indicators -->
-            <div class="mt-12 grid grid-cols-2 md:grid-cols-4 gap-8 opacity-80">
-                <div class="text-center">
-                    <div class="text-2xl font-mono font-bold">1000+</div>
+            <div class="mt-12 grid grid-cols-2 md:grid-cols-4 gap-8 opacity-80" data-stagger data-animation="fadeInUp">
+                <div class="text-center" data-animate-counter>
+                    <div class="text-2xl font-mono font-bold" data-counter>1000+</div>
                     <div class="text-sm">Early Subscribers</div>
                 </div>
-                <div class="text-center">
-                    <div class="text-2xl font-mono font-bold">3</div>
+                <div class="text-center" data-animate-counter>
+                    <div class="text-2xl font-mono font-bold" data-counter>3</div>
                     <div class="text-sm">Countries</div>
                 </div>
-                <div class="text-center">
-                    <div class="text-2xl font-mono font-bold">50+</div>
+                <div class="text-center" data-animate-counter>
+                    <div class="text-2xl font-mono font-bold" data-counter>50+</div>
                     <div class="text-sm">Projects Planned</div>
                 </div>
                 <div class="text-center">

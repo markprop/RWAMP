@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable implements MustVerifyEmail, CanResetPassword
 {
     use HasApiTokens, Notifiable, TwoFactorAuthenticatable;
 
@@ -248,6 +249,24 @@ class User extends Authenticatable implements MustVerifyEmail
 			\Log::error('Failed to decrypt two_factor_secret for QR code URL: ' . $e->getMessage());
 			throw new \Exception('Unable to generate QR code URL. Your 2FA secret may be corrupted. Please disable and re-enable 2FA.');
 		}
+	}
+
+	/**
+	 * Get the email address for password reset (required by CanResetPassword interface)
+	 */
+	public function getEmailForPasswordReset()
+	{
+		return $this->email;
+	}
+
+	/**
+	 * Send the password reset notification (required by CanResetPassword interface)
+	 */
+	public function sendPasswordResetNotification($token)
+	{
+		// Use Laravel's default password reset notification
+		// This can be customized if needed
+		$this->notify(new \Illuminate\Auth\Notifications\ResetPassword($token));
 	}
 }
 

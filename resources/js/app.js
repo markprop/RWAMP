@@ -3,6 +3,39 @@ import Alpine from '@alpinejs/csp';
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
+// -------------------------------------------------------------------------
+// Per-tab session ID (for independent tab authentication)
+// -------------------------------------------------------------------------
+(function () {
+    try {
+        const storageKey = 'tabSessionId';
+        let tabSessionId = window.sessionStorage.getItem(storageKey);
+
+        if (!tabSessionId) {
+            if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+                tabSessionId = window.crypto.randomUUID();
+            } else {
+                // Fallback UUID-ish string
+                tabSessionId =
+                    'tab-' +
+                    Math.random().toString(36).slice(2) +
+                    Date.now().toString(36);
+            }
+            window.sessionStorage.setItem(storageKey, tabSessionId);
+        }
+
+        // Set lightweight cookie scoped to this browser instance / tab
+        let cookie = `tab_session_id=${encodeURIComponent(tabSessionId)}; path=/; SameSite=Lax`;
+        if (window.location.protocol === 'https:') {
+            cookie += '; Secure';
+        }
+        document.cookie = cookie;
+    } catch (e) {
+        // Fail silently – app should continue to work without per-tab sessions
+        console.error('tabSessionId initialization failed', e);
+    }
+})();
+
 // Initialize Laravel Echo for real-time messaging
 window.Pusher = Pusher;
 
@@ -105,21 +138,272 @@ Alpine.data('contactForm', () => ({
     }
 }));
 
+// Profit Calculator Component
+Alpine.data('profitCalculator', function() {
+    return {
+        buyPrice: '',
+        sellPrice: '',
+        profitPerToken: '0.00',
+        showInfo: false,
+        init() {
+            // Watch for changes in buyPrice and sellPrice
+            this.$watch('buyPrice', () => this.calculateProfit());
+            this.$watch('sellPrice', () => this.calculateProfit());
+            // Initial calculation
+            this.calculateProfit();
+        },
+        calculateProfit() {
+            const buy = parseFloat(this.buyPrice) || 0;
+            const sell = parseFloat(this.sellPrice) || 0;
+            const profit = Math.max(0, sell - buy);
+            this.profitPerToken = profit.toFixed(2);
+        }
+    };
+});
+
 // Reseller form handling
-Alpine.data('resellerForm', () => ({
-    formData: {
-        name: '',
-        email: '',
-        phone: '',
-        company: '',
-        investmentCapacity: '',
-        message: '',
-        hp: ''
+Alpine.data('resellerForm', function() {
+    return {
+        formData: {
+            name: '',
+            email: '',
+            phone: '',
+            company: '',
+            investmentCapacity: '',
+            message: '',
+            hp: ''
+        },
+        loading: false,
+        success: false,
+        error: false,
+        errorMessage: '',
+        tooltip: null,
+        nameStatus: null,
+        nameMessage: '',
+        nameValidated: false,
+        emailStatus: null,
+        emailMessage: '',
+        emailValidated: false,
+        phoneStatus: null,
+        phoneMessage: '',
+        phoneValidated: false,
+        validationTimeout: { email: null, phone: null },
+
+        init() {
+            // Initialize tooltip to null
+            this.tooltip = null;
+            // Initialize validation states
+            this.nameStatus = null;
+            this.emailStatus = null;
+            this.phoneStatus = null;
+        },
+    showTooltip(tooltipName, event) {
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+        // Toggle tooltip
+        if (this.tooltip === tooltipName) {
+            this.tooltip = null;
+        } else {
+            this.tooltip = tooltipName;
+        }
     },
-    loading: false,
-    success: false,
-    error: false,
-    errorMessage: '',
+
+    formatPhone(input) {
+        let value = input.value.replace(/\D/g, ''); // Remove all non-digits
+        
+        // Auto-format to Pakistan format if it looks like a Pakistan number
+        if (value.length > 0) {
+            // If starts with 0, remove it and add +92
+            if (value.startsWith('0')) {
+                value = '92' + value.substring(1);
+            }
+            // If starts with 92 and doesn't have +, add +
+            if (value.startsWith('92') && !input.value.startsWith('+')) {
+                value = '+' + value;
+            }
+            // If doesn't start with +, assume Pakistan and add +92
+            if (!value.startsWith('+') && value.length >= 10) {
+                // Check if it's a valid Pakistan mobile number (10 digits starting with 3)
+                if (value.length === 10 && value.startsWith('3')) {
+                    value = '+92' + value;
+                } else if (value.length === 12 && value.startsWith('92')) {
+                    value = '+' + value;
+                }
+            }
+            
+            // Format: +92 XXX XXXXXXX
+            if (value.startsWith('+92') && value.length > 3) {
+                const number = value.substring(3);
+                if (number.length <= 3) {
+                    input.value = '+92 ' + number;
+                } else if (number.length <= 10) {
+                    input.value = '+92 ' + number.substring(0, 3) + ' ' + number.substring(3);
+                } else {
+                    input.value = value;
+                }
+            } else {
+                input.value = value;
+            }
+            
+            this.formData.phone = input.value;
+        }
+    },
+
+    validateName(name) {
+        if (!name || name.trim() === '') {
+            this.nameStatus = null;
+            this.nameMessage = '';
+            this.nameValidated = false;
+            return;
+        }
+
+        const trimmedName = name.trim();
+        
+        if (trimmedName.length < 2) {
+            this.nameStatus = 'invalid';
+            this.nameMessage = 'Name must be at least 2 characters long';
+            this.nameValidated = true;
+            return;
+        }
+
+        if (!trimmedName.includes(' ')) {
+            this.nameStatus = 'invalid';
+            this.nameMessage = 'Please enter your full name (First Name and Last Name)';
+            this.nameValidated = true;
+            return;
+        }
+
+        if (!/^[a-zA-Z\s\-\'\.]+$/.test(trimmedName)) {
+            this.nameStatus = 'invalid';
+            this.nameMessage = 'Name can only contain letters, spaces, hyphens, apostrophes, and dots';
+            this.nameValidated = true;
+            return;
+        }
+
+        const nameParts = trimmedName.split(/\s+/).filter(part => part.length > 0);
+        if (nameParts.length < 2) {
+            this.nameStatus = 'invalid';
+            this.nameMessage = 'Please enter both first name and last name';
+            this.nameValidated = true;
+            return;
+        }
+
+        if (nameParts.some(part => part.length < 2)) {
+            this.nameStatus = 'invalid';
+            this.nameMessage = 'Each name part must be at least 2 characters';
+            this.nameValidated = true;
+            return;
+        }
+
+        this.nameStatus = 'valid';
+        this.nameMessage = 'Name format is valid';
+        this.nameValidated = true;
+    },
+
+    async validateEmail(email) {
+        if (this.validationTimeout.email) {
+            clearTimeout(this.validationTimeout.email);
+        }
+
+        if (!email || email.trim() === '') {
+            this.emailStatus = null;
+            this.emailMessage = '';
+            this.emailValidated = false;
+            return;
+        }
+
+        if (email.trim().length < 5) {
+            this.emailStatus = null;
+            this.emailMessage = '';
+            this.emailValidated = false;
+            return;
+        }
+
+        // Only show checking status if email looks valid
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            this.emailStatus = null;
+            this.emailMessage = '';
+            this.emailValidated = false;
+            return;
+        }
+
+        this.validationTimeout.email = setTimeout(async () => {
+            this.emailStatus = 'checking';
+            this.emailMessage = 'Checking email...';
+            this.emailValidated = true;
+
+            try {
+                const response = await fetch(`/api/check-email?email=${encodeURIComponent(email)}`);
+                const data = await response.json();
+                
+                if (data.valid && !data.exists) {
+                    this.emailStatus = 'valid';
+                    this.emailMessage = data.message || 'Email is valid and available';
+                } else if (data.exists) {
+                    this.emailStatus = 'invalid';
+                    this.emailMessage = data.message || 'This email is already registered';
+                } else {
+                    this.emailStatus = 'invalid';
+                    this.emailMessage = data.message || 'Please enter a valid email address';
+                }
+            } catch (error) {
+                this.emailStatus = null;
+                this.emailMessage = '';
+                this.emailValidated = false;
+            }
+        }, 500);
+    },
+
+    async validatePhone(phone) {
+        if (this.validationTimeout.phone) {
+            clearTimeout(this.validationTimeout.phone);
+        }
+
+        if (!phone || phone.trim() === '') {
+            this.phoneStatus = null;
+            this.phoneMessage = '';
+            this.phoneValidated = false;
+            return;
+        }
+
+        // Normalize phone for validation
+        const normalized = phone.replace(/\s+/g, '').replace(/\D/g, '');
+        if (normalized.length < 10) {
+            this.phoneStatus = null;
+            this.phoneMessage = '';
+            this.phoneValidated = false;
+            return;
+        }
+
+        this.validationTimeout.phone = setTimeout(async () => {
+            this.phoneStatus = 'checking';
+            this.phoneMessage = 'Checking phone number...';
+            this.phoneValidated = true;
+
+            try {
+                const response = await fetch(`/api/check-phone?phone=${encodeURIComponent(phone)}`);
+                const data = await response.json();
+                
+                if (data.valid && !data.exists) {
+                    this.phoneStatus = 'valid';
+                    this.phoneMessage = data.message || 'Phone number is valid and available';
+                } else if (data.exists) {
+                    this.phoneStatus = 'invalid';
+                    this.phoneMessage = data.message || 'This phone number is already registered';
+                } else {
+                    this.phoneStatus = 'invalid';
+                    this.phoneMessage = data.message || 'Please enter a valid phone number';
+                }
+            } catch (error) {
+                this.phoneStatus = null;
+                this.phoneMessage = '';
+                this.phoneValidated = false;
+            }
+        }, 500);
+    },
 
     getErrorMessage() {
         return this.errorMessage || 'Something went wrong. Please try again later.';
@@ -136,6 +420,30 @@ Alpine.data('resellerForm', () => ({
             if (!this.formData.name || !this.formData.email || !this.formData.phone || !this.formData.investmentCapacity) {
                 this.error = true;
                 this.errorMessage = 'Please fill in all required fields.';
+                this.loading = false;
+                return;
+            }
+
+            // Validate name format
+            if (!this.nameValidated || this.nameStatus !== 'valid') {
+                this.error = true;
+                this.errorMessage = 'Please enter a valid full name (First Name and Last Name).';
+                this.loading = false;
+                return;
+            }
+
+            // Validate email
+            if (!this.emailValidated || this.emailStatus !== 'valid') {
+                this.error = true;
+                this.errorMessage = 'Please enter a valid and available email address.';
+                this.loading = false;
+                return;
+            }
+
+            // Validate phone
+            if (!this.phoneValidated || this.phoneStatus !== 'valid') {
+                this.error = true;
+                this.errorMessage = 'Please enter a valid phone number.';
                 this.loading = false;
                 return;
             }
@@ -182,13 +490,24 @@ Alpine.data('resellerForm', () => ({
 
             let data = null;
             try { 
-                data = await response.json(); 
+                const text = await response.text();
+                if (text) {
+                    data = JSON.parse(text);
+                }
             } catch (e) {
                 console.error('JSON parse error:', e);
+                // Try to get response text for debugging
+                try {
+                    const errorText = await response.clone().text();
+                    console.error('Response text:', errorText);
+                } catch (textError) {
+                    console.error('Could not read response text:', textError);
+                }
             }
 
             if (response.ok && data && data.success) {
                 this.success = true;
+                this.error = false;
                 this.formData = { 
                     name: '', 
                     email: '', 
@@ -198,6 +517,13 @@ Alpine.data('resellerForm', () => ({
                     message: '', 
                     hp: '' 
                 };
+                // Reset validation states
+                this.nameValidated = false;
+                this.emailValidated = false;
+                this.phoneValidated = false;
+                this.nameStatus = null;
+                this.emailStatus = null;
+                this.phoneStatus = null;
                 // Scroll to success message
                 setTimeout(() => {
                     const successEl = document.querySelector('[x-show="success"]');
@@ -205,7 +531,17 @@ Alpine.data('resellerForm', () => ({
                 }, 100);
             } else {
                 this.error = true;
-                this.errorMessage = data?.message || 'Something went wrong. Please try again later.';
+                // Show detailed error message
+                if (data?.errors) {
+                    // Laravel validation errors
+                    const firstError = Object.values(data.errors)[0];
+                    this.errorMessage = Array.isArray(firstError) ? firstError[0] : firstError;
+                } else if (data?.message) {
+                    this.errorMessage = data.message;
+                } else {
+                    this.errorMessage = `Server error (${response.status}). Please try again later.`;
+                }
+                console.error('Form submission failed:', data, 'Status:', response.status);
             }
         } catch (error) {
             console.error('Form submission error:', error);
@@ -215,7 +551,8 @@ Alpine.data('resellerForm', () => ({
             this.loading = false;
         }
     }
-}));
+    };
+});
 
 // Newsletter signup
 Alpine.data('newsletterForm', () => ({
@@ -650,25 +987,55 @@ Alpine.data('kycForm', (initialIdType = '') => ({
 // Purchase flow component - moved to individual pages to avoid conflicts
 
 // Login form component
-Alpine.data('loginForm', () => ({
-    tooltip: null,
-    init() {
-        this.tooltip = null;
-    },
-    showTooltip(tooltipName, event) {
-        // Prevent event propagation
-        if (event) {
-            event.stopPropagation();
-            event.preventDefault();
-        }
-        // Close other tooltips and toggle current one
-        if (this.tooltip === tooltipName) {
+Alpine.data('loginForm', function() {
+    return {
+        tooltip: null,
+        selectedRole: '',
+        isAdmin: false,
+        init() {
             this.tooltip = null;
-        } else {
-            this.tooltip = tooltipName;
+            this.selectedRole = '';
+            this.isAdmin = false;
+            // Check if email might be admin (optional - can be removed if not needed)
+            // For now, we'll let the backend handle admin detection
+        },
+        selectRole(role) {
+            this.selectedRole = role;
+        },
+        validateRole(event) {
+            // Admin can login without role selection, but investor/reseller must select
+            // This validation is also done on the backend
+            if (!this.isAdmin && !this.selectedRole) {
+                // Show error message (already shown via x-show)
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                return false;
+            }
+            // If validation passes, allow form to submit normally
+            // Remove preventDefault to allow normal form submission
+            if (event && event.type === 'submit') {
+                // Form will submit normally since we're not preventing default
+                return true;
+            }
+            return true;
+        },
+        showTooltip(tooltipName, event) {
+            // Prevent event propagation
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            // Close other tooltips and toggle current one
+            if (this.tooltip === tooltipName) {
+                this.tooltip = null;
+            } else {
+                this.tooltip = tooltipName;
+            }
         }
-    }
-}));
+    };
+});
 
 // Image Viewer Modal Component (for KYC admin review)
 Alpine.data('imageViewer', () => ({
@@ -701,6 +1068,102 @@ Alpine.data('investorDashboard', () => ({
         }
     }
 }));
+
+// Scroll Animations using Intersection Observer
+document.addEventListener('DOMContentLoaded', () => {
+    // Animation observer options
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+
+    // Create observer for scroll animations
+    const animationObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const animationType = entry.target.dataset.animation || 'fadeInUp';
+                entry.target.classList.add('animated', animationType);
+                animationObserver.unobserve(entry.target);
+            }
+        });
+    }, observerOptions);
+
+    // Animate hero section immediately on page load (no scroll needed)
+    const heroSection = document.querySelector('section:first-of-type');
+    if (heroSection) {
+        const heroElements = heroSection.querySelectorAll('.animate-on-scroll');
+        heroElements.forEach((el) => {
+            // Get delay from inline style or use default
+            const delay = el.style.animationDelay ? parseFloat(el.style.animationDelay) * 1000 : 0;
+            setTimeout(() => {
+                const animationType = el.dataset.animation || 'fadeInUp';
+                el.classList.add('animated', animationType);
+            }, delay);
+        });
+    }
+
+    // Observe all elements with animate-on-scroll class
+    const animatedElements = document.querySelectorAll('.animate-on-scroll');
+    animatedElements.forEach(el => {
+        // Set initial state
+        el.style.opacity = '0';
+        animationObserver.observe(el);
+    });
+
+    // Add stagger delays to children in stagger containers
+    const staggerContainers = document.querySelectorAll('[data-stagger]');
+    staggerContainers.forEach(container => {
+        const children = Array.from(container.children);
+        children.forEach((child, index) => {
+            // Only add if not already added
+            if (!child.classList.contains('animate-on-scroll')) {
+                child.classList.add('animate-on-scroll');
+                child.dataset.animation = container.dataset.animation || 'fadeInUp';
+                child.style.opacity = '0';
+                child.style.transitionDelay = `${Math.min(index * 0.1, 0.6)}s`;
+                animationObserver.observe(child);
+            }
+        });
+    });
+
+    // Counter animation for numbers
+    function animateCounter(element, target, duration = 2000) {
+        let start = 0;
+        const increment = target / (duration / 16);
+        const timer = setInterval(() => {
+            start += increment;
+            if (start >= target) {
+                element.textContent = target + (element.textContent.includes('+') ? '+' : '');
+                clearInterval(timer);
+            } else {
+                element.textContent = Math.floor(start) + (element.textContent.includes('+') ? '+' : '');
+            }
+        }, 16);
+    }
+
+    // Observe elements with counter animation
+    const counterObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const numberElement = entry.target.querySelector('[data-counter]');
+                if (numberElement) {
+                    const text = numberElement.textContent;
+                    const number = parseInt(text.replace(/\D/g, ''));
+                    if (number) {
+                        numberElement.textContent = '0' + (text.includes('+') ? '+' : '');
+                        animateCounter(numberElement, number, 2000);
+                    }
+                }
+                counterObserver.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.5 });
+
+    const counterElements = document.querySelectorAll('[data-animate-counter]');
+    counterElements.forEach(el => {
+        counterObserver.observe(el);
+    });
+});
 
 // Start Alpine
 window.Alpine = Alpine;
