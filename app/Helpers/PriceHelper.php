@@ -3,16 +3,44 @@
 namespace App\Helpers;
 
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class PriceHelper
 {
     /**
-     * Get current RWAMP token price in PKR (from cache or config)
+     * Get current RWAMP token price in PKR (from cache, database, or config)
+     * This is the official price set by admin and used across the entire website
      */
     public static function getRwampPkrPrice(): float
     {
+        // Always check cache first - this is the official admin-set price
+        $cachedPrice = Cache::get('crypto_price_rwamp_pkr');
+        if ($cachedPrice !== null) {
+            return (float) $cachedPrice;
+        }
+        
+        // If cache is empty, check database (persistent storage)
+        try {
+            if (Schema::hasTable('system_settings')) {
+                $dbPrice = DB::table('system_settings')
+                    ->where('key', 'crypto_price_rwamp_pkr')
+                    ->value('value');
+                
+                if ($dbPrice !== null) {
+                    $price = (float) $dbPrice;
+                    // Store in cache for faster access
+                    Cache::forever('crypto_price_rwamp_pkr', $price);
+                    return $price;
+                }
+            }
+        } catch (\Exception $e) {
+            // Table might not exist yet, fall through to config
+        }
+        
+        // Fallback to config if cache and database are empty
         $defaultPkr = config('crypto.rates.rwamp_pkr', 3.0);
-        return (float) Cache::get('crypto_price_rwamp_pkr', $defaultPkr);
+        return (float) $defaultPkr;
     }
 
     /**

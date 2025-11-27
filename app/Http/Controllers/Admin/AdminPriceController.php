@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Helpers\PriceHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 
@@ -72,7 +73,35 @@ class AdminPriceController extends Controller
         $btcUsd = $this->fetchBtcPrice();
         $btcPkr = $btcUsd * $usdPkr;
 
-        // Store prices in cache
+        // Store prices in database (persistent storage) and cache (for performance)
+        // This is the official price that will be used across the entire website
+        try {
+            // Store in database for persistence
+            DB::table('system_settings')->updateOrInsert(
+                ['key' => 'crypto_price_rwamp_pkr'],
+                [
+                    'value' => (string) $rwampPkr,
+                    'type' => 'number',
+                    'description' => 'Official RWAMP token price in PKR (admin-controlled)',
+                    'updated_at' => now(),
+                ]
+            );
+            
+            DB::table('system_settings')->updateOrInsert(
+                ['key' => 'crypto_price_rwamp_usd'],
+                [
+                    'value' => (string) $rwampUsd,
+                    'type' => 'number',
+                    'description' => 'Official RWAMP token price in USD (auto-calculated)',
+                    'updated_at' => now(),
+                ]
+            );
+        } catch (\Exception $e) {
+            // Table might not exist yet, continue with cache only
+            Log::warning('Failed to store price in database: ' . $e->getMessage());
+        }
+        
+        // Store in cache for fast access
         Cache::forever('crypto_price_rwamp_pkr', $rwampPkr);
         Cache::forever('crypto_price_rwamp_usd', $rwampUsd);
         Cache::forever('crypto_price_usdt_usd', $usdtUsd);
@@ -91,13 +120,33 @@ class AdminPriceController extends Controller
             Cache::forever('reseller_markup_rate', $markupRate);
         }
 
-        // Clear config cache
-        \Artisan::call('config:clear');
+        // Verify prices were stored correctly
+        $storedPkr = Cache::get('crypto_price_rwamp_pkr');
+        $storedUsd = Cache::get('crypto_price_rwamp_usd');
+        $dbPkr = DB::table('system_settings')->where('key', 'crypto_price_rwamp_pkr')->value('value');
+        
+        Log::info('Price update completed', [
+            'rwamp_pkr' => $rwampPkr,
+            'rwamp_usd' => $rwampUsd,
+            'stored_pkr_cache' => $storedPkr,
+            'stored_usd_cache' => $storedUsd,
+            'stored_pkr_db' => $dbPkr,
+            'cache_driver' => config('cache.default'),
+        ]);
 
-        $message = 'Prices updated successfully! RWAMP/USD: $' . number_format($rwampUsd, 4) . ', USDT/USD: $' . number_format($usdtUsd, 4) . ', BTC/USD: $' . number_format($btcUsd, 2);
+        // Clear view cache to ensure updated prices are reflected in rendered views
+        \Artisan::call('view:clear');
+        
+        // Clear config cache (prices are stored in cache, not config, but clear for safety)
+        \Artisan::call('config:clear');
+        
+        // Note: We do NOT clear the application cache because prices are stored there
+        // Using Cache::forever() ensures prices persist until explicitly updated
+
+        $message = 'Prices updated successfully! RWAMP Price: ₨' . number_format($rwampPkr, 2) . ' (PKR) / $' . number_format($rwampUsd, 4) . ' (USD). Changes are now live across the entire website.';
         
         if ($request->has('reseller_commission_rate') || $request->has('reseller_markup_rate')) {
-            $message .= '. Reseller rates updated.';
+            $message .= ' Reseller rates updated.';
         }
 
         return back()->with('success', $message);
