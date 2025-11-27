@@ -1,0 +1,15 @@
+refactor: Split AuthController into authentication and registration controllers
+
+- Create RegisterController for user registration logic
+- Create PasswordController for password management
+- Keep login/logout in AuthController
+- Extract registration validation methods
+
+This refactoring improves code organization by separating:
+- Authentication (login/logout) - AuthController
+- Registration (signup, validation) - RegisterController
+- Password management - PasswordController
+
+Original controller: 666 lines
+New structure: 3 controllers with clear separation of concerns
+

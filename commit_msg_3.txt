@@ -1,0 +1,20 @@
+refactor: Split ResellerController into smaller, focused controllers
+
+BREAKING CHANGE: Routes need to be updated to use new controllers
+
+- Create ResellerDashboardController for dashboard metrics
+- Create ResellerUserController for user management
+- Create ResellerPaymentController for payment operations
+- Create ResellerTransactionController for transaction management
+- Create ResellerSellController for sell operations
+- Create ResellerBuyRequestController for buy request management
+
+This refactoring improves code maintainability by following the
+Single Responsibility Principle. Each controller now handles
+a specific domain of reseller functionality.
+
+Original controller: 922 lines
+New controllers: 6 controllers averaging ~130 lines each
+
+See RESELLER_CONTROLLER_REFACTORING.md for route update instructions.
+

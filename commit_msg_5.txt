@@ -1,0 +1,15 @@
+refactor: Split CryptoPaymentController into domain-specific controllers
+
+- Create InvestorDashboardController for investor dashboard
+- Create InvestorHistoryController for payment/transaction history
+- Create BuyFromResellerController for reseller purchase operations
+- Keep main purchase flow in CryptoPaymentController
+
+This refactoring separates concerns:
+- Purchase flow remains in CryptoPaymentController
+- Investor-specific features moved to Investor namespace
+- Reseller purchase features moved to BuyFromReseller namespace
+
+Original controller: 823 lines
+New structure: 4 controllers with clear responsibilities
+
