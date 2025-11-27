@@ -901,13 +901,24 @@ Alpine.data('signupTabs', () => ({
         // Check if referral code exists
         try {
             const response = await fetch(`/api/check-referral-code?code=${encodeURIComponent(normalizedCode)}`);
+            
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            
             const data = await response.json();
             
             statusEl.classList.remove('hidden');
             inputEl.classList.remove('border-red-500');
             
-            if (data.valid) {
-                messageEl.textContent = `✓ Valid referral code - You'll be linked to ${data.reseller_name || 'this reseller'}`;
+            if (data.valid && data.reseller_name) {
+                // Display reseller name prominently
+                messageEl.innerHTML = `✓ Valid referral code - You'll be linked to <strong>${data.reseller_name}</strong>`;
+                messageEl.className = 'text-sm text-green-600 font-semibold';
+                inputEl.classList.add('border-green-500');
+            } else if (data.valid) {
+                // Valid but no name (shouldn't happen, but handle gracefully)
+                messageEl.textContent = `✓ Valid referral code - You'll be linked to this reseller`;
                 messageEl.className = 'text-sm text-green-600 font-semibold';
                 inputEl.classList.add('border-green-500');
             } else {
@@ -916,6 +927,8 @@ Alpine.data('signupTabs', () => ({
                 inputEl.classList.add('border-red-500');
             }
         } catch (error) {
+            // Log error for debugging
+            console.error('Error validating referral code:', error);
             // Silently fail - validation will happen on server side
             statusEl.classList.add('hidden');
             inputEl.classList.remove('border-green-500', 'border-red-500');
@@ -992,12 +1005,41 @@ Alpine.data('loginForm', function() {
         tooltip: null,
         selectedRole: '',
         isAdmin: false,
+        email: '',
         init() {
             this.tooltip = null;
             this.selectedRole = '';
             this.isAdmin = false;
-            // Check if email might be admin (optional - can be removed if not needed)
-            // For now, we'll let the backend handle admin detection
+            
+            // Get initial email value from input field
+            const emailInput = document.querySelector('input[name="email"]');
+            this.email = emailInput ? emailInput.value : '';
+            
+            // Check initial email for admin
+            this.checkAdminEmail(this.email);
+            
+            // Watch for email changes to detect admin
+            this.$watch('email', (value) => {
+                this.checkAdminEmail(value);
+            });
+        },
+        checkAdminEmail(value) {
+            if (value) {
+                const emailLower = value.toLowerCase().trim();
+                // Check if email contains "admin" or matches common admin patterns
+                this.isAdmin = emailLower.includes('admin@') || 
+                               emailLower.includes('@admin') ||
+                               emailLower === 'admin@rwamp.net' ||
+                               emailLower === 'superadmin@rwamp.net' ||
+                               emailLower.includes('admin@');
+                
+                // If admin detected, clear role selection
+                if (this.isAdmin) {
+                    this.selectedRole = '';
+                }
+            } else {
+                this.isAdmin = false;
+            }
         },
         selectRole(role) {
             this.selectedRole = role;

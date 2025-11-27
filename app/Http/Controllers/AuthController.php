@@ -158,18 +158,18 @@ class AuthController extends Controller
 		$resellerUserId = (int) $matches[1];
 		$reseller = User::where('id', $resellerUserId)
 			->where('role', 'reseller')
-			->whereNotNull('referral_code')
 			->first();
 
 		if ($reseller) {
 			return response()->json([
 				'valid' => true,
 				'reseller_name' => $reseller->name,
-				'reseller_id' => $reseller->id
+				'reseller_id' => $reseller->id,
+				'reseller_email' => $reseller->email,
 			]);
 		}
 
-		return response()->json(['valid' => false]);
+		return response()->json(['valid' => false, 'message' => 'Referral code not found']);
 	}
 
 	/**

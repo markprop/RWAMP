@@ -38,13 +38,14 @@ class RegisterController extends Controller
             $resellerUserId = (int) $matches[1];
             $reseller = User::where('id', $resellerUserId)
                 ->where('role', 'reseller')
-                ->whereNotNull('referral_code')
                 ->first();
             
             if ($reseller) {
                 return response()->json([
                     'valid' => true,
                     'exists' => true,
+                    'reseller_name' => $reseller->name, // For backward compatibility with JavaScript
+                    'reseller_id' => $reseller->id,
                     'reseller' => [
                         'id' => $reseller->id,
                         'name' => $reseller->name,
