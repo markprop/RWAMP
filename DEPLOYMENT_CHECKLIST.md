@@ -1,241 +1,260 @@
-# ✅ RWAMP Laravel Deployment Checklist
+# Deployment Checklist - RWAMP Project
 
-Use this checklist to ensure a successful deployment to Hostinger.
-
-## 📦 Pre-Deployment
-
-- [ ] **Local Build Complete**
-  - [ ] `npm run build` executed successfully
-  - [ ] `public/build/` directory contains assets
-  - [ ] `public/build/manifest.json` exists
-
-- [ ] **Environment Prepared**
-  - [ ] Production `.env` file prepared
-  - [ ] `APP_ENV=production` set
-  - [ ] `APP_DEBUG=false` set
-  - [ ] `APP_KEY` generated
-  - [ ] Database credentials ready
-  - [ ] Mail settings configured
-  - [ ] Crypto settings configured
-
-- [ ] **Dependencies Ready**
-  - [ ] `composer.json` and `composer.lock` ready
-  - [ ] `package.json` and `package-lock.json` ready
-  - [ ] All vendor dependencies tested locally
-
-- [ ] **Database Ready**
-  - [ ] Database schema exported or migrations ready
-  - [ ] Seed data prepared (if needed)
+**Date:** 2025-11-27  
+**Status:** ✅ Ready for Deployment  
+**Git Commits:** 4 commits pushed to `main` branch
 
 ---
 
-## 📤 File Upload
+## 📋 Pre-Deployment Summary
 
-- [ ] **Files Uploaded**
-  - [ ] All project files uploaded to server
-  - [ ] `node_modules/` excluded (not uploaded)
-  - [ ] `.git/` excluded (not uploaded)
-  - [ ] Local `.env` excluded (create new on server)
-  - [ ] `storage/logs/*.log` excluded
+### Commits Pushed:
+1. **feat: Add database persistence for official coin price**
+   - System settings table for persistent price storage
+   - PriceHelper updates for database fallback
+   - Admin price controller improvements
 
-- [ ] **Directory Structure**
-  - [ ] Document root points to `public/` directory
-  - [ ] OR files restructured for `public_html/` root
-  - [ ] All directories in correct locations
+2. **feat: Display reseller name when referral code is entered**
+   - Fixed referral code API endpoint
+   - Reseller name display in signup form
+   - Improved user feedback
 
----
+3. **feat: Calculate portfolio value using weighted average purchase price**
+   - Weighted average calculation from all purchases
+   - Portfolio Value vs Official Portfolio Value distinction
+   - Support for all purchase types
 
-## 🔐 Configuration
-
-- [ ] **Environment File**
-  - [ ] `.env` file created on server
-  - [ ] All required variables set
-  - [ ] `APP_KEY` set correctly
-  - [ ] `APP_URL` matches domain (with https://)
-  - [ ] Database credentials correct
-  - [ ] Mail settings configured
-
-- [ ] **File Permissions**
-  - [ ] Directories: 755
-  - [ ] Files: 644
-  - [ ] `storage/`: 775 (writable)
-  - [ ] `bootstrap/cache/`: 775 (writable)
-  - [ ] `.env`: 600 (secure)
+4. **fix: Resolve route conflicts and improve authentication**
+   - Fixed duplicate route names
+   - Added missing routes (admin.sell-coins, dashboard.reseller, admin.users.details)
+   - Fixed 419 Page Expired error
+   - 2FA columns migration
 
 ---
 
-## 🗄️ Database
+## 🚀 Hostinger Deployment Steps
 
-- [ ] **Database Created**
-  - [ ] Database created in cPanel
-  - [ ] Database user created
-  - [ ] User granted ALL PRIVILEGES
-  - [ ] Credentials noted
+### 1. **SSH into Hostinger Server**
 
-- [ ] **Database Setup**
-  - [ ] Migrations run: `php artisan migrate --force`
-  - [ ] OR database imported via phpMyAdmin
-  - [ ] Database connection tested
-  - [ ] Tables exist and are accessible
+```bash
+ssh your_username@dev.rwamp.net
+# or use Hostinger's SSH access from cPanel
+```
 
----
+### 2. **Navigate to Project Directory**
 
-## 📦 Dependencies
+```bash
+cd /home/u945985759/domains/dev.rwamp.net/public_html
+# Adjust path based on your Hostinger setup
+```
 
-- [ ] **Composer**
-  - [ ] `composer install --no-dev --optimize-autoloader` executed
-  - [ ] OR `vendor/` directory uploaded
-  - [ ] Autoloader optimized
+### 3. **Backup Current Live Site** ⚠️ **IMPORTANT**
 
-- [ ] **Assets**
-  - [ ] `public/build/` directory uploaded
-  - [ ] `public/build/manifest.json` exists
-  - [ ] CSS and JS files present
+```bash
+# Backup database
+mysqldump -u u945985759_markprop -p rwamp_db > backup_$(date +%Y%m%d_%H%M%S).sql
 
----
+# Backup files (optional but recommended)
+tar -czf files_backup_$(date +%Y%m%d_%H%M%S).tar.gz .
+```
 
-## 🔗 Storage & Symlinks
+### 4. **Pull Latest Changes from GitHub**
 
-- [ ] **Storage Symlink**
-  - [ ] `php artisan storage:link` executed
-  - [ ] OR symlink created manually
-  - [ ] `public/storage` → `storage/app/public` verified
+```bash
+# Ensure you're on main branch
+git checkout main
 
-- [ ] **Storage Directories**
-  - [ ] `storage/app/` exists and writable
-  - [ ] `storage/framework/` exists and writable
-  - [ ] `storage/logs/` exists and writable
+# Pull latest changes
+git pull origin main
+```
 
----
+### 5. **Install/Update Dependencies**
 
-## 🧹 Optimization
+```bash
+# Install Composer dependencies (production mode)
+composer install --optimize-autoloader --no-dev
 
-- [ ] **Caches Cleared**
-  - [ ] `php artisan optimize:clear` executed
+# Install NPM dependencies and build assets
+npm install
+npm run build
+```
 
-- [ ] **Caches Built**
-  - [ ] `php artisan config:cache` executed
-  - [ ] `php artisan route:cache` executed
-  - [ ] `php artisan view:cache` executed
+### 6. **Run Database Migrations**
 
-- [ ] **Autoloader**
-  - [ ] `composer dump-autoload --optimize` executed
+```bash
+# Run new migrations
+php artisan migrate --force
 
----
+# Verify migrations
+php artisan migrate:status
+```
 
-## ✅ Testing
+**Expected New Migrations:**
+- `2025_11_27_111734_add_two_factor_columns_to_users_table_if_missing`
+- `2025_11_27_124710_create_system_settings_table`
 
-- [ ] **Basic Functionality**
-  - [ ] Homepage loads: `https://yourdomain.com`
-  - [ ] No 500 errors
-  - [ ] CSS/JS assets load correctly
-  - [ ] Images load correctly
+### 7. **Clear All Caches**
 
-- [ ] **Authentication**
-  - [ ] Login page loads: `/login`
-  - [ ] Registration works
-  - [ ] Login works
-  - [ ] Logout works
+```bash
+# Clear all Laravel caches
+php artisan optimize:clear
 
-- [ ] **Dashboard**
-  - [ ] Admin can access `/admin/2fa/setup`
-  - [ ] 2FA can be enabled
-  - [ ] Admin dashboard loads: `/dashboard/admin`
-  - [ ] Investor dashboard loads: `/dashboard/investor`
-  - [ ] Reseller dashboard loads: `/dashboard/reseller`
+# Rebuild optimized files
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+```
 
-- [ ] **Features**
-  - [ ] File uploads work (KYC, payment screenshots)
-  - [ ] Forms submit correctly
-  - [ ] Database queries work
-  - [ ] Email sending works (test password reset)
+### 8. **Set Permissions** (if needed)
 
-- [ ] **Error Handling**
-  - [ ] No errors in `storage/logs/laravel.log`
-  - [ ] No PHP errors in cPanel error logs
-  - [ ] 404 pages work correctly
-  - [ ] Error pages display correctly
+```bash
+# Set storage permissions
+chmod -R 775 storage bootstrap/cache
+chown -R www-data:www-data storage bootstrap/cache
+```
 
----
+### 9. **Verify Environment Variables**
 
-## 🔒 Security
+Ensure `.env` file has correct values:
+- `APP_ENV=production`
+- `APP_DEBUG=false`
+- Database credentials
+- Mail settings
+- Cache driver (recommended: `file` or `redis`)
 
-- [ ] **Environment**
-  - [ ] `APP_DEBUG=false` in production
-  - [ ] `.env` file permissions: 600
-  - [ ] `.env` not accessible via web
+### 10. **Test Critical Functionality**
 
-- [ ] **Files**
-  - [ ] `.htaccess` files in place
-  - [ ] Directory listing disabled
-  - [ ] Sensitive files protected
-
-- [ ] **SSL**
-  - [ ] SSL certificate installed
-  - [ ] HTTPS redirects configured
-  - [ ] `APP_URL` uses https://
+After deployment, test:
+- ✅ Admin login and dashboard
+- ✅ Price management (update coin price)
+- ✅ User registration with referral code (reseller name display)
+- ✅ Investor/Reseller dashboard (portfolio value calculation)
+- ✅ Purchase flow
+- ✅ All routes working
 
 ---
 
-## 📊 Monitoring
+## 🔍 Post-Deployment Verification
 
-- [ ] **Logs**
-  - [ ] `storage/logs/laravel.log` accessible
-  - [ ] Log rotation configured (optional)
-  - [ ] Error monitoring set up (optional)
+### Check Logs
 
-- [ ] **Backups**
-  - [ ] Database backup configured
-  - [ ] File backup configured
-  - [ ] Backup schedule set
+```bash
+# Check Laravel logs for errors
+tail -f storage/logs/laravel.log
 
----
+# Check web server error logs
+tail -f /var/log/apache2/error.log
+# or
+tail -f /var/log/nginx/error.log
+```
 
-## 🎯 Post-Deployment
+### Verify Database
 
-- [ ] **Documentation**
-  - [ ] Deployment steps documented
-  - [ ] Credentials stored securely
-  - [ ] Team notified of deployment
+```bash
+# Check system_settings table exists
+php artisan tinker
+>>> DB::table('system_settings')->count()
+```
 
-- [ ] **Monitoring**
-  - [ ] Site monitored for 24-48 hours
-  - [ ] Error logs checked regularly
-  - [ ] Performance monitored
+### Test Price System
 
----
+1. Login as admin
+2. Go to `/dashboard/admin/prices`
+3. Update RWAMP price
+4. Verify price appears on homepage and purchase pages
 
-## 🚨 Emergency Contacts
+### Test Referral Code
 
-- [ ] Hostinger Support: [support link]
-- [ ] Database Admin: [contact]
-- [ ] Server Admin: [contact]
-- [ ] Developer: [contact]
+1. Go to `/register?ref=RSL48` (or any valid reseller code)
+2. Verify reseller name displays when code is entered
+3. Complete registration
 
----
+### Test Portfolio Value
 
-## 📝 Notes
-
-**Deployment Date:** _______________
-
-**Deployed By:** _______________
-
-**Domain:** _______________
-
-**Database Name:** _______________
-
-**Issues Encountered:**
-- 
-- 
-- 
-
-**Resolutions:**
-- 
-- 
-- 
+1. Login as investor/reseller
+2. Check dashboard portfolio cards
+3. Verify:
+   - Portfolio Value = Token Balance × Average Purchase Price
+   - Official Portfolio Value = Token Balance × Current Official Price
 
 ---
 
-**Checklist Version:** 1.0
-**Last Updated:** 2024
+## 🐛 Troubleshooting
 
+### If migrations fail:
+```bash
+# Check migration status
+php artisan migrate:status
+
+# Rollback if needed (be careful!)
+php artisan migrate:rollback --step=1
+```
+
+### If routes don't work:
+```bash
+# Clear route cache
+php artisan route:clear
+php artisan route:cache
+```
+
+### If prices don't update:
+```bash
+# Clear all caches
+php artisan optimize:clear
+
+# Check database
+php artisan tinker
+>>> \App\Helpers\PriceHelper::getRwampPkrPrice()
+```
+
+### If assets don't load:
+```bash
+# Rebuild assets
+npm run build
+
+# Clear view cache
+php artisan view:clear
+```
+
+---
+
+## 📝 Important Notes
+
+1. **Database Backup**: Always backup before deploying
+2. **Maintenance Mode**: Consider using `php artisan down` during deployment
+3. **Queue Workers**: If using queues, restart workers after deployment
+4. **Cache Driver**: Ensure cache driver is set correctly in `.env`
+5. **File Permissions**: Verify storage and cache directories are writable
+
+---
+
+## ✅ Deployment Complete Checklist
+
+- [ ] Code pulled from GitHub
+- [ ] Dependencies installed
+- [ ] Migrations run successfully
+- [ ] Caches cleared and rebuilt
+- [ ] Permissions set correctly
+- [ ] Environment variables verified
+- [ ] Admin dashboard accessible
+- [ ] Price management working
+- [ ] Referral code display working
+- [ ] Portfolio value calculation correct
+- [ ] No errors in logs
+- [ ] All routes functional
+
+---
+
+## 📞 Support
+
+If you encounter issues:
+1. Check Laravel logs: `storage/logs/laravel.log`
+2. Check web server logs
+3. Verify database connection
+4. Check file permissions
+5. Review `.env` configuration
+
+---
+
+**Last Updated:** 2025-11-27  
+**Deployment Status:** Ready ✅
