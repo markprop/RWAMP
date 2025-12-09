@@ -17,6 +17,9 @@ class Kernel extends ConsoleKernel
         
         // Update USD to PKR exchange rate every hour
         $schedule->command('exchange:update-usd-pkr')->hourly();
+        
+        // Prune game price history older than 7 days (daily at 2 AM)
+        $schedule->command('game:prune-price-history')->dailyAt('02:00');
     }
 
     /**
