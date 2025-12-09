@@ -160,11 +160,19 @@ class PriceHelper
             $data = json_decode($response->getBody(), true);
             if (isset($data['rates']['PKR'])) {
                 $rate = (float) $data['rates']['PKR'];
-                \Log::info('USD to PKR rate fetched from exchangerate-api.com: ' . $rate);
+                try {
+                    \Log::info('USD to PKR rate fetched from exchangerate-api.com: ' . $rate);
+                } catch (\Exception $logError) {
+                    // Silently fail if logging is not configured
+                }
                 return $rate;
             }
         } catch (\Exception $e) {
-            \Log::warning('Failed to fetch USD to PKR rate from exchangerate-api.com: ' . $e->getMessage());
+            try {
+                \Log::warning('Failed to fetch USD to PKR rate from exchangerate-api.com: ' . $e->getMessage());
+            } catch (\Exception $logError) {
+                // Silently fail if logging is not configured
+            }
         }
 
         // Fallback: Try alternative API (fixer.io or currencyapi.net)
@@ -182,17 +190,137 @@ class PriceHelper
             $data = json_decode($response->getBody(), true);
             if (isset($data['data']['PKR']['value'])) {
                 $rate = (float) $data['data']['PKR']['value'];
-                \Log::info('USD to PKR rate fetched from currencyapi.net: ' . $rate);
+                try {
+                    \Log::info('USD to PKR rate fetched from currencyapi.net: ' . $rate);
+                } catch (\Exception $logError) {
+                    // Silently fail if logging is not configured
+                }
                 return $rate;
             }
         } catch (\Exception $e) {
-            \Log::warning('Failed to fetch USD to PKR rate from currencyapi.net: ' . $e->getMessage());
+            try {
+                \Log::warning('Failed to fetch USD to PKR rate from currencyapi.net: ' . $e->getMessage());
+            } catch (\Exception $logError) {
+                // Silently fail if logging is not configured
+            }
         }
 
         // Final fallback to config value
         $defaultRate = (float) config('crypto.rates.usd_pkr', 278);
-        \Log::warning('Using default USD to PKR rate from config: ' . $defaultRate);
+        try {
+            \Log::warning('Using default USD to PKR rate from config: ' . $defaultRate);
+        } catch (\Exception $logError) {
+            // Silently fail if logging is not configured
+        }
         return $defaultRate;
+    }
+
+    /**
+     * Get current USD to AED exchange rate (from cache or API)
+     * Automatically fetches from API if cache is expired or missing
+     */
+    public static function getUsdToAedRate(): float
+    {
+        // Check cache first (cache for 1 hour)
+        $cached = Cache::get('exchange_rate_usd_aed');
+        if ($cached !== null) {
+            return (float) $cached;
+        }
+
+        // Fetch from API if cache is expired
+        $rate = self::fetchUsdToAedRate();
+        
+        // Cache for 1 hour
+        Cache::put('exchange_rate_usd_aed', $rate, now()->addHour());
+        
+        return $rate;
+    }
+
+    /**
+     * Fetch USD to AED exchange rate from API
+     * Uses exchangerate-api.com (free tier) or fallback to config
+     */
+    public static function fetchUsdToAedRate(): float
+    {
+        try {
+            // Try exchangerate-api.com first (free tier, no API key needed for basic usage)
+            $client = new \GuzzleHttp\Client(['timeout' => 10]);
+            
+            // Using exchangerate-api.com free endpoint
+            $response = $client->get('https://api.exchangerate-api.com/v4/latest/USD');
+            
+            $data = json_decode($response->getBody(), true);
+            if (isset($data['rates']['AED'])) {
+                $rate = (float) $data['rates']['AED'];
+                try {
+                    \Log::info('USD to AED rate fetched from exchangerate-api.com: ' . $rate);
+                } catch (\Exception $logError) {
+                    // Silently fail if logging is not configured
+                }
+                return $rate;
+            }
+        } catch (\Exception $e) {
+            try {
+                \Log::warning('Failed to fetch USD to AED rate from exchangerate-api.com: ' . $e->getMessage());
+            } catch (\Exception $logError) {
+                // Silently fail if logging is not configured
+            }
+        }
+
+        // Fallback: Try alternative API
+        try {
+            $client = new \GuzzleHttp\Client(['timeout' => 10]);
+            // Using currencyapi.net free endpoint (alternative)
+            $response = $client->get('https://api.currencyapi.com/v3/latest', [
+                'query' => [
+                    'apikey' => env('CURRENCY_API_KEY', ''),
+                    'base_currency' => 'USD',
+                    'currencies' => 'AED'
+                ]
+            ]);
+            
+            $data = json_decode($response->getBody(), true);
+            if (isset($data['data']['AED']['value'])) {
+                $rate = (float) $data['data']['AED']['value'];
+                try {
+                    \Log::info('USD to AED rate fetched from currencyapi.net: ' . $rate);
+                } catch (\Exception $logError) {
+                    // Silently fail if logging is not configured
+                }
+                return $rate;
+            }
+        } catch (\Exception $e) {
+            try {
+                \Log::warning('Failed to fetch USD to AED rate from currencyapi.net: ' . $e->getMessage());
+            } catch (\Exception $logError) {
+                // Silently fail if logging is not configured
+            }
+        }
+
+        // Final fallback to config value (typical rate: 1 USD ≈ 3.67 AED)
+        $defaultRate = (float) config('crypto.rates.usd_aed', 3.67);
+        try {
+            \Log::warning('Using default USD to AED rate from config: ' . $defaultRate);
+        } catch (\Exception $logError) {
+            // Silently fail if logging is not configured
+        }
+        return $defaultRate;
+    }
+
+    /**
+     * Get current AED to PKR exchange rate (calculated from USD rates)
+     */
+    public static function getAedToPkrRate(): float
+    {
+        $usdPkr = self::getUsdToPkrRate();
+        $usdAed = self::getUsdToAedRate();
+        
+        if ($usdAed > 0) {
+            return $usdPkr / $usdAed;
+        }
+        
+        // Fallback: typical rate (1 AED ≈ 75.7 PKR based on 1 USD = 278 PKR and 1 USD = 3.67 AED)
+        return (float) config('crypto.rates.aed_pkr', 75.7);
     }
 }
 
