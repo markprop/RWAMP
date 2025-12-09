@@ -15,7 +15,9 @@
             <div class="hidden lg:block space-y-6 text-white sticky top-8">
                 <div class="bg-gradient-to-br from-primary/20 to-secondary/20 backdrop-blur-lg rounded-2xl p-8 border border-primary/30 shadow-2xl">
                     <div class="flex items-center gap-4 mb-6">
-                        <img src="{{ asset('images/logo.jpeg') }}" alt="RWAMP" class="w-16 h-16 rounded-full border-2 border-primary">
+                        <div class="coin-ring">
+                            <img src="{{ asset('images/logo.png') }}" alt="RWAMP" class="w-16 h-16 rounded-full rwamp-coin-logo">
+                        </div>
                         <div>
                             <h2 class="text-3xl font-montserrat font-bold text-white">RWAMP Coin</h2>
                             <p class="text-white/80 text-sm">Start Your Investment Journey Today</p>
@@ -223,7 +225,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
                                 <div x-show="tooltip === 'phone'" @click.away="tooltip = null" x-cloak x-transition class="absolute z-50 w-64 p-3 text-xs text-white bg-gray-900 rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2 mb-2" style="display: none;">
-                                    <p><strong>Phone Format:</strong> Include country code with + sign, followed by space and number. Examples: +92 300 1234567, +1 555 1234567</p>
+                                    <p><strong>Phone Format:</strong> Include country code with + sign, followed by space and number. Examples: +92 370 1346038, +1 555 1234567</p>
                                     <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
                                         <div class="border-4 border-transparent border-t-gray-900"></div>
                                     </div>
@@ -231,14 +233,25 @@
                             </div>
                         </label>
                         <div class="relative">
-                            <input type="tel" name="phone" id="investor-phone" value="{{ old('phone') }}" class="form-input text-sm sm:text-base" required placeholder="+92 300 1234567" x-on:input.debounce.500ms="validatePhone($event.target.value, 'investor')" x-on:blur="validatePhone($event.target.value, 'investor')">
+                            <input
+                                type="tel"
+                                name="phone"
+                                id="investor-phone"
+                                value="{{ old('phone') }}"
+                                class="form-input text-sm sm:text-base"
+                                required
+                                placeholder="+92 370 1346038"
+                                data-intl-tel-input
+                                x-on:input.debounce.500ms="validatePhone($event.target.value, 'investor')"
+                                x-on:blur="validatePhone($event.target.value, 'investor')"
+                            >
                             <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                                 <span x-show="phoneValidated.investor && phoneStatus.investor === 'valid'" class="text-green-500">✓</span>
                                 <span x-show="phoneValidated.investor && phoneStatus.investor === 'invalid'" class="text-red-500">✗</span>
                                 <span x-show="phoneStatus.investor === 'checking'" class="animate-spin text-gray-400">⟳</span>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-500 mt-1">Format: Country Code + Space + Number (e.g., +92 300 1234567)</p>
+                        <p class="text-xs text-gray-500 mt-1">Format: Country Code + Space + Number (e.g., +92 370 1346038)</p>
                         <p x-show="phoneValidated.investor && phoneStatus.investor === 'invalid'" x-cloak class="text-xs text-red-500 mt-1" x-text="phoneMessage.investor"></p>
                         <p x-show="phoneValidated.investor && phoneStatus.investor === 'valid'" x-cloak class="text-xs text-green-500 mt-1" x-text="phoneMessage.investor"></p>
                     </div>
@@ -494,7 +507,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
                                 <div x-show="tooltip === 'reseller-phone'" @click.away="tooltip = null" x-cloak x-transition class="absolute z-50 w-64 p-3 text-xs text-white bg-gray-900 rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2 mb-2" style="display: none;">
-                                    <p><strong>Phone Format:</strong> Include country code with + sign, followed by space and number. Examples: +92 300 1234567, +1 555 1234567</p>
+                                    <p><strong>Phone Format:</strong> Include country code with + sign, followed by space and number. Examples: +92 370 1346038, +1 555 1234567</p>
                                     <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
                                         <div class="border-4 border-transparent border-t-gray-900"></div>
                                     </div>
@@ -502,14 +515,25 @@
                             </div>
                         </label>
                         <div class="relative">
-                            <input type="tel" name="phone" id="reseller-phone" value="{{ old('phone') }}" class="form-input text-sm sm:text-base" required placeholder="+92 300 1234567" x-on:input.debounce.500ms="validatePhone($event.target.value, 'reseller')" x-on:blur="validatePhone($event.target.value, 'reseller')">
+                            <input
+                                type="tel"
+                                name="phone"
+                                id="reseller-phone"
+                                value="{{ old('phone') }}"
+                                class="form-input text-sm sm:text-base"
+                                required
+                                placeholder="+92 370 1346038"
+                                data-intl-tel-input
+                                x-on:input.debounce.500ms="validatePhone($event.target.value, 'reseller')"
+                                x-on:blur="validatePhone($event.target.value, 'reseller')"
+                            >
                             <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                                 <span x-show="phoneValidated.reseller && phoneStatus.reseller === 'valid'" class="text-green-500">✓</span>
                                 <span x-show="phoneValidated.reseller && phoneStatus.reseller === 'invalid'" class="text-red-500">✗</span>
                                 <span x-show="phoneStatus.reseller === 'checking'" class="animate-spin text-gray-400">⟳</span>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-500 mt-1">Format: Country Code + Space + Number (e.g., +92 300 1234567 or +1 555 1234567)</p>
+                        <p class="text-xs text-gray-500 mt-1">Format: Country Code + Space + Number (e.g., +92 370 1346038 or +1 555 1234567)</p>
                         <p x-show="phoneValidated.reseller && phoneStatus.reseller === 'invalid'" x-cloak class="text-xs text-red-500 mt-1" x-text="phoneMessage.reseller"></p>
                         <p x-show="phoneValidated.reseller && phoneStatus.reseller === 'valid'" x-cloak class="text-xs text-green-500 mt-1" x-text="phoneMessage.reseller"></p>
                     </div>
@@ -710,7 +734,9 @@
             <div class="lg:hidden space-y-4 text-white mt-6">
                 <div class="bg-gradient-to-br from-primary/20 to-secondary/20 backdrop-blur-lg rounded-2xl p-6 border border-primary/30">
                     <div class="flex items-center gap-3 mb-4">
-                        <img src="{{ asset('images/logo.jpeg') }}" alt="RWAMP" class="w-12 h-12 rounded-full border-2 border-primary">
+                        <div class="coin-ring">
+                            <img src="{{ asset('images/logo.png') }}" alt="RWAMP" class="w-12 h-12 rounded-full rwamp-coin-logo">
+                        </div>
                         <div>
                             <h2 class="text-xl font-montserrat font-bold">RWAMP Coin</h2>
                             <p class="text-white/80 text-xs">Start Your Investment Journey</p>

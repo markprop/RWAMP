@@ -186,7 +186,8 @@
                                 x-model="formData.phone"
                                 required
                                 class="w-full px-4 py-3 rounded-lg border border-gray-600 bg-gray-800 text-white placeholder-gray-400 focus:border-accent focus:ring-2 focus:ring-accent/30 focus:outline-none transition-all duration-300"
-                                placeholder="+92 300 1234567"
+                                placeholder="+92 370 1346038"
+                                data-intl-tel-input
                                 x-on:input="formatPhone($event.target)"
                                 x-on:blur="validatePhone($event.target.value)"
                             />

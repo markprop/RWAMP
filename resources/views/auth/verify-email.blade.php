@@ -5,7 +5,7 @@
     <div class="max-w-md mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div class="bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-8 card-hover animate-fadeInUp">
             <div class="text-center mb-6">
-                <img src="{{ asset('images/logo.jpeg') }}" alt="RWAMP" class="w-16 h-16 mx-auto rounded-full mb-3">
+                <img src="{{ asset('images/logo.png') }}" alt="RWAMP" class="w-16 h-16 mx-auto rounded-full mb-3">
                 <h1 class="text-2xl font-montserrat font-bold">{{ __('Verify Your Email') }}</h1>
                 <p class="text-gray-600 mt-2">
                     {{ __('We sent a 6-digit code to') }}<br>
@@ -74,16 +74,27 @@
                 </form>
 
                 <div class="mt-6 space-y-4">
-                    <form method="POST" action="{{ route('verify-email.resend') }}" id="resend-form" x-data="window.resendTimer ? window.resendTimer() : {}">
+                    <form method="POST"
+                          action="{{ route('verify-email.resend') }}"
+                          id="resend-form"
+                          x-data="window.resendOtp ? window.resendOtp('{{ route('verify-email.resend') }}') : {}"
+                          @submit.prevent="resend">
                         @csrf
                         <input type="hidden" name="email" value="{{ $email }}">
                         <button 
                             type="submit" 
-                            class="w-full px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg font-montserrat font-semibold transition-all duration-300 hover:border-primary hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                            :disabled="countdown > 0"
+                            class="w-full px-4 py-2 min-h-[44px] border-2 border-gray-300 text-gray-700 rounded-lg font-montserrat font-semibold transition-all duration-300 hover:border-primary hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                            :disabled="countdown > 0 || loading"
                         >
-                            <span x-show="countdown === 0">{{ __('Resend Code') }}</span>
-                            <span x-show="countdown > 0" x-text="resendLabel()"></span>
+                            <span x-show="!loading && countdown === 0">{{ __('Resend Code') }}</span>
+                            <span x-show="!loading && countdown > 0" x-text="resendLabel()"></span>
+                            <span x-show="loading">
+                                <svg class="animate-spin h-4 w-4 mr-2 inline-block text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                                <span>{{ __('Resending...') }}</span>
+                            </span>
                         </button>
                     </form>
 
@@ -315,14 +326,18 @@ window.otpVerification = function() {
     }
 }
 
-window.resendTimer = function() {
+window.resendOtp = function(url) {
     return {
-        countdown: 60,
+        countdown: 0,
+        loading: false,
         resendLabel() {
             return 'Resend code (' + this.countdown + 's)';
         },
         init() {
-            // Start countdown from 60 seconds
+            // No initial countdown; will start after a successful resend
+        },
+        startCountdown(seconds) {
+            this.countdown = seconds;
             const interval = setInterval(() => {
                 if (this.countdown > 0) {
                     this.countdown--;
@@ -330,18 +345,80 @@ window.resendTimer = function() {
                     clearInterval(interval);
                 }
             }, 1000);
-            
-            // Reset countdown when form is submitted successfully
-            document.getElementById('resend-form')?.addEventListener('submit', () => {
-                this.countdown = 60;
-                const newInterval = setInterval(() => {
-                    if (this.countdown > 0) {
-                        this.countdown--;
+        },
+        showToast(success, message) {
+            const successDiv = document.getElementById('success-message');
+            const successText = document.getElementById('success-text');
+            const errorDiv = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
+
+            if (success) {
+                if (successDiv && successText) {
+                    successText.textContent = message;
+                    successDiv.classList.remove('hidden');
+                }
+                if (errorDiv) {
+                    errorDiv.classList.add('hidden');
+                }
+            } else {
+                if (errorDiv && errorText) {
+                    errorText.textContent = message;
+                    errorDiv.classList.remove('hidden');
+                }
+                if (successDiv) {
+                    successDiv.classList.add('hidden');
+                }
+            }
+
+            // Auto-hide after 4 seconds
+            setTimeout(() => {
+                if (successDiv) successDiv.classList.add('hidden');
+                if (errorDiv) errorDiv.classList.add('hidden');
+            }, 4000);
+        },
+        async resend() {
+            if (this.loading || this.countdown > 0) {
+                return;
+            }
+            this.loading = true;
+
+            const form = document.getElementById('resend-form');
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    },
+                });
+
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    const data = await response.json();
+                    if (response.ok) {
+                        this.showToast(true, data.message || 'OTP resent successfully.');
+                        this.startCountdown(60);
                     } else {
-                        clearInterval(newInterval);
+                        this.showToast(false, data.message || 'Failed to resend code.');
                     }
-                }, 1000);
-            });
+                } else {
+                    if (response.ok) {
+                        this.showToast(true, 'OTP resent successfully.');
+                        this.startCountdown(60);
+                    } else if (response.status === 429) {
+                        this.showToast(false, 'Too many requests. Please wait before trying again.');
+                    } else {
+                        this.showToast(false, 'Failed to resend code.');
+                    }
+                }
+            } catch (error) {
+                this.showToast(false, 'Network error. Please try again.');
+            } finally {
+                this.loading = false;
+            }
         }
     }
 }

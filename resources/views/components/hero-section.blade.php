@@ -9,11 +9,11 @@
             <div class="text-center lg:text-left text-white">
                 <!-- Logo -->
                 <div class="mb-8 flex justify-center lg:justify-start animate-on-scroll" data-animation="zoomIn" style="animation-delay: 0.1s;">
-                    <div class="w-32 h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 rounded-full overflow-hidden shadow-2xl transition-transform duration-300 hover:scale-105">
+                    <div class="w-32 h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 rounded-full overflow-hidden shadow-2xl transition-transform duration-300 hover:scale-105 coin-ring">
                         <img 
-                            src="{{ asset('images/logo.jpeg') }}" 
+                            src="{{ asset('images/logo.png') }}" 
                             alt="RWAMP Logo" 
-                            class="w-full h-full object-cover"
+                            class="w-full h-full object-cover rwamp-coin-logo"
                         />
                     </div>
                 </div>

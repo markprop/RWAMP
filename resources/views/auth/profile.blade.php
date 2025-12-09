@@ -76,21 +76,34 @@
                     @endif
                     <p class="text-xs text-gray-500 mb-4">Your wallet address is auto-generated and used for secure internal transfers.</p>
                     <div class="mt-4 grid grid-cols-2 gap-4">
-                        <div class="bg-black text-white rounded-lg p-4 text-center">
+                        <div class="bg-black text-white rounded-lg p-4 text-center flex flex-col justify-between min-h-[80px]">
                             <div class="text-xs text-white/70">Token Balance</div>
-                            <div class="text-2xl font-bold">{{ number_format($user->token_balance ?? 0) }}</div>
+                            <div class="text-lg sm:text-2xl font-bold break-words">
+                                {{ number_format($user->token_balance ?? 0) }}
+                            </div>
                         </div>
-                        <div class="bg-accent text-black rounded-lg p-4 text-center">
-                            <div class="text-xs text-black/70">Value (Rs)</div>
-                            <div class="text-2xl font-bold">{{ number_format(($user->token_balance ?? 0) * ($officialPrice ?? 0.70), 2) }}</div>
+                        <div class="bg-accent text-black rounded-lg p-4 text-center flex flex-col justify-between min-h-[80px]">
+                            <div class="text-xs text-black/70">Value</div>
+                            <div class="text-lg sm:text-2xl font-bold break-words">
+                                @include('components.price-tag', [
+                                    'pkr' => ($user->token_balance ?? 0) * ($officialPrice ?? 0.70),
+                                    'size' => 'normal'
+                                ])
+                            </div>
                         </div>
                     </div>
                     <div class="mt-4 space-y-2">
-                        @if($user->kyc_status === 'approved')
-                            <a href="{{ route('purchase.create') }}" class="inline-block btn-primary w-full text-center">Purchase Tokens</a>
+                        <!-- @if($user->kyc_status === 'approved')
+                            <button 
+                                type="button"
+                                onclick="openPurchaseModalFromProfile()"
+                                class="inline-block btn-primary w-full text-center"
+                            >
+                                Purchase Tokens
+                            </button>
                         @else
                             <a href="{{ route('kyc.show') }}" class="inline-block btn-primary w-full text-center">Complete KYC to Purchase</a>
-                        @endif
+                        @endif -->
                         @if(($user->token_balance ?? 0) > 0)
                             @if($user->kyc_status !== 'approved')
                                 <button 
@@ -907,6 +920,18 @@ function fallbackCopyTextToClipboard(text) {
     
     document.body.removeChild(textArea);
 }
+</script>
+
+<script>
+    function openPurchaseModalFromProfile() {
+        try {
+            window.dispatchEvent(new CustomEvent('open-purchase-modal', {
+                detail: {}
+            }));
+        } catch (e) {
+            console.error('Failed to open purchase modal from profile:', e);
+        }
+    }
 </script>
 
 <style>

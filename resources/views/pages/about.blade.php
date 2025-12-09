@@ -16,7 +16,7 @@
 
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <!-- Content -->
             <div>
                 <h2 class="text-3xl font-bold text-gray-900 mb-6">Revolutionizing Real Estate Investment</h2>
@@ -56,10 +56,33 @@
                 </div>
             </div>
 
-            <!-- Image -->
-            <div class="relative">
-                <img src="{{ asset('images/logo.jpeg') }}" alt="RWAMP Logo" class="w-full h-96 object-cover rounded-lg shadow-xl">
-                <div class="absolute inset-0 bg-primary opacity-20 rounded-lg"></div>
+            <!-- Coin Image - Professional Display -->
+            <div class="relative flex justify-center lg:justify-end items-center py-8 lg:py-0">
+                <div class="relative w-full max-w-md">
+                    <!-- Decorative Background Elements -->
+                    <div class="absolute inset-0 bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 rounded-3xl blur-3xl opacity-60 -z-10 transform scale-110"></div>
+                    <div class="absolute -inset-4 bg-gradient-to-br from-yellow-200/20 via-amber-200/20 to-orange-200/20 rounded-full blur-2xl -z-10"></div>
+                    
+                    <!-- Main Coin Container -->
+                    <div class="relative coin-professional-display flex justify-center">
+                        <div class="relative">
+                            <div class="relative w-92 h-92 sm:w-90 sm:h-90 md:w-106 md:h-106 coin-ring coin-large rounded-full overflow-hidden shadow-2xl transform transition-all duration-500 hover:scale-105">
+                                <img src="{{ asset('images/logo.png') }}" alt="RWAMP Logo" class="w-full h-full object-contain rwamp-coin-logo">
+                            </div>
+                            
+                            <!-- Shine Effect Overlay -->
+                            <div class="absolute inset-0 rounded-full pointer-events-none overflow-hidden">
+                                <div class="absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-transparent rounded-full"></div>
+                                <div class="absolute inset-0" style="background: radial-gradient(circle, transparent 0%, transparent 50%, rgba(0,0,0,0.05) 100%);"></div>
+                            </div>
+                            
+                            <!-- Professional Badge/Accent -->
+                            <div class="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-white px-6 py-2.5 rounded-full shadow-xl border border-gray-200 whitespace-nowrap">
+                                <span class="text-sm font-bold text-gray-800 tracking-wide">Official Token</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -79,8 +102,8 @@
             </div>
         </div>
 
-        <!-- Team Section -->
-        <div class="mt-20">
+        <!-- Team Section - Hidden -->
+        <div class="mt-20 hidden">
             <h3 class="text-2xl font-montserrat font-bold mb-6">Our Team</h3>
             <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 @foreach ([1,2,3,4] as $i)

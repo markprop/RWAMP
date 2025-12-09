@@ -23,7 +23,7 @@
      @open-purchase-modal.window="handlePurchaseModalOpen($event)"
      x-show="purchaseModalOpen" 
      @keydown.escape.window="purchaseModalOpen = false"
-     class="fixed inset-0 z-50 overflow-y-auto p-4" 
+     class="fixed inset-0 z-50 overflow-y-auto p-4 rw-modal rw-modal--mobile" 
      style="display: none;"
      x-cloak>
     <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
@@ -46,13 +46,13 @@
              x-transition:leave="ease-in duration-200"
              x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
              x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-             class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl border-2 border-red-300 ring-1 ring-red-500/20 ring-offset-2 ring-offset-white transform transition-all sm:my-8 sm:align-middle sm:max-w-5xl w-full max-w-full">
+             class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl border-2 border-red-300 ring-1 ring-red-500/20 ring-offset-2 ring-offset-white transform transition-all sm:my-8 sm:align-middle sm:max-w-5xl w-full max-w-full rw-modal__panel">
             
             <!-- Modal header -->
             <div class="bg-gradient-to-r from-black to-secondary text-white px-4 sm:px-6 py-3 sm:py-4 border-b border-red-400/30">
                 <div class="flex items-center justify-between">
                     <h3 class="text-lg sm:text-2xl font-montserrat font-bold">Purchase RWAMP Tokens</h3>
-                    <button @click="purchaseModalOpen = false" class="text-white hover:text-gray-300 p-1">
+                    <button @click="purchaseModalOpen = false" class="text-white hover:text-gray-300 p-1 btn-small">
                         <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
@@ -69,6 +69,7 @@
     </div>
     
     @include('components.purchase-modals', ['rates' => $rates, 'wallets' => $wallets, 'paymentsDisabled' => $paymentsDisabled])
+    @include('modals.wallet-mobile-guide')
 </div>
 
 @push('scripts')
@@ -132,6 +133,13 @@ function purchaseFlow() {
         submitAlert: { visible: false, message: '', type: 'success' },
         modalOpen: false,
         isSubmitting: false,
+        // wallet / device state
+        isMobile: false,
+        walletErrorModal: false,
+        walletErrorMessage: '',
+        mobileWalletGuideModal: false,
+        walletConnectUri: null,
+        pollingInterval: null,
         rates: {
             tokenUsd: {{ $rates['tokenUsd'] }},
             tokenPkr: {{ (float) ($rates['tokenPkr'] ?? ($rates['tokenUsd'] * $rates['usdToPkr'])) }},
@@ -143,9 +151,142 @@ function purchaseFlow() {
         init() {
             this.formattedTokenQuantity = this.formatNumber(this.tokenQuantity);
             this.calculateAmounts();
+            // Robust mobile detection
+            this.isMobile = this.detectMobileDevice();
+            console.log('[PurchaseFlow] init', {
+                isMobile: this.isMobile,
+                ua: navigator.userAgent,
+                hasEthereum: !!(window.ethereum),
+                walletConnectLoaded: !!(window.walletConnectLoaded)
+            });
+            
+            // Check for wallet connection return from mobile
+            this.checkWalletConnectionReturn();
+            
+            // Start connection polling if on mobile and connection is pending
+            if (this.isMobile && sessionStorage.getItem('wallet_connect_pending') === 'true') {
+                this.startConnectionPolling();
+            }
+            
             if (location.search.indexOf('open=purchase') > -1) {
                 this.purchaseModalOpen = true;
             }
+            
+            // Cleanup polling on page unload
+            window.addEventListener('beforeunload', () => {
+                this.stopPolling();
+            });
+        },
+
+        checkWalletConnectionReturn() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const walletConnected = urlParams.get('wallet_connected');
+            const walletError = urlParams.get('wallet_error');
+            
+            if (walletConnected === '1') {
+                // Connection successful - start polling
+                this.startConnectionPolling();
+                // Clean up URL
+                const newUrl = window.location.pathname + window.location.search.replace(/[?&]wallet_connected=\d+(&|$)/, '');
+                window.history.replaceState({}, '', newUrl);
+            } else if (walletError) {
+                // Connection failed
+                this.showToast(decodeURIComponent(walletError), 'error');
+                sessionStorage.removeItem('wallet_connect_pending');
+                // Clean up URL
+                const newUrl = window.location.pathname + window.location.search.replace(/[?&]wallet_error=[^&]*/g, '');
+                window.history.replaceState({}, '', newUrl);
+            }
+        },
+
+        startConnectionPolling() {
+            if (this.pollingInterval) {
+                clearInterval(this.pollingInterval);
+            }
+            
+            let pollCount = 0;
+            const maxPolls = 60; // Poll for up to 60 seconds (60 * 1 second)
+            
+            this.pollingInterval = setInterval(async () => {
+                pollCount++;
+                
+                if (pollCount > maxPolls) {
+                    this.stopPolling();
+                    this.showToast('Connection timeout. Please try again.', 'warning');
+                    return;
+                }
+                
+                try {
+                    // Check if wallet is connected via injected provider
+                    if (window.ethereum) {
+                        try {
+                            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                            if (accounts && accounts.length > 0) {
+                                this.isWalletConnected = true;
+                                this.connectedAddress = accounts[0];
+                                this.walletProvider = window.ethereum;
+                                await this.saveWalletAddress(accounts[0]);
+                                this.stopPolling();
+                                this.showToast('Wallet connected successfully! 🟢', 'success');
+                                return;
+                            }
+                        } catch (e) {
+                            // Provider not ready yet, continue polling
+                        }
+                    }
+                    
+                    // Check connection status via API (for authenticated users)
+                    if (document.querySelector('meta[name="csrf-token"]')) {
+                        try {
+                            const response = await fetch('/api/wallet-connect-status', {
+                                method: 'GET',
+                                headers: {
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                                },
+                                credentials: 'same-origin'
+                            });
+                            
+                            if (response.ok) {
+                                const data = await response.json();
+                                if (data.connected && data.wallet_address) {
+                                    this.isWalletConnected = true;
+                                    this.connectedAddress = data.wallet_address;
+                                    this.stopPolling();
+                                    this.showToast('Wallet connected successfully! 🟢', 'success');
+                                    
+                                    // Try to get provider if available
+                                    if (window.ethereum) {
+                                        this.walletProvider = window.ethereum;
+                                    }
+                                    return;
+                                }
+                            }
+                        } catch (e) {
+                            // API call failed, continue polling
+                        }
+                    }
+                } catch (error) {
+                    console.warn('[PurchaseFlow] Polling error', error);
+                }
+            }, 1000); // Poll every second
+        },
+
+        stopPolling() {
+            if (this.pollingInterval) {
+                clearInterval(this.pollingInterval);
+                this.pollingInterval = null;
+            }
+            sessionStorage.removeItem('wallet_connect_pending');
+            sessionStorage.removeItem('wallet_connect_timestamp');
+            sessionStorage.removeItem('wallet_connect_callback');
+        },
+
+        detectMobileDevice() {
+            const ua = navigator.userAgent || navigator.vendor || window.opera || '';
+            const isMobileUA = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(ua.toLowerCase());
+            const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            const isSmallScreen = window.innerWidth && window.innerWidth < 768;
+            return isMobileUA || (isTouchDevice && isSmallScreen);
         },
 
         formatNumber(value) {
@@ -221,6 +362,7 @@ function purchaseFlow() {
             
             this.usdtAmount = 'USDT ' + this.formatNumberFixed(usdtValue, 2);
             this.pkrAmountLive = 'PKR ' + this.formatNumberFixed(pkrValueLive, 2);
+            this.pkrAmount = pkrValueLive; // Store numeric value for price component
             this.calculatedUsdtAmount = usdtValue;
             this.bonusPercentage = 0;
             this.bonusTokens = 0;
@@ -302,8 +444,8 @@ function purchaseFlow() {
 
         getChainId() {
             const chainIds = {
-                'ERC20': '0x1',
-                'BEP20': '0x38',
+                'ERC20': '0x1', // Ethereum Mainnet
+                'BEP20': '0x38', // BNB Chain
                 'TRC20': null
             };
             return chainIds[this.selectedNetwork];
@@ -345,8 +487,112 @@ function purchaseFlow() {
                 return;
             }
             
+            // Route to mobile or desktop connection
+            if (this.isMobile) {
+                await this.connectMobileWallet();
+            } else {
+                await this.connectDesktopWallet();
+            }
+        },
+
+        async connectMobileWallet() {
             try {
                 this.isConnecting = true;
+                console.log('[PurchaseFlow] connectMobileWallet called');
+                
+                // 1. Try WalletConnect v2 first (best for mobile)
+                if (this.walletConnectEnabled) {
+                    await this.initializeWalletConnectIfNeeded();
+                    
+                    if (window.walletConnectModal && window.walletConnectLoaded) {
+                        try {
+                            const session = await window.walletConnectModal.open();
+                            console.log('[PurchaseFlow] WalletConnect session', session);
+                            
+                            if (session) {
+                                let account = null;
+                                
+                                // Extract account from WalletConnect v2 session
+                                if (session.namespaces && session.namespaces.eip155) {
+                                    const accounts = session.namespaces.eip155.accounts || [];
+                                    if (accounts.length > 0) {
+                                        account = accounts[0];
+                                    }
+                                } else if (Array.isArray(session.accounts) && session.accounts.length > 0) {
+                                    account = session.accounts[0];
+                                }
+                                
+                                if (account) {
+                                    // Extract address from eip155:1:0x... format
+                                    const parts = account.split(':');
+                                    const addr = parts[parts.length - 1];
+                                    
+                                    this.isWalletConnected = true;
+                                    this.connectedAddress = addr;
+                                    
+                                    // Get provider from WalletConnect
+                                    if (window.walletConnectModal && typeof window.walletConnectModal.getProvider === 'function') {
+                                        this.walletProvider = window.walletConnectModal.getProvider();
+                                    } else if (session.provider) {
+                                        this.walletProvider = session.provider;
+                                    }
+                                    
+                                    await this.saveWalletAddress(addr);
+                                    this.showToast('Wallet connected successfully! 🟢', 'success');
+                                    this.isConnecting = false;
+                                    return;
+                                }
+                            }
+                        } catch (wcError) {
+                            console.warn('[PurchaseFlow] WalletConnect error on mobile', wcError);
+                            // Fall through to deep linking
+                        }
+                    }
+                }
+                
+                // 2. Check for injected ethereum (some Android browsers inject it)
+                if (window.ethereum && typeof window.ethereum.request === 'function') {
+                    try {
+                        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                        if (accounts && accounts.length > 0) {
+                            this.isWalletConnected = true;
+                            this.connectedAddress = accounts[0];
+                            this.walletProvider = window.ethereum;
+                            await this.saveWalletAddress(accounts[0]);
+                            this.showToast('Wallet connected successfully! 🟢', 'success');
+                            this.isConnecting = false;
+                            return;
+                        }
+                    } catch (mmError) {
+                        console.warn('[PurchaseFlow] Injected ethereum error on mobile', mmError);
+                        // Fall through to deep linking
+                    }
+                }
+                
+                // 3. Fallback: Show mobile wallet guide with deep links
+                // On mobile, prefer direct MetaMask deep link first
+                if (this.isMobile) {
+                    // Try MetaMask deep link directly
+                    await this.connectMetaMaskMobile();
+                } else {
+                    this.showMobileWalletGuide();
+                }
+                
+            } catch (error) {
+                console.error('[PurchaseFlow] Mobile wallet connection failed', error);
+                this.showToast('Failed to connect wallet. Please try opening in a wallet app.', 'error');
+                this.showMobileWalletGuide();
+            } finally {
+                this.isConnecting = false;
+            }
+        },
+
+        async connectDesktopWallet() {
+            try {
+                this.isConnecting = true;
+                console.log('[PurchaseFlow] connectDesktopWallet called');
+                
+                // 1. Try MetaMask/injected provider first
                 if (window.ethereum && typeof window.ethereum.request === 'function') {
                     try {
                         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
@@ -368,65 +614,57 @@ function purchaseFlow() {
                         }
                     }
                 }
-
-                if (!window.walletConnectLoaded || !window.walletConnectModal) {
-                    window.initializeWalletConnect();
-                    if (!window.walletConnectLoaded || !window.walletConnectModal) {
-                        this.isConnecting = false;
-                    }
-                }
-
-                if (window.walletConnectLoaded && window.walletConnectModal) {
-                    try {
-                        const session = await window.walletConnectModal.open();
-                        if (session && session.accounts && session.accounts.length > 0) {
-                            this.isWalletConnected = true;
-                            this.connectedAddress = session.accounts[0];
-                            if (window.ethereum) {
-                                this.walletProvider = window.ethereum;
-                            } else if (window.walletConnectModal && window.walletConnectModal.getProvider) {
-                                this.walletProvider = window.walletConnectModal.getProvider();
-                            } else if (session.provider) {
-                                this.walletProvider = session.provider;
+                
+                // 2. Fallback to WalletConnect if MetaMask fails
+                if (!this.isWalletConnected && this.walletConnectEnabled) {
+                    await this.initializeWalletConnectIfNeeded();
+                    
+                    if (window.walletConnectLoaded && window.walletConnectModal) {
+                        try {
+                            const session = await window.walletConnectModal.open();
+                            console.log('[PurchaseFlow] WalletConnect session', session);
+                            
+                            if (session) {
+                                let account = null;
+                                if (session.namespaces && session.namespaces.eip155) {
+                                    const accounts = session.namespaces.eip155.accounts || [];
+                                    if (accounts.length > 0) {
+                                        account = accounts[0];
+                                    }
+                                } else if (Array.isArray(session.accounts) && session.accounts.length > 0) {
+                                    account = session.accounts[0];
+                                }
+                                
+                                if (account) {
+                                    const parts = account.split(':');
+                                    const addr = parts[parts.length - 1];
+                                    this.isWalletConnected = true;
+                                    this.connectedAddress = addr;
+                                    
+                                    if (window.walletConnectModal && typeof window.walletConnectModal.getProvider === 'function') {
+                                        this.walletProvider = window.walletConnectModal.getProvider();
+                                    } else if (session.provider) {
+                                        this.walletProvider = session.provider;
+                                    }
+                                    
+                                    await this.saveWalletAddress(addr);
+                                    this.showToast('Wallet connected successfully!', 'success');
+                                    this.isConnecting = false;
+                                    return;
+                                }
                             }
-                            await this.saveWalletAddress(this.connectedAddress);
-                            this.showToast('Wallet connected successfully!', 'success');
-                            this.isConnecting = false;
-                            return;
-                        } else {
-                            this.showToast('No wallet was connected. Please try again.', 'warning');
-                            this.isConnecting = false;
-                            return;
+                        } catch (wcError) {
+                            console.warn('[PurchaseFlow] WalletConnect error on desktop', wcError);
                         }
-                    } catch (wcError) {
-                        console.log('WalletConnect modal failed, trying MetaMask directly')
                     }
                 }
                 
-                if (!this.isWalletConnected && window.ethereum && typeof window.ethereum.request === 'function') {
-                    try {
-                        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                        if (accounts && accounts.length) {
-                            this.isWalletConnected = true;
-                            this.connectedAddress = accounts[0];
-                            this.walletProvider = window.ethereum;
-                            await this.saveWalletAddress(this.connectedAddress);
-                            this.showToast('MetaMask connected successfully!', 'success');
-                            this.isConnecting = false;
-                            return;
-                        }
-                    } catch (mmError) {
-                        if (mmError.code === 4001) {
-                            this.showToast('Wallet connection was cancelled.', 'warning');
-                        } else {
-                            this.showToast('Failed to connect MetaMask. Please check your wallet and try again.', 'error');
-                        }
-                    }
-                } else if (!this.isWalletConnected) {
+                // 3. Final fallback
+                if (!this.isWalletConnected) {
                     this.showToast('No wallet detected. Please install MetaMask or another compatible wallet.', 'error');
                 }
             } catch (error) {
-                console.error('Wallet connection failed:', error)
+                console.error('[PurchaseFlow] Desktop wallet connection failed:', error);
                 if (error.message && error.message.includes('User rejected')) {
                     this.showToast('Wallet connection was cancelled.', 'warning');
                 } else {
@@ -435,6 +673,162 @@ function purchaseFlow() {
             } finally {
                 this.isConnecting = false;
             }
+        },
+
+        async initializeWalletConnectIfNeeded() {
+            if (!window.walletConnectLoaded || !window.walletConnectModal) {
+                if (typeof window.initializeWalletConnect === 'function') {
+                    window.initializeWalletConnect();
+                    // Wait a bit for initialization
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            }
+        },
+
+        showMobileWalletGuide() {
+            // Try to get WalletConnect URI if available
+            if (window.walletConnectModal && typeof window.walletConnectModal.getUri === 'function') {
+                try {
+                    this.walletConnectUri = window.walletConnectModal.getUri();
+                    // Render QR code if QR library is available
+                    this.renderWalletConnectQR();
+                } catch (e) {
+                    console.warn('[PurchaseFlow] Could not get WalletConnect URI', e);
+                }
+            }
+            this.mobileWalletGuideModal = true;
+        },
+
+        renderWalletConnectQR() {
+            if (!this.walletConnectUri) return;
+            
+            // Use QRCode.js if available, or show plain text
+            const qrContainer = document.getElementById('walletConnectQrCode');
+            if (qrContainer && typeof QRCode !== 'undefined') {
+                qrContainer.innerHTML = '';
+                new QRCode(qrContainer, {
+                    text: this.walletConnectUri,
+                    width: 256,
+                    height: 256,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                });
+            }
+        },
+
+        async connectMetaMaskMobile() {
+            if (!this.isMobile) return;
+            
+            try {
+                this.isConnecting = true;
+                
+                // Get current origin and build proper deep link
+                const origin = window.location.origin.replace(/^https?:\/\//, '');
+                const callback = encodeURIComponent(window.location.href);
+                const chainId = this.getChainId() || '0x1'; // Default to Ethereum mainnet
+                const returnUrl = `${window.location.origin}/wallet-connect?callback=${callback}&chainid=${chainId}`;
+                
+                // Build proper MetaMask deep link with dapp connector parameters
+                const deepLink = `https://metamask.app.link/dapp/${origin}/wallet-connect?callback=${encodeURIComponent(returnUrl)}&chainid=${chainId}`;
+                
+                // Save connection state before redirecting
+                sessionStorage.setItem('wallet_connect_pending', 'true');
+                sessionStorage.setItem('wallet_connect_timestamp', Date.now().toString());
+                sessionStorage.setItem('wallet_connect_callback', callback);
+                
+                console.log('[PurchaseFlow] Opening MetaMask mobile', { deepLink, returnUrl });
+                
+                // Redirect to MetaMask
+                window.location.href = deepLink;
+                
+            } catch (error) {
+                console.error('[PurchaseFlow] MetaMask mobile connection error', error);
+                this.showToast('Failed to open MetaMask. Please try again.', 'error');
+                this.isConnecting = false;
+            }
+        },
+
+        openWalletApp(walletType) {
+            // Use proper deep link format for MetaMask
+            if (walletType === 'metamask') {
+                this.connectMetaMaskMobile();
+                return;
+            }
+            
+            const origin = window.location.origin.replace(/^https?:\/\//, '');
+            const callback = encodeURIComponent(window.location.href);
+            const chainId = this.getChainId() || '0x1';
+            const returnUrl = `${window.location.origin}/wallet-connect?callback=${callback}&chainid=${chainId}`;
+            let deepLink = '';
+            
+            switch (walletType) {
+                case 'trust':
+                    // Trust Wallet supports WalletConnect URI or direct deep link
+                    if (this.walletConnectUri) {
+                        deepLink = `trust://wc?uri=${encodeURIComponent(this.walletConnectUri)}`;
+                    } else {
+                        deepLink = `trust://open?url=${encodeURIComponent(window.location.href)}`;
+                    }
+                    break;
+                case 'coinbase':
+                    // Coinbase Wallet supports WalletConnect URI
+                    if (this.walletConnectUri) {
+                        deepLink = `coinbase-wallet://wc?uri=${encodeURIComponent(this.walletConnectUri)}`;
+                    } else {
+                        deepLink = `coinbase-wallet://open?url=${encodeURIComponent(window.location.href)}`;
+                    }
+                    break;
+                default:
+                    deepLink = `https://metamask.app.link/dapp/${origin}/wallet-connect?callback=${encodeURIComponent(returnUrl)}&chainid=${chainId}`;
+            }
+            
+            // Save connection state
+            sessionStorage.setItem('wallet_connect_pending', 'true');
+            sessionStorage.setItem('wallet_connect_timestamp', Date.now().toString());
+            sessionStorage.setItem('wallet_connect_callback', callback);
+            
+            console.log('[PurchaseFlow] Opening wallet app', { walletType, deepLink });
+            
+            // Redirect to wallet app
+            window.location.href = deepLink;
+        },
+
+        copyWalletConnectUri() {
+            if (this.walletConnectUri) {
+                navigator.clipboard.writeText(this.walletConnectUri).then(() => {
+                    this.showToast('Connection link copied to clipboard!', 'success');
+                }).catch(() => {
+                    this.showToast('Failed to copy link. Please try again.', 'error');
+                });
+            }
+        },
+
+        async retryMobileWalletConnect() {
+            this.mobileWalletGuideModal = false;
+            await this.connectMobileWallet();
+        },
+
+        openWalletFallbackModal(message = '') {
+            this.walletErrorMessage = message || 'We could not detect a browser wallet.';
+            this.walletErrorModal = true;
+        },
+
+        openMetaMaskDeepLink() {
+            try {
+                const origin = window.location.origin.replace(/^https?:\/\//, '');
+                const path = window.location.pathname + window.location.search;
+                const dappUrl = encodeURIComponent(`https://${origin}${path}`);
+                const deepLink = `https://metamask.app.link/dapp/${dappUrl}`;
+                console.log('[PurchaseFlow] Opening MetaMask deep link', deepLink);
+                window.location.href = deepLink;
+            } catch (e) {
+                console.error('[PurchaseFlow] Failed to open MetaMask deep link', e);
+            }
+        },
+
+        async retryWalletConnect() {
+            this.walletErrorModal = false;
+            await this.connectWallet();
         },
 
         useManualAddress() {
@@ -480,8 +874,14 @@ function purchaseFlow() {
         },
 
         async executePayment() {
-            if (!this.canPay() || !this.isWalletConnected) {
-                this.showToast('Please connect your wallet first', 'warning');
+            // Enhanced validation: ensure wallet is connected and address is saved
+            if (!this.isWalletConnected || !this.connectedAddress) {
+                this.showToast('Wallet not connected. Please reconnect your wallet.', 'error');
+                return;
+            }
+            
+            if (!this.canPay()) {
+                this.showToast('Please check your payment details and try again', 'warning');
                 return;
             }
 
@@ -536,8 +936,14 @@ function purchaseFlow() {
         },
 
         async executePaymentTransaction() {
-            if (!this.canPay() || !this.isWalletConnected) {
-                this.showToast('Please connect your wallet first', 'warning');
+            // Enhanced validation: ensure wallet is connected and address is saved
+            if (!this.isWalletConnected || !this.connectedAddress) {
+                this.showToast('Wallet not connected. Please reconnect your wallet.', 'error');
+                return;
+            }
+            
+            if (!this.canPay()) {
+                this.showToast('Please check your payment details and try again', 'warning');
                 return;
             }
 

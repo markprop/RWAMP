@@ -41,7 +41,7 @@
                 <div class="space-y-2">
                     <div class="flex justify-between items-center py-1.5 border-b border-gray-200">
                         <span class="text-xs text-gray-600">Token Price:</span>
-                        <span class="text-xs font-semibold text-gray-900" x-text="'₨' + formatNumberFixed(paymentConfirmData.tokenPrice, 2) + ' per token'"></span>
+                        <span class="text-xs font-semibold text-gray-900" x-html="formatPriceTag(paymentConfirmData.tokenPrice, {size: 'small', class: 'inline'}) + ' per token'"></span>
                     </div>
                     <div class="flex justify-between items-center py-1.5 border-b border-gray-200">
                         <span class="text-xs text-gray-600">Total Amount:</span>
@@ -49,7 +49,7 @@
                     </div>
                     <div class="flex justify-between items-center py-1.5 border-b border-gray-200">
                         <span class="text-xs text-gray-600">PKR Equivalent:</span>
-                        <span class="text-xs font-semibold text-gray-900" x-text="'₨' + formatNumberFixed(paymentConfirmData.pkrAmount, 2)"></span>
+                        <span class="text-xs font-semibold text-gray-900" x-html="formatPriceTag(paymentConfirmData.pkrAmount, {size: 'small', class: 'inline'})"></span>
                     </div>
                     <div class="flex justify-between items-center py-1.5 border-b border-gray-200">
                         <span class="text-xs text-gray-600">Network:</span>
@@ -151,6 +151,54 @@
             </div>
             <div class="mt-4 pt-4 border-t text-right">
                 <button @click="paymentStatusModal=false" class="btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Wallet Error / Fallback Modal -->
+<div x-cloak x-show="walletErrorModal" class="fixed inset-0 z-[60] flex items-center justify-center p-4" style="display: none;">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="walletErrorModal=false"></div>
+    <div class="relative bg-white rounded-xl shadow-2xl max-w-sm w-full mx-4 transform transition-all"
+         x-transition:enter="ease-out duration-300"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="ease-in duration-200"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95">
+        <div class="p-4 space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-montserrat font-bold text-gray-900">Connect Wallet</h3>
+                <button @click="walletErrorModal=false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 space-y-2">
+                <p x-text="walletErrorMessage || 'We could not detect a browser wallet on this device.'"></p>
+                <p class="leading-snug">
+                    On mobile, MetaMask works best when you open this page inside the MetaMask app, or connect via WalletConnect.
+                </p>
+            </div>
+
+            <div class="space-y-2">
+                <button type="button"
+                        class="w-full btn-primary text-sm py-2"
+                        @click="openMetaMaskDeepLink()">
+                    Open in MetaMask App
+                </button>
+                <button type="button"
+                        class="w-full btn-secondary text-sm py-2"
+                        @click="retryWalletConnect()">
+                    Try WalletConnect Again
+                </button>
+                <button type="button"
+                        class="w-full border border-gray-300 rounded-lg text-sm py-2 text-gray-700 hover:bg-gray-50"
+                        @click="walletErrorModal=false; openOfflinePaymentChat();">
+                    Use Offline Pay
+                </button>
             </div>
         </div>
     </div>

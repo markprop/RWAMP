@@ -41,11 +41,11 @@ $quickLinks = [
             <!-- Logo and Description -->
             <div class="lg:col-span-2 animate-fadeInUp">
                 <div class="flex items-center space-x-4 mb-6">
-                    <div class="w-16 h-16 rounded-full overflow-hidden flex-shrink-0">
+                    <div class="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 coin-ring">
                         <img 
-                            src="{{ asset('images/logo.jpeg') }}" 
+                            src="{{ asset('images/logo.png') }}" 
                             alt="RWAMP Logo" 
-                            class="w-full h-full object-cover"
+                            class="w-full h-full object-cover rwamp-coin-logo"
                         />
                     </div>
                     <div>
@@ -99,8 +99,8 @@ $quickLinks = [
                 <div class="mt-6">
                     <h5 class="font-montserrat font-bold mb-2">📬 Contact Info</h5>
                     <div class="space-y-1 text-sm text-gray-300">
-                        <p>📧 info@rwamp.com</p>
-                        <p>📱 +92 300 1234567</p>
+                        <p>📧 info@rwamp.net</p>
+                        <p>📱 +92 370 1346038</p>
                         <p>🌍 Pakistan, Dubai, UAE</p>
                     </div>
                 </div>
@@ -111,7 +111,7 @@ $quickLinks = [
         <div class="border-t border-gray-800 mt-8 pt-8 animate-fadeInUp" style="animation-delay: 0.3s">
             <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
                 <div class="text-sm text-gray-400">
-                    © 2024 RWAMP. All rights reserved.
+                    © 2025 RWAMP. All rights reserved.
                 </div>
                 
                 <div class="flex space-x-6 text-sm">

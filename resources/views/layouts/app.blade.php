@@ -4,6 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @php
+        use App\Helpers\PriceHelper;
+        $usdPkr = PriceHelper::getUsdToPkrRate();
+        $aedPkr = PriceHelper::getAedToPkrRate();
+    @endphp
+    <meta name="exchange-rate-usd-pkr" content="{{ $usdPkr }}">
+    <meta name="exchange-rate-aed-pkr" content="{{ $aedPkr }}">
 
     <title>{{ $title ?? 'RWAMP – The Currency of Real Estate Investments' }}</title>
     <meta name="description" content="{{ $description ?? 'Invest in Dubai, Pakistan & Saudi Arabia real estate with RWAMP tokens. Secure, transparent, and globally accessible.' }}">
@@ -15,14 +22,14 @@
     <!-- Favicon -->
     <link rel="icon" href="{{ asset('favicon.ico') }}?v=2" type="image/x-icon">
     <link rel="shortcut icon" href="{{ asset('favicon.ico') }}?v=2" type="image/x-icon">
-    <link rel="icon" href="{{ asset('images/logo.jpeg') }}?v=2" type="image/jpeg" sizes="32x32">
-    <link rel="apple-touch-icon" href="{{ asset('images/logo.jpeg') }}?v=2">
+    <link rel="icon" href="{{ asset('images/logo.png') }}?v=2" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="{{ asset('images/logo.png') }}?v=2">
     <link rel="manifest" href="{{ asset('manifest.json') }}">
 
     <!-- Open Graph -->
     <meta property="og:title" content="{{ $ogTitle ?? ($title ?? 'RWAMP') }}">
     <meta property="og:description" content="{{ $ogDescription ?? ($description ?? 'RWAMP – Real estate investment token.') }}">
-    <meta property="og:image" content="{{ $ogImage ?? asset('images/logo.jpeg') }}">
+    <meta property="og:image" content="{{ $ogImage ?? asset('images/logo.png') }}">
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ url()->current() }}">
     <meta property="og:site_name" content="RWAMP">
@@ -32,7 +39,7 @@
     <meta name="twitter:site" content="@rwamp">
     <meta name="twitter:title" content="{{ $twitterTitle ?? ($title ?? 'RWAMP') }}">
     <meta name="twitter:description" content="{{ $twitterDescription ?? ($description ?? 'RWAMP – Real estate investment token.') }}">
-    <meta name="twitter:image" content="{{ $twitterImage ?? asset('images/logo.jpeg') }}">
+    <meta name="twitter:image" content="{{ $twitterImage ?? asset('images/logo.png') }}">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -42,6 +49,9 @@
     <!-- Styles & Scripts via Vite -->
     @vite(['resources/css/app.css','resources/js/app.js'])
 
+    <!-- Intl Tel Input (phone number with country flags) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/18.1.6/js/intlTelInput.min.js" defer></script>
+
     <!-- Structured Data: Organization -->
     <script type="application/ld+json">
     {
@@ -49,7 +59,7 @@
       "@type": "Organization",
       "name": "RWAMP",
       "url": "{{ url('/') }}",
-      "logo": "{{ asset('images/logo.jpeg') }}",
+      "logo": "{{ asset('images/logo.png') }}",
       "sameAs": []
     }
     </script>
@@ -88,7 +98,7 @@
 
     @stack('head')
 </head>
-<body class="font-roboto antialiased">
+<body class="font-roboto antialiased" data-user-role="{{ auth()->check() ? auth()->user()->role : 'guest' }}">
     @php
         $tabId = request()->cookie('tab_session_id');
     @endphp
@@ -105,9 +115,11 @@
         </div>
     @endif
 
-    @include('components.navbar')
+    @if(!request()->routeIs('dashboard.investor') && !request()->routeIs('dashboard.admin') && !request()->routeIs('dashboard.reseller') && !request()->routeIs('dashboard.admin.*') && !request()->routeIs('dashboard.reseller.*'))
+        @include('components.navbar')
+    @endif
     
-    <main class="pt-16">
+    <main class="{{ (request()->routeIs('dashboard.investor') || request()->routeIs('dashboard.admin') || request()->routeIs('dashboard.reseller') || request()->routeIs('dashboard.admin.*') || request()->routeIs('dashboard.reseller.*')) ? 'pt-0' : 'pt-16' }}">
         @yield('content')
     </main>
 

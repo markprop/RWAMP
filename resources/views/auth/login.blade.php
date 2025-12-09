@@ -8,7 +8,9 @@
             <div class="hidden lg:block space-y-6 text-white">
                 <div class="bg-gradient-to-br from-primary/20 to-secondary/20 backdrop-blur-lg rounded-2xl p-8 border border-primary/30 shadow-2xl">
                     <div class="flex items-center gap-4 mb-6">
-                        <img src="{{ asset('images/logo.jpeg') }}" alt="RWAMP" class="w-16 h-16 rounded-full border-2 border-primary">
+                        <div class="coin-ring">
+                            <img src="{{ asset('images/logo.png') }}" alt="RWAMP" class="w-16 h-16 rounded-full rwamp-coin-logo">
+                        </div>
                         <div>
                             <h2 class="text-3xl font-montserrat font-bold text-white">RWAMP Coin</h2>
                             <p class="text-white/80 text-sm">Your Gateway to Profitable Investments</p>
@@ -99,7 +101,7 @@
             <div class="w-full max-w-md mx-auto lg:mx-0">
                 <div class="bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-6 sm:p-8 card-hover animate-fadeInUp">
             <div class="text-center mb-6">
-                <img src="{{ asset('images/logo.jpeg') }}" alt="RWAMP" class="w-14 h-14 sm:w-16 sm:h-16 mx-auto rounded-full mb-3">
+                <img src="{{ asset('images/logo.png') }}" alt="RWAMP" class="w-14 h-14 sm:w-16 sm:h-16 mx-auto rounded-full mb-3">
                 <h1 class="text-xl sm:text-2xl font-montserrat font-bold">Welcome back</h1>
                 <p class="text-sm sm:text-base text-gray-600">Login to continue</p>
             </div>
@@ -192,7 +194,9 @@
             <div class="lg:hidden space-y-4 text-white mt-6">
                 <div class="bg-gradient-to-br from-primary/20 to-secondary/20 backdrop-blur-lg rounded-2xl p-6 border border-primary/30">
                     <div class="flex items-center gap-3 mb-4">
-                        <img src="{{ asset('images/logo.jpeg') }}" alt="RWAMP" class="w-12 h-12 rounded-full border-2 border-primary">
+                        <div class="coin-ring">
+                            <img src="{{ asset('images/logo.png') }}" alt="RWAMP" class="w-12 h-12 rounded-full rwamp-coin-logo">
+                        </div>
                         <div>
                             <h2 class="text-xl font-montserrat font-bold">RWAMP Coin</h2>
                             <p class="text-white/80 text-xs">Your Gateway to Profitable Investments</p>

@@ -7,11 +7,11 @@
                     <!-- Token illustration with rotating logo -->
                     <div class="flex justify-center items-center mb-8 animate-on-scroll" data-animation="zoomIn" style="animation-delay: 0.2s;">
                         <div class="relative">
-                            <div class="w-48 h-48 md:w-60 md:h-60 rounded-full overflow-hidden shadow-2xl about-logo-container transition-transform duration-300 hover:scale-105">
+                            <div class="w-48 h-48 md:w-60 md:h-60 rounded-full overflow-hidden shadow-2xl about-logo-container coin-ring transition-transform duration-300 hover:scale-105">
                                 <img 
-                                    src="{{ asset('images/logo.jpeg') }}" 
+                                    src="{{ asset('images/logo.png') }}" 
                                     alt="RWAMP Logo" 
-                                    class="w-full h-full object-contain about-logo-rotating"
+                                    class="w-full h-full object-contain about-logo-rotating rwamp-coin-logo"
                                 />
                             </div>
                             <div class="absolute -top-2 -right-2 w-12 h-12 bg-success rounded-full flex items-center justify-center shadow-lg animate-badge-bounce animate-on-scroll" data-animation="zoomIn" style="animation-delay: 0.5s;">

@@ -57,7 +57,7 @@
                                     </div>
                                 </div>
                                 <div class="text-right ml-4">
-                                    <div class="font-bold text-primary text-lg">PKR <span x-text="(reseller.coin_price || 0).toFixed(2)"></span></div>
+                                    <div class="font-bold text-primary text-lg" x-html="formatPriceTag(reseller.coin_price || 0, {size: 'normal', class: 'inline'})"></div>
                                     <div class="text-xs text-gray-500">per coin</div>
                                 </div>
                             </div>
@@ -74,7 +74,7 @@
                         <p class="font-semibold text-blue-900">Selected Reseller:</p>
                         <p class="text-blue-800">
                             <span x-text="selectedReseller ? selectedReseller.name : ''"></span> - 
-                            PKR <span x-text="selectedReseller ? ((selectedReseller.coin_price || 0).toFixed(2)) : '0.00'"></span> per coin
+                            <span x-html="formatPriceTag(selectedReseller ? (selectedReseller.coin_price || 0) : 0, {size: 'small', class: 'inline'})"></span> per coin
                         </p>
                     </div>
                     <button @click="step = 2" class="btn-primary w-full">Continue</button>
@@ -87,7 +87,7 @@
                 
                 <div class="bg-gray-50 rounded-lg p-4 mb-4">
                     <p class="text-sm text-gray-600">Reseller: <strong><span x-text="selectedReseller ? selectedReseller.name : ''"></span></strong></p>
-                    <p class="text-sm text-gray-600">Price: <strong>PKR <span x-text="selectedReseller ? ((selectedReseller.coin_price || 0).toFixed(2)) : '0.00'"></span></strong> per coin</p>
+                    <p class="text-sm text-gray-600">Price: <strong><span x-html="formatPriceTag(selectedReseller ? (selectedReseller.coin_price || 0) : 0, {size: 'small', class: 'inline'})"></span></strong> per coin</p>
                 </div>
 
                 <div class="mb-4">
@@ -105,7 +105,7 @@
 
                 <div class="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                     <p class="text-sm font-semibold text-yellow-900">Total Amount:</p>
-                    <p class="text-2xl font-bold text-yellow-800">PKR <span x-text="totalAmount.toFixed(2)"></span></p>
+                    <p class="text-2xl font-bold text-yellow-800" x-html="formatPriceTag(totalAmount, {size: 'large'})"></p>
                 </div>
 
                 <div class="mb-4">

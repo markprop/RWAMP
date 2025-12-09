@@ -3,11 +3,14 @@
     $tokenPriceUsd = $presaleData['token_price_usd'] ?? 0.01;
     $totalRaisedUsd = $presaleData['total_raised_usd'] ?? 0;
     $totalTokensSold = $presaleData['total_tokens_sold'] ?? 0;
-    $maxSupply = $presaleData['max_supply'] ?? 60000000;
-    $supplyProgress = $presaleData['supply_progress'] ?? 0;
+    $maxSupply = $presaleData['max_supply'] ?? 1000000000;
     $presaleStage = $presaleData['stage'] ?? 2;
     $presaleBonus = $presaleData['bonus_percentage'] ?? 10;
     $minPurchaseUsd = $presaleData['min_purchase_usd'] ?? 55;
+    
+    // Auto-calculate supply progress to ensure accuracy
+    $supplyProgress = $maxSupply > 0 ? (($totalTokensSold / $maxSupply) * 100) : 0;
+    $supplyProgress = min(100, max(0, round($supplyProgress, 2))); // Clamp between 0-100 and round to 2 decimals
 @endphp
 
 <div class="presale-container-wrapper">
@@ -29,7 +32,17 @@
                 <span>💰</span>
                 <span>1 RWAMP Price</span>
             </div>
-            <div class="text-4xl md:text-5xl font-black text-white animate-number animate-text-shine drop-shadow-lg" style="font-weight: 900; letter-spacing: -0.02em;">PKR {{ number_format($presaleData['token_price_pkr'] ?? $tokenPriceUsd, 2) }}</div>
+            <div class="text-4xl md:text-5xl font-black text-white animate-number animate-text-shine drop-shadow-lg overflow-hidden" style="font-weight: 900; letter-spacing: -0.02em;">
+                @php
+                    $tokenPricePkr = $presaleData['token_price_pkr'] ?? ($tokenPriceUsd * ($presaleData['usd_to_pkr_rate'] ?? 278));
+                @endphp
+                @include('components.price-tag', [
+                    'pkr' => $tokenPricePkr,
+                    'size' => 'large',
+                    'variant' => 'dark',
+                    'class' => 'text-white [&_.text-gray-900]:text-white [&_.text-gray-500]:text-white/80 w-full'
+                ])
+            </div>
         </div>
     </div>
 
@@ -41,7 +54,17 @@
                 <span>💵</span>
                 <span>Total Raised</span>
             </div>
-            <div class="text-xl md:text-2xl font-black text-white animate-text-glow drop-shadow-md" style="font-weight: 900;">{{ number_format($totalRaisedUsd, 2) }} USD</div>
+            <div class="text-xl md:text-2xl font-black text-white animate-text-glow drop-shadow-md overflow-hidden" style="font-weight: 900;">
+                @php
+                    $totalRaisedPkr = $presaleData['total_raised_pkr'] ?? ($totalRaisedUsd * ($presaleData['usd_to_pkr_rate'] ?? 278));
+                @endphp
+                @include('components.price-tag', [
+                    'pkr' => $totalRaisedPkr,
+                    'size' => 'normal',
+                    'variant' => 'dark',
+                    'class' => 'text-white [&_.text-gray-900]:text-white [&_.text-gray-500]:text-white/80 w-full'
+                ])
+            </div>
         </div>
         
         <!-- Tokens Sold -->
@@ -68,7 +91,7 @@
                     <span>📊</span>
                     <span>Supply Progress</span>
                 </span>
-                <span class="text-white font-black text-xs animate-text-glow" style="font-weight: 900;" x-text="supplyProgress.toFixed(2) + '% Complete'"></span>
+                <span class="text-white font-black text-xs animate-text-glow" style="font-weight: 900;" x-text="(supplyProgress || 0).toFixed(2) + '% Complete'"></span>
             </div>
             <div class="text-white text-xs mb-3 font-black" style="font-weight: 900;">
                 {{ number_format($totalTokensSold, 0) }} RWAMP of {{ number_format($maxSupply, 0) }} RWAMP
@@ -78,9 +101,11 @@
         <!-- Progress Bar -->
         <div class="relative h-5 bg-gray-900/80 rounded-full overflow-hidden border-2 border-gray-700/60 shadow-inner">
             <div 
+                id="supply-progress-bar"
                 class="absolute inset-y-0 left-0 bg-gradient-to-r from-red-500 via-yellow-500 to-red-500 rounded-full shadow-lg shadow-red-500/50 progress-bar-animated"
-                :style="{ width: supplyProgress + '%' }"
-                x-bind:style="{ width: supplyProgress + '%' }">
+                :style="'width: ' + (supplyProgress || 0) + '%'"
+                :class="{ 'opacity-0': (supplyProgress || 0) === 0, 'opacity-100': (supplyProgress || 0) > 0 }"
+                style="--progress-width: {{ $supplyProgress }}%;">
                 <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
             </div>
         </div>
@@ -105,36 +130,47 @@ function presaleSection() {
         supplyProgress: 0, // Start at 0 for animation
         
         init() {
-            // Animate progress bar on load with smooth animation
-            const targetProgress = parseFloat({{ $supplyProgress }});
+            // Get target progress from server - ensure it's a valid number
+            const serverProgress = {{ $supplyProgress }};
+            const targetProgress = typeof serverProgress === 'number' ? serverProgress : parseFloat(serverProgress) || 0;
+            
+            // Ensure target is valid (0-100)
+            const validTarget = Math.max(0, Math.min(100, targetProgress));
+            
+            // Start from 0 for animation
             this.supplyProgress = 0;
             
-            // Smooth animation to target progress
-            let currentProgress = 0;
-            const duration = 2000; // 2 seconds
-            const steps = 60; // 60 steps for smooth animation
-            const increment = targetProgress / steps;
-            const stepTime = duration / steps;
-            
-            const animateProgress = () => {
-                if (currentProgress < targetProgress) {
-                    currentProgress += increment;
-                    if (currentProgress > targetProgress) {
-                        currentProgress = targetProgress;
+            // Wait for Alpine to initialize, then animate
+            this.$nextTick(() => {
+                // Use requestAnimationFrame for smooth animation
+                const duration = 2000; // 2 seconds for smooth animation
+                const startTime = performance.now();
+                const startValue = 0;
+                
+                const animate = (currentTime) => {
+                    const elapsed = currentTime - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    
+                    // Use easing function for smooth animation
+                    const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+                    const currentValue = startValue + (validTarget - startValue) * easeOutCubic;
+                    
+                    // Update Alpine.js reactive property - this will update the :style binding
+                    this.supplyProgress = parseFloat(currentValue.toFixed(2));
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        // Ensure final value is exactly the target
+                        this.supplyProgress = validTarget;
                     }
-                    this.supplyProgress = Math.min(currentProgress, targetProgress);
-                    requestAnimationFrame(() => {
-                        setTimeout(animateProgress, stepTime);
-                    });
-                } else {
-                    this.supplyProgress = targetProgress;
-                }
-            };
-            
-            // Start animation after a short delay
-            setTimeout(() => {
-                animateProgress();
-            }, 500);
+                };
+                
+                // Start animation after a small delay
+                setTimeout(() => {
+                    requestAnimationFrame(animate);
+                }, 200);
+            });
         },
         
         selectPaymentMethod(method) {
@@ -161,6 +197,54 @@ function presaleSection() {
 
 // Make it globally available for Alpine.js
 window.presaleSection = presaleSection;
+
+// Fallback: Direct DOM manipulation if Alpine.js doesn't work
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        const progressBar = document.getElementById('supply-progress-bar') || document.querySelector('.progress-bar-animated');
+        if (progressBar) {
+            const targetProgress = {{ $supplyProgress }};
+            const validProgress = Math.max(0, Math.min(100, targetProgress));
+            
+            // Check if Alpine.js already handled it by checking if width is set
+            const currentWidth = progressBar.style.width;
+            if (currentWidth && parseFloat(currentWidth) > 0) {
+                return; // Already set by Alpine.js
+            }
+            
+            // Start from 0
+            progressBar.style.width = '0%';
+            
+            // Animate using requestAnimationFrame
+            const duration = 2000;
+            const startTime = performance.now();
+            const startValue = 0;
+            
+            const animate = (currentTime) => {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Use easing function for smooth animation
+                const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+                const currentValue = startValue + (validProgress - startValue) * easeOutCubic;
+                
+                progressBar.style.width = currentValue.toFixed(2) + '%';
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    // Ensure final value
+                    progressBar.style.width = validProgress + '%';
+                }
+            };
+            
+            // Start animation after a small delay
+            setTimeout(() => {
+                requestAnimationFrame(animate);
+            }, 200);
+        }
+    }, 500);
+});
 </script>
 
 <style>
@@ -245,6 +329,9 @@ window.presaleSection = presaleSection;
     padding: 1rem;
     box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15);
     transition: all 0.3s ease;
+    overflow: hidden;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .presale-card:hover {
@@ -325,10 +412,44 @@ window.presaleSection = presaleSection;
 
 /* Progress bar animations */
 .progress-bar-animated {
-    transition: width 0.05s linear;
     position: relative;
-    overflow: hidden;
+    overflow: visible !important;
     will-change: width;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    z-index: 1;
+    display: block !important;
+    visibility: visible !important;
+    box-sizing: border-box !important;
+    height: 100% !important;
+    /* No CSS transition - JavaScript handles animation via requestAnimationFrame */
+}
+
+/* Ensure progress bar is visible even at low percentages */
+.presale-card .progress-bar-animated {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Fallback using CSS variable if Alpine.js doesn't work */
+.progress-bar-animated[style*="--progress-width"] {
+    width: var(--progress-width) !important;
+}
+
+/* Initial width from CSS variable - will be overridden by inline styles */
+#supply-progress-bar:not([style*="width"]) {
+    width: var(--progress-width, 0%) !important;
+}
+
+/* Ensure the progress bar container doesn't clip small values */
+.presale-card .relative {
+    overflow: hidden !important;
+}
+
+/* Ensure inline styles always take precedence */
+#supply-progress-bar[style*="width"] {
+    /* Inline style width will be used, this is just a fallback */
 }
 
 @keyframes shimmer {
@@ -489,10 +610,26 @@ window.presaleSection = presaleSection;
     transform: translateY(-1px) scale(1.01);
 }
 
+/* Price tag responsive adjustments */
+.price-tag {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+}
+
+.price-tag span {
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
 /* Responsive adjustments */
 @media (max-width: 1024px) {
     .presale-container {
         padding: 1.25rem;
+    }
+    
+    .price-tag {
+        font-size: 0.9em;
     }
 }
 
@@ -503,6 +640,18 @@ window.presaleSection = presaleSection;
     
     .presale-card {
         padding: 0.75rem;
+    }
+    
+    .price-tag {
+        font-size: 0.85em;
+    }
+    
+    .price-tag .text-2xl {
+        font-size: 1.5rem !important;
+    }
+    
+    .price-tag .text-xl {
+        font-size: 1.25rem !important;
     }
 }
 </style>

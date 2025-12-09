@@ -17,7 +17,7 @@
         <div class="space-y-3">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">RWAMP Token Price</label>
-                <div class="text-sm font-semibold text-gray-600" x-text="'₨' + formatNumberFixed(rates.tokenPkr, 2) + ' per token | $' + rates.tokenUsd.toFixed(4) + ' per token'"></div>
+                <div class="text-sm font-semibold text-gray-600" x-html="formatPriceTag(rates.tokenPkr, {size: 'small', class: 'inline'}) + ' per token'"></div>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">USDT Amount (real‑time)</label>
@@ -26,7 +26,7 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">PKR Amount (real‑time)</label>
-                <div class="text-2xl font-mono font-bold text-primary" x-text="pkrAmountLive"></div>
+                <div class="text-2xl font-mono font-bold text-primary" x-html="formatPriceTag(pkrAmount || 0, {size: 'large'})"></div>
             </div>
         </div>
     </div>
@@ -100,7 +100,10 @@
                     class="btn-primary px-6 py-3 disabled:opacity-60 disabled:cursor-not-allowed"
                     :title="getConnectButtonTooltip()"
                 >
-                    <span x-show="!isConnecting">Connect Wallet</span>
+                    <span x-show="!isConnecting">
+                        <span x-show="isMobile">Open in MetaMask 📱</span>
+                        <span x-show="!isMobile">Connect Wallet</span>
+                    </span>
                     <span x-show="isConnecting">Connecting...</span>
                 </button>
                 <button 
@@ -133,9 +136,10 @@
         
         <div x-show="isWalletConnected" class="bg-green-50 border border-green-200 rounded-lg p-3 mt-3">
             <div class="flex items-center gap-2">
-                <span class="text-green-600">✓</span>
+                <span class="text-green-600">🟢</span>
                 <span class="text-sm text-green-800">Wallet Connected:</span>
                 <code class="text-xs font-mono text-green-700" x-text="connectedAddress"></code>
+                <span x-show="isMobile" class="text-xs text-gray-500">📱</span>
             </div>
         </div>
     </div>

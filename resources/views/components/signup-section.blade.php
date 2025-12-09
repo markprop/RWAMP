@@ -39,7 +39,8 @@
                                     x-model="whatsapp"
                                     required
                                     class="w-full px-4 py-4 rounded-lg border border-white/30 bg-white/10 text-white placeholder-white/70 focus:border-white focus:ring-2 focus:ring-white/20 focus:outline-none transition-all duration-300"
-                                    placeholder="+92 300 1234567"
+                                    placeholder="+92 370 1346038"
+                                    data-intl-tel-input
                                 />
                             </div>
                         </div>

@@ -70,7 +70,9 @@
                                id="phone" 
                                name="phone" 
                                value="{{ old('phone') }}"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               placeholder="+92 370 1346038"
+                               data-intl-tel-input>
                     </div>
                     
                     <div>
@@ -141,7 +143,7 @@
                         </div>
                         <div>
                             <h3 class="font-semibold text-gray-900">Email</h3>
-                            <p class="text-gray-600">info@rwamp.com</p>
+                            <p class="text-gray-600">info@rwamp.net</p>
                         </div>
                     </div>
 
@@ -153,7 +155,7 @@
                         </div>
                         <div>
                             <h3 class="font-semibold text-gray-900">Phone</h3>
-                            <p class="text-gray-600">+1 (555) 123-4567</p>
+                            <p class="text-gray-600">+92 370 1346038</p>
                         </div>
                     </div>
 

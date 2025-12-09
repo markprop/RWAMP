@@ -3,13 +3,13 @@
 @section('content')
 <div class="min-h-screen bg-white">
     <section class="bg-gradient-to-r from-black to-secondary text-white py-12">
-        <div class="max-w-7xl mx-auto px-4">
+        <div class="max-w-7xl mx-auto px-4 rw-page-shell">
             <h1 class="text-3xl md:text-5xl font-montserrat font-bold">KYC Verification</h1>
             <p class="text-white/80">Complete your identity verification to access purchase and investor features.</p>
         </div>
     </section>
 
-    <div class="max-w-4xl mx-auto px-4 py-10">
+    <div class="max-w-4xl mx-auto px-4 py-10 rw-page-shell">
         @if (session('warning'))
             <div class="mb-6 rounded-lg border border-yellow-300 bg-yellow-50 text-yellow-800 px-4 py-3">{{ session('warning') }}</div>
         @endif
@@ -109,7 +109,7 @@
                         </label>
                     </div>
                     <div class="mt-6">
-                        <button type="button" @click="nextStep()" class="btn-primary">Next</button>
+                        <button type="button" @click="nextStep()" class="btn-primary btn-small">Next</button>
                     </div>
                 </div>
 
@@ -180,8 +180,8 @@
                         </div>
                     </div>
                     <div class="mt-6 flex gap-4">
-                        <button type="button" @click="prevStep()" class="btn-secondary">Back</button>
-                        <button type="button" @click="goToStep3()" class="btn-primary">Next</button>
+                        <button type="button" @click="prevStep()" class="btn-secondary btn-small">Back</button>
+                        <button type="button" @click="goToStep3()" class="btn-primary btn-small">Next</button>
                     </div>
                 </div>
 
@@ -233,8 +233,8 @@
                         </div>
                     </div>
                     <div class="mt-6 flex gap-4">
-                        <button type="button" @click="prevStep()" class="btn-secondary">Back</button>
-                        <button type="submit" class="btn-primary">Submit KYC</button>
+                        <button type="button" @click="prevStep()" class="btn-secondary btn-small">Back</button>
+                        <button type="submit" class="btn-primary btn-small">Submit KYC</button>
                     </div>
                 </div>
             </form>
@@ -246,6 +246,64 @@
                     Data will be deleted 30 days after approval or immediately upon rejection, per GDPR compliance. 
                     All files are stored on secure local servers and never shared with third parties.
                 </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Dialog Component -->
+    <div x-show="showAlert" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 rw-modal rw-modal--mobile"
+         @click.self="showAlert = false; alertMessage = ''; alertType = 'info'"
+         style="display: none;"
+         x-cloak>
+        <div class="bg-white rounded-lg max-w-md w-full p-6 shadow-xl rw-modal__panel">
+            <div class="flex items-start mb-4">
+                <div class="flex-shrink-0">
+                    <template x-if="alertType === 'success'">
+                        <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                    </template>
+                    <template x-if="alertType === 'error'">
+                        <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </div>
+                    </template>
+                    <template x-if="alertType === 'warning'">
+                        <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                            <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                        </div>
+                    </template>
+                    <template x-if="alertType === 'info'">
+                        <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    </template>
+                </div>
+                <div class="ml-4 flex-1">
+                    <h3 class="text-lg font-bold text-gray-900" x-text="alertTitle || 'Information'"></h3>
+                    <p class="mt-1 text-sm text-gray-600" x-text="alertMessage || ''"></p>
+                </div>
+            </div>
+            <div class="flex justify-end">
+                <button @click="showAlert = false; alertMessage = ''; alertType = 'info'" 
+                        class="px-6 py-2 bg-primary text-white rounded-lg font-bold hover:bg-red-700 transition-colors">
+                    OK
+                </button>
             </div>
         </div>
     </div>

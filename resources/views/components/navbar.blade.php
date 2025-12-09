@@ -3,9 +3,11 @@
         <div class="flex justify-between items-center h-16">
             <!-- Logo -->
             <div class="flex-shrink-0">
-                <a href="{{ route('home') }}" class="flex items-center">
-                    <img src="{{ asset('images/logo.jpeg') }}" alt="RWAMP" class="h-8 w-8 rounded-full">
-                    <span class="ml-2 text-xl font-bold text-gray-900">RWAMP</span>
+                <a href="{{ route('home') }}" class="flex items-center group">
+                    <div class="relative coin-ring">
+                        <img src="{{ asset('images/logo.png') }}" alt="RWAMP" class="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover rwamp-coin-logo">
+                    </div>
+                    <span class="ml-3 text-xl md:text-2xl font-bold text-gray-900 group-hover:text-gray-700 transition-colors duration-200">RWAMP</span>
                 </a>
             </div>
 

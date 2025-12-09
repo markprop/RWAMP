@@ -142,7 +142,7 @@
                 <div class="space-y-3">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">RWAMP Token Price</label>
-                        <div class="text-sm font-semibold text-gray-600" x-text="'₨' + formatNumberFixed(rates.tokenPkr, 2) + ' per token | $' + rates.tokenUsd.toFixed(4) + ' per token'"></div>
+                        <div class="text-sm font-semibold text-gray-600" x-html="formatPriceTag(rates.tokenPkr, {size: 'small', class: 'inline'}) + ' per token'"></div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">USDT Amount (real‑time)</label>
@@ -151,7 +151,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">PKR Amount (real‑time)</label>
-                        <div class="text-2xl font-mono font-bold text-primary" x-text="pkrAmountLive"></div>
+                        <div class="text-2xl font-mono font-bold text-primary" x-html="formatPriceTag(pkrAmount || 0, {size: 'large'})"></div>
                     </div>
                 </div>
             </div>
@@ -987,6 +987,7 @@ function purchaseFlow() {
             // Format live USDT and PKR amounts
             this.usdtAmount = 'USDT ' + this.formatNumberFixed(usdtValue, 2);
             this.pkrAmountLive = 'PKR ' + this.formatNumberFixed(pkrValueLive, 2);
+            this.pkrAmount = pkrValueLive; // Store numeric value for price component
             
             // Store calculated USDT amount for payment execution
             this.calculatedUsdtAmount = usdtValue;
