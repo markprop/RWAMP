@@ -48,10 +48,10 @@ class CryptoPaymentController extends Controller
                 'description' => 'Crypto purchases are temporarily disabled.',
                 'ogTitle' => 'Purchase Unavailable – RWAMP',
                 'ogDescription' => 'Crypto purchases are temporarily disabled.',
-                'ogImage' => asset('images/logo.jpeg'),
+                'ogImage' => asset('images/logo.png'),
                 'twitterTitle' => 'Purchase Unavailable – RWAMP',
                 'twitterDescription' => 'Crypto purchases are temporarily disabled.',
-                'twitterImage' => asset('images/logo.jpeg'),
+                'twitterImage' => asset('images/logo.png'),
             ]);
         }
         // If guest, show login-required view instead of 302 redirect so we can present a modal/prompt
@@ -61,10 +61,10 @@ class CryptoPaymentController extends Controller
                 'description' => 'Please login to access the crypto purchase flow.',
                 'ogTitle' => 'Purchase RWAMP Tokens',
                 'ogDescription' => 'Login required to access purchase flow.',
-                'ogImage' => asset('images/logo.jpeg'),
+                'ogImage' => asset('images/logo.png'),
                 'twitterTitle' => 'Purchase RWAMP Tokens',
                 'twitterDescription' => 'Login required to access purchase flow.',
-                'twitterImage' => asset('images/logo.jpeg'),
+                'twitterImage' => asset('images/logo.png'),
             ]);
         }
 
@@ -94,10 +94,10 @@ class CryptoPaymentController extends Controller
             'description' => 'Buy RWAMP tokens using USDT or BTC. Calculate amount, send to wallet, and submit proof for manual approval.',
             'ogTitle' => 'Purchase RWAMP Tokens',
             'ogDescription' => 'Secure crypto-to-token purchase flow with manual admin approval.',
-            'ogImage' => asset('images/logo.jpeg'),
+            'ogImage' => asset('images/logo.png'),
             'twitterTitle' => 'Purchase RWAMP Tokens',
             'twitterDescription' => 'Buy RWAMP using USDT/BTC with manual approval.',
-            'twitterImage' => asset('images/logo.jpeg'),
+            'twitterImage' => asset('images/logo.png'),
         ]));
     }
 
@@ -140,7 +140,19 @@ class CryptoPaymentController extends Controller
         ]);
 
         $user = $request->user();
-        $user->update(['wallet_address' => $request->wallet_address]);
+        $oldWalletAddress = $user->wallet_address;
+        $newWalletAddress = $request->wallet_address;
+        
+        $user->update(['wallet_address' => $newWalletAddress]);
+
+        // Log wallet address update
+        Log::info('Wallet address saved/updated', [
+            'user_id' => $user->id,
+            'user_email' => $user->email,
+            'old_wallet_address' => $oldWalletAddress,
+            'new_wallet_address' => $newWalletAddress,
+            'timestamp' => now()->toDateTimeString(),
+        ]);
 
         return response()->json(['success' => true]);
     }

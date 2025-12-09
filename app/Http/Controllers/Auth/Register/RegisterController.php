@@ -193,6 +193,8 @@ class RegisterController extends Controller
         try {
             $emailVerificationController->generateAndSendOtp($normalizedEmail);
             Log::info("OTP sent to new user during registration: {$normalizedEmail}");
+            // Mark that an OTP has already been sent in this session to avoid double‑send on verification page
+            $request->session()->put('otp_already_sent', true);
         } catch (\Exception $e) {
             Log::error("Failed to send OTP during registration", [
                 'email' => $normalizedEmail,

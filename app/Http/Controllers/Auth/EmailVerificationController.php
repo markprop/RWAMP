@@ -32,12 +32,17 @@ class EmailVerificationController extends Controller
         // Normalize email
         $email = \Illuminate\Support\Str::lower(trim($email));
 
-        // If OTP doesn't exist in cache, generate and send a new one
+        // If OTP doesn't exist in cache and hasn't already been sent in this session,
+        // generate and send a new one. This prevents double‑sending when other
+        // controllers have already dispatched an OTP before redirecting here.
         $cacheKey = "otp:{$email}";
-        if (!Cache::has($cacheKey)) {
+        $otpAlreadySent = $request->session()->get('otp_already_sent', false);
+        $otpSentOnPage = $request->session()->get('otp_sent', false);
+        if (!Cache::has($cacheKey) && !$otpAlreadySent && !$otpSentOnPage) {
             try {
                 $this->generateAndSendOtp($email);
                 Log::info("Generated and sent new OTP for email verification page: {$email}");
+                $request->session()->put('otp_sent', true);
             } catch (\Exception $e) {
                 Log::error("Failed to generate/send OTP on verification page", [
                     'email' => $email,
@@ -194,8 +199,10 @@ class EmailVerificationController extends Controller
         $cacheKey = "otp:{$normalizedEmail}";
         $cachedOtpRaw = Cache::get($cacheKey);
         
-        // Fallback: Check session if cache is empty (for debugging)
-        if ($cachedOtpRaw === null && config('app.debug')) {
+        // Fallback: Check session if cache is empty.
+        // This provides resilience if the cache driver is misconfigured (e.g. 'array')
+        // or if the OTP was only stored in the session.
+        if ($cachedOtpRaw === null) {
             $debugData = session()->get("otp_debug_{$normalizedEmail}");
             if ($debugData && isset($debugData['otp'])) {
                 Log::warning("OTP not found in cache, using session fallback", [
@@ -203,7 +210,7 @@ class EmailVerificationController extends Controller
                     'session_otp' => $debugData['otp'],
                     'session_timestamp' => $debugData['timestamp'] ?? null,
                 ]);
-                // Use session OTP as fallback (only in debug mode)
+                // Use session OTP as fallback
                 $cachedOtpRaw = $debugData['otp'];
             }
         }
@@ -322,10 +329,11 @@ class EmailVerificationController extends Controller
         $user->email_verified_at = now();
         $user->save();
 
-        // Clear OTP and attempts from cache
+        // Clear OTP and attempts from cache and reset session flags
         Cache::forget("otp:{$normalizedEmail}");
         Cache::forget($attemptKey);
         Cache::forget($lockKey);
+        $request->session()->forget(['otp_already_sent', 'otp_sent']);
 
         Log::info("Email verified successfully for user: {$normalizedEmail}");
 
@@ -478,15 +486,14 @@ class EmailVerificationController extends Controller
         $expiresAt = now()->addMinutes(10);
         Cache::put($cacheKey, $otp, $expiresAt);
         
-        // Also store in session as backup (only in debug mode)
-        if (config('app.debug')) {
-            session()->put("otp_debug_{$normalizedEmail}", [
-                'otp' => $otp,
-                'timestamp' => now()->toIso8601String(),
-                'email' => $normalizedEmail,
-                'expires_at' => $expiresAt->toIso8601String(),
-            ]);
-        }
+        // Also store in session as backup so OTP verification still works
+        // even if the cache driver is non-persistent (e.g. 'array' in production).
+        session()->put("otp_debug_{$normalizedEmail}", [
+            'otp' => $otp,
+            'timestamp' => now()->toIso8601String(),
+            'email' => $normalizedEmail,
+            'expires_at' => $expiresAt->toIso8601String(),
+        ]);
         
         // Verify it was stored correctly - try multiple times to ensure cache is working
         $storedOtp = Cache::get($cacheKey);
@@ -546,17 +553,17 @@ class EmailVerificationController extends Controller
             ]);
             
             // If in debug mode, still allow the process to continue and show OTP on page
-            if (config('app.debug')) {
-                session()->put("otp_debug_{$normalizedEmail}", [
-                    'otp' => $otp,
-                    'timestamp' => now()->toIso8601String(),
-                    'email' => $normalizedEmail,
-                    'email_send_failed' => true,
-                    'email_error' => $e->getMessage(),
-                ]);
-                Log::warning("Email sending failed but continuing in debug mode. OTP: {$otp}");
-            } else {
-                // In production, throw the error
+            // Always keep OTP in session even if email fails, so user can still verify
+            session()->put("otp_debug_{$normalizedEmail}", [
+                'otp' => $otp,
+                'timestamp' => now()->toIso8601String(),
+                'email' => $normalizedEmail,
+                'email_send_failed' => true,
+                'email_error' => $e->getMessage(),
+            ]);
+
+            // In production, we still rethrow so the caller can decide what to show
+            if (!config('app.debug')) {
                 throw $e;
             }
         }

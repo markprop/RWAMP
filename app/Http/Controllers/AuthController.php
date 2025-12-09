@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Models\User;
+use App\Models\GameSession;
 use App\Services\TabAuthService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -92,6 +93,8 @@ class AuthController extends Controller
 					$normalizedEmail = \Illuminate\Support\Str::lower(trim($user->email));
 					$emailVerificationController->generateAndSendOtp($normalizedEmail);
 					$request->session()->put('verification_email', $normalizedEmail);
+					// Mark that an OTP has already been sent in this session to avoid double‑send on verification page
+					$request->session()->put('otp_already_sent', true);
 					Log::info("OTP sent to unverified user during login: {$normalizedEmail}");
 				} catch (\Exception $e) {
 					Log::error("Failed to send OTP during login: " . $e->getMessage());
@@ -497,6 +500,9 @@ class AuthController extends Controller
 
 	public function logout(Request $request)
 	{
+        // Capture current user before clearing auth so we can reset game state
+        $user = Auth::user();
+
 		$tabId = $request->cookie('tab_session_id');
 
 		// If this request is tied to a tab session, clear only that tab's mapping by default.
@@ -515,6 +521,26 @@ class AuthController extends Controller
 			$request->session()->invalidate();
 			$request->session()->regenerateToken();
 		}
+
+        // If there was an authenticated user, ensure any game state is cleaned up
+        if ($user) {
+            try {
+                $user->is_in_game = false;
+                $user->save();
+
+                GameSession::where('user_id', $user->id)
+                    ->where('status', 'active')
+                    ->update([
+                        'status' => 'abandoned',
+                        'ended_at' => now(),
+                    ]);
+            } catch (\Throwable $e) {
+                Log::warning('Failed to reset game state on logout', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
 		return redirect()->route('home');
 	}
