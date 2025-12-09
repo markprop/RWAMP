@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Reseller;
 use App\Http\Controllers\Controller;
 use App\Models\BuyFromResellerRequest;
 use App\Models\CryptoPayment;
+use App\Models\GameSession;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -18,6 +19,71 @@ class ResellerDashboardController extends Controller
     public function index(Request $request)
     {
         $reseller = Auth::user();
+        $reseller->refresh();
+        
+        // Clean up stuck game states before rendering
+        $isInGame = false;
+        $hasPin = false;
+        
+        \Log::info('[ResellerDashboard] Checking game state', [
+            'user_id' => $reseller->id,
+            'is_in_game_flag' => $reseller->is_in_game
+        ]);
+        
+        try {
+            // Check for active game session using direct query
+            $activeSession = GameSession::where('user_id', $reseller->id)
+                ->where('status', 'active')
+                ->first();
+            
+            \Log::info('[ResellerDashboard] Active session check', [
+                'user_id' => $reseller->id,
+                'session_found' => $activeSession ? true : false,
+                'session_id' => $activeSession ? $activeSession->id : null
+            ]);
+            
+            if ($activeSession) {
+                // User has an active session
+                $isInGame = true;
+                \Log::info('[ResellerDashboard] Active session found, setting isInGame to true');
+                // Ensure the flag is set
+                if (!$reseller->is_in_game) {
+                    $reseller->is_in_game = true;
+                    $reseller->save();
+                    \Log::info('[ResellerDashboard] Updated is_in_game flag to true');
+                }
+            } else {
+                // No active session - reset the flag
+                if ($reseller->is_in_game) {
+                    \Log::warning('[ResellerDashboard] No active session but is_in_game flag is true, resetting');
+                    $reseller->is_in_game = false;
+                    $reseller->save();
+                }
+                $isInGame = false;
+                \Log::info('[ResellerDashboard] No active session, isInGame set to false');
+            }
+            
+            // Check if user has PIN
+            $hasPin = !empty($reseller->game_pin_hash);
+            \Log::info('[ResellerDashboard] Game state determined', [
+                'isInGame' => $isInGame,
+                'hasPin' => $hasPin
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('[ResellerDashboard] Error checking game state', [
+                'user_id' => $reseller->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            // If there's any error, ensure flags are false
+            $isInGame = false;
+            $hasPin = !empty($reseller->game_pin_hash ?? '');
+            // Also reset the flag if it's set
+            if ($reseller->is_in_game) {
+                $reseller->is_in_game = false;
+                $reseller->save();
+            }
+        }
         
         // Get official coin price
         $officialPrice = \App\Helpers\PriceHelper::getRwampPkrPrice();
@@ -165,7 +231,7 @@ class ResellerDashboardController extends Controller
             ->limit(20)
             ->get();
 
-        return view('dashboard.reseller', compact('metrics', 'myUsers', 'pendingBuyRequests', 'allResellers', 'recentTransactions'));
+        return view('dashboard.reseller', compact('metrics', 'myUsers', 'pendingBuyRequests', 'allResellers', 'recentTransactions', 'isInGame', 'hasPin'));
     }
 }
 

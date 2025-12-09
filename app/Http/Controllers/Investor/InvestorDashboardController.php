@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Investor;
 use App\Http\Controllers\Controller;
 use App\Models\BuyFromResellerRequest;
 use App\Models\CryptoPayment;
+use App\Models\GameSession;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 
@@ -16,6 +17,72 @@ class InvestorDashboardController extends Controller
     public function index(Request $request)
     {
         $investor = $request->user();
+        $investor->refresh();
+        
+        // Clean up stuck game states before rendering
+        $isInGame = false;
+        $hasPin = false;
+        
+        \Log::info('[InvestorDashboard] Checking game state', [
+            'user_id' => $investor->id,
+            'is_in_game_flag' => $investor->is_in_game
+        ]);
+        
+        try {
+            // Check for active game session using the relationship
+            $activeSession = GameSession::where('user_id', $investor->id)
+                ->where('status', 'active')
+                ->first();
+            
+            \Log::info('[InvestorDashboard] Active session check', [
+                'user_id' => $investor->id,
+                'session_found' => $activeSession ? true : false,
+                'session_id' => $activeSession ? $activeSession->id : null
+            ]);
+            
+            if ($activeSession) {
+                // User has an active session
+                $isInGame = true;
+                \Log::info('[InvestorDashboard] Active session found, setting isInGame to true');
+                // Ensure the flag is set
+                if (!$investor->is_in_game) {
+                    $investor->is_in_game = true;
+                    $investor->save();
+                    \Log::info('[InvestorDashboard] Updated is_in_game flag to true');
+                }
+            } else {
+                // No active session - reset the flag
+                if ($investor->is_in_game) {
+                    \Log::warning('[InvestorDashboard] No active session but is_in_game flag is true, resetting');
+                    $investor->is_in_game = false;
+                    $investor->save();
+                }
+                $isInGame = false;
+                \Log::info('[InvestorDashboard] No active session, isInGame set to false');
+            }
+            
+            // Check if user has PIN
+            $hasPin = !empty($investor->game_pin_hash);
+            \Log::info('[InvestorDashboard] Game state determined', [
+                'isInGame' => $isInGame,
+                'hasPin' => $hasPin
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('[InvestorDashboard] Error checking game state', [
+                'user_id' => $investor->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            // If there's any error, ensure flags are false
+            $isInGame = false;
+            $hasPin = !empty($investor->game_pin_hash ?? '');
+            // Also reset the flag if it's set
+            if ($investor->is_in_game) {
+                $investor->is_in_game = false;
+                $investor->save();
+            }
+        }
+        
         $userId = $investor->id;
         
         // Get official coin price
@@ -133,7 +200,7 @@ class InvestorDashboardController extends Controller
             'official_price' => $officialPrice,
         ];
 
-        return view('dashboard.investor', compact('paymentsRecent','transactionsRecent','pendingBuyRequests','currentCoinPrice','metrics'));
+        return view('dashboard.investor', compact('paymentsRecent','transactionsRecent','pendingBuyRequests','currentCoinPrice','metrics','isInGame','hasPin'));
     }
 }
 

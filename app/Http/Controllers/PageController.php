@@ -63,6 +63,12 @@ class PageController extends Controller
             ->where('type', '!=', 'withdrawal_refund')
             ->sum('amount') ?? 0;
         
+        // Check if there's an override for tokens sold (for manual adjustment)
+        $tokensSoldOverride = config('crypto.presale.tokens_sold_override', 0);
+        if ($tokensSoldOverride > 0) {
+            $totalTokensSold = $tokensSoldOverride;
+        }
+        
         // Get USD to PKR exchange rate (automatically fetched from API if needed)
         $usdToPkr = PriceHelper::getUsdToPkrRate();
         
@@ -76,15 +82,17 @@ class PageController extends Controller
         // Presale configuration
         $presaleStage = config('crypto.presale.stage', 2); // Default to Stage 2
         $presaleBonus = config('crypto.presale.bonus_percentage', 10); // Default 10% bonus
-        $maxSupply = config('crypto.presale.max_supply', 60000000); // Default 60M tokens
+        $maxSupply = config('crypto.presale.max_supply', 1000000000); // Default 1B tokens (1,000,000,000)
         $minPurchaseUsd = config('crypto.presale.min_purchase_usd', 55); // Default $55 minimum
         
-        // Calculate supply progress
-        $supplyProgress = $maxSupply > 0 ? ($totalTokensSold / $maxSupply) * 100 : 0;
-        $supplyProgress = min(100, max(0, $supplyProgress)); // Clamp between 0-100
+        // Calculate supply progress - ensure accurate calculation
+        $supplyProgress = $maxSupply > 0 ? (($totalTokensSold / $maxSupply) * 100) : 0;
+        $supplyProgress = min(100, max(0, round($supplyProgress, 2))); // Clamp between 0-100 and round to 2 decimals
         
         // Presale data
         $presaleData = [
+            'total_raised_pkr' => $totalRaisedPkr,
+            'usd_to_pkr_rate' => $usdToPkr,
             'stage' => $presaleStage,
             'bonus_percentage' => $presaleBonus,
             'token_price_usd' => $tokenPriceUsd,
@@ -120,10 +128,10 @@ class PageController extends Controller
             'keywords' => 'RWAMP, real estate, token, investment, Dubai, Pakistan, Saudi Arabia',
             'ogTitle' => 'RWAMP - The Currency of Real Estate Investments',
             'ogDescription' => 'RWAMP is the official token for investing in real estate projects across Dubai, Pakistan, and Saudi Arabia.',
-            'ogImage' => asset('images/logo.jpeg'),
+            'ogImage' => asset('images/logo.png'),
             'twitterTitle' => 'RWAMP - The Currency of Real Estate Investments',
             'twitterDescription' => 'RWAMP is the official token for investing in real estate projects across Dubai, Pakistan, and Saudi Arabia.',
-            'twitterImage' => asset('images/logo.jpeg'),
+            'twitterImage' => asset('images/logo.png'),
         ]));
     }
 
@@ -162,10 +170,10 @@ class PageController extends Controller
             'keywords' => 'become partner, RWAMP partner, reseller program, token partner',
             'ogTitle' => 'Become a Partner - RWAMP',
             'ogDescription' => 'Join our exclusive partner program and earn profits by selling RWAMP tokens.',
-            'ogImage' => asset('images/logo.jpeg'),
+            'ogImage' => asset('images/logo.png'),
             'twitterTitle' => 'Become a Partner - RWAMP',
             'twitterDescription' => 'Join our exclusive partner program and earn profits by selling RWAMP tokens.',
-            'twitterImage' => asset('images/logo.jpeg'),
+            'twitterImage' => asset('images/logo.png'),
         ]);
     }
 
@@ -192,10 +200,10 @@ class PageController extends Controller
             'keywords' => 'how to buy RWAMP, crypto wallet setup, MetaMask, Trust Wallet, crypto guide',
             'ogTitle' => 'How to Buy RWAMP Tokens - Complete Guide',
             'ogDescription' => 'Learn how to set up crypto wallets and purchase RWAMP tokens with our step-by-step guide.',
-            'ogImage' => asset('images/logo.jpeg'),
+            'ogImage' => asset('images/logo.png'),
             'twitterTitle' => 'How to Buy RWAMP Tokens - Complete Guide',
             'twitterDescription' => 'Learn how to set up crypto wallets and purchase RWAMP tokens.',
-            'twitterImage' => asset('images/logo.jpeg'),
+            'twitterImage' => asset('images/logo.png'),
         ]);
     }
 
@@ -209,10 +217,10 @@ class PageController extends Controller
             'description' => 'Read the comprehensive RWAMP whitepaper to learn about our tokenomics, roadmap, and vision.',
             'ogTitle' => 'RWAMP Whitepaper – RWAMP',
             'ogDescription' => 'Read the comprehensive RWAMP whitepaper to learn about our tokenomics, roadmap, and vision.',
-            'ogImage' => asset('images/logo.jpeg'),
+            'ogImage' => asset('images/logo.png'),
             'twitterTitle' => 'RWAMP Whitepaper – RWAMP',
             'twitterDescription' => 'Read the comprehensive RWAMP whitepaper to learn about our tokenomics, roadmap, and vision.',
-            'twitterImage' => asset('images/logo.jpeg'),
+            'twitterImage' => asset('images/logo.png'),
         ]);
     }
 
