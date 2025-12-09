@@ -123,8 +123,24 @@ SELECT id, email FROM users WHERE role = 'admin' LIMIT 1;
 ## 🔗 Support
 
 - **Website**: [rwamp.io](https://rwamp.io)
-- **Email**: info@rwamp.io
+- **Email**: info@rwamp.net
 - **Phone**: +92 370 1346038
+
+---
+
+## 🔙 Navigation
+
+<p align="center">
+  <a href="../../README.md">
+    <img src="https://img.shields.io/badge/⬅️%20Back%20to%20Main-FF6B6B?style=for-the-badge&logo=arrow-left&logoColor=white" alt="Back to Main" />
+  </a>
+  <a href="../../docs/README.md">
+    <img src="https://img.shields.io/badge/📚%20Documentation%20Index-06D6A0?style=for-the-badge&logo=book&logoColor=white" alt="Documentation Index" />
+  </a>
+  <a href="../../docs/database/README.md">
+    <img src="https://img.shields.io/badge/🗄️%20Database%20Docs-118AB2?style=for-the-badge&logo=database&logoColor=white" alt="Database Docs" />
+  </a>
+</p>
 
 ---
 

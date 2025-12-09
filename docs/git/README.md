@@ -126,8 +126,21 @@ Closes #123
 ## 🔗 Support
 
 - **Website**: [rwamp.io](https://rwamp.io)
-- **Email**: info@rwamp.io
+- **Email**: info@rwamp.net
 - **Phone**: +92 370 1346038
+
+---
+
+## 🔙 Navigation
+
+<p align="center">
+  <a href="../../README.md">
+    <img src="https://img.shields.io/badge/⬅️%20Back%20to%20Main-FF6B6B?style=for-the-badge&logo=arrow-left&logoColor=white" alt="Back to Main" />
+  </a>
+  <a href="../README.md">
+    <img src="https://img.shields.io/badge/📚%20Documentation%20Index-06D6A0?style=for-the-badge&logo=book&logoColor=white" alt="Documentation Index" />
+  </a>
+</p>
 
 ---
 
