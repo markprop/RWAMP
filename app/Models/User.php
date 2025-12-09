@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasUlid;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,7 +13,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 
 class User extends Authenticatable implements MustVerifyEmail, CanResetPassword
 {
-    use HasApiTokens, Notifiable, TwoFactorAuthenticatable, HasFactory;
+    use HasApiTokens, Notifiable, TwoFactorAuthenticatable, HasFactory, HasUlid;
 
 	/**
 	 * The attributes that are mass assignable.
@@ -45,6 +46,10 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPassword
 		'avatar',
 		'status',
 		'receipt_screenshot',
+		'game_pin_hash',
+		'is_in_game',
+		'game_pin_locked_until',
+		'game_pin_failed_attempts',
 	];
 
 	/**
@@ -67,6 +72,8 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPassword
         'two_factor_confirmed_at' => 'datetime',
 		'kyc_submitted_at' => 'datetime',
 		'kyc_approved_at' => 'datetime',
+		'is_in_game' => 'boolean',
+		'game_pin_locked_until' => 'datetime',
 	];
 
 
@@ -268,6 +275,93 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPassword
 		// Use Laravel's default password reset notification
 		// This can be customized if needed
 		$this->notify(new \Illuminate\Auth\Notifications\ResetPassword($token));
+	}
+
+	/**
+	 * Get game sessions for this user
+	 */
+	public function gameSessions()
+	{
+		return $this->hasMany(GameSession::class);
+	}
+
+	/**
+	 * Get active game session
+	 */
+	public function activeGameSession()
+	{
+		return $this->hasOne(GameSession::class)->where('status', 'active');
+	}
+
+	/**
+	 * Set game PIN (4-digit, bcrypt hashed)
+	 */
+	public function setGamePin(string $pin): bool
+	{
+		if (!preg_match('/^\d{4}$/', $pin)) {
+			return false;
+		}
+
+		$this->game_pin_hash = \Hash::make($pin);
+		$this->game_pin_failed_attempts = 0;
+		$this->game_pin_locked_until = null;
+		return $this->save();
+	}
+
+	/**
+	 * Verify game PIN
+	 */
+	public function verifyGamePin(string $pin): bool
+	{
+		// Check if locked
+		if ($this->game_pin_locked_until && $this->game_pin_locked_until->isFuture()) {
+			return false;
+		}
+
+		// Check if PIN is set
+		if (!$this->game_pin_hash) {
+			return false;
+		}
+
+		// Verify PIN
+		if (\Hash::check($pin, $this->game_pin_hash)) {
+			// Reset failed attempts on success
+			$this->game_pin_failed_attempts = 0;
+			$this->game_pin_locked_until = null;
+			$this->save();
+			return true;
+		}
+
+		// Increment failed attempts
+		$this->increment('game_pin_failed_attempts');
+
+		// Lock after 3 failed attempts
+		if ($this->game_pin_failed_attempts >= 3) {
+			$this->game_pin_locked_until = now()->addMinutes(5);
+			$this->save();
+		}
+
+		return false;
+	}
+
+	/**
+	 * Check if game PIN is locked
+	 */
+	public function isGamePinLocked(): bool
+	{
+		return $this->game_pin_locked_until && $this->game_pin_locked_until->isFuture();
+	}
+
+	/**
+	 * Check if user can enter game.
+	 * Keep this simple: only KYC + PIN lock. Balance and session checks are
+	 * enforced when creating a new game session (GameController::enter).
+	 * Note: If user is already in a game, they can still access the game page to resume.
+	 */
+	public function canEnterGame(): bool
+	{
+		return $this->kyc_status === 'approved'
+			&& !$this->isGamePinLocked();
 	}
 }
 

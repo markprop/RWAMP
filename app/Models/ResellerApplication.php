@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Concerns\HasUlid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ResellerApplication extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUlid;
 
     protected $fillable = [
         'name',
