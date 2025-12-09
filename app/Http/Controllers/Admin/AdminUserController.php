@@ -50,9 +50,14 @@ class AdminUserController extends Controller
         $dir = $request->input('dir') === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sort, $dir);
 
-        $users = $query->with('reseller')->paginate(15)->withQueryString();
+        // Per page filter
+        $perPage = in_array($request->input('per_page'), [10, 20, 50, 100]) 
+            ? (int) $request->input('per_page') 
+            : 15;
+        
+        $users = $query->with('reseller')->paginate($perPage)->withQueryString();
 
-        return view('dashboard.admin-users', compact('users', 'defaultPrice'));
+        return view('dashboard.admin-users', compact('users', 'defaultPrice', 'perPage'));
     }
 
     /**
@@ -211,11 +216,159 @@ class AdminUserController extends Controller
             'email' => "required|email|max:255|unique:users,email,{$user->id}",
             'phone' => 'nullable|string|max:30',
             'role' => 'required|in:investor,reseller,admin,user',
+            'token_balance' => 'nullable|numeric|min:0',
+            'price_per_coin' => 'nullable|numeric|min:0',
         ]);
 
-        $user->update($validated);
+        $oldTokenBalance = $user->token_balance ?? 0;
+        $newTokenBalance = $validated['token_balance'] ?? $oldTokenBalance;
+        $balanceDifference = $newTokenBalance - $oldTokenBalance;
 
-        return back()->with('success', 'User updated successfully.');
+        try {
+            DB::beginTransaction();
+
+            // Update user information
+            $user->update([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'] ?? null,
+                'role' => $validated['role'],
+                'token_balance' => $newTokenBalance,
+            ]);
+
+            // Handle coin quantity changes with transaction history
+            if (abs($balanceDifference) > 0.0001) { // Use small epsilon to avoid floating point issues
+                $admin = Auth::user();
+                
+                // Use admin-provided price, or fallback to current market price if not provided
+                $pricePerCoin = $validated['price_per_coin'] ?? null;
+                
+                // Validate price is provided when balance changes
+                if (!$pricePerCoin || $pricePerCoin <= 0) {
+                    DB::rollBack();
+                    return back()->withErrors([
+                        'price_per_coin' => 'Price per coin is required and must be greater than 0 when updating coin balance.'
+                    ])->withInput();
+                }
+                
+                $reference = 'ADMIN-UPDATE-' . time() . '-' . $user->id;
+
+                if ($balanceDifference < 0) {
+                    // Coins reduced - Record as sale transaction (user sold coins to admin)
+                    $coinsSold = abs($balanceDifference);
+                    $totalPrice = $coinsSold * $pricePerCoin;
+
+                    // Transaction for user (debit - coins sold)
+                    Transaction::create([
+                        'user_id' => $user->id,
+                        'sender_id' => $user->id,
+                        'recipient_id' => $admin->id,
+                        'type' => 'admin_buy_from_user',
+                        'amount' => -$coinsSold,
+                        'price_per_coin' => $pricePerCoin,
+                        'total_price' => $totalPrice,
+                        'sender_type' => 'user',
+                        'status' => 'completed',
+                        'reference' => $reference,
+                        'payment_status' => 'verified',
+                    ]);
+
+                    // Transaction for admin (credit - coins received)
+                    Transaction::create([
+                        'user_id' => $admin->id,
+                        'sender_id' => $user->id,
+                        'recipient_id' => $admin->id,
+                        'type' => 'admin_buy_from_user',
+                        'amount' => $coinsSold,
+                        'price_per_coin' => $pricePerCoin,
+                        'total_price' => $totalPrice,
+                        'sender_type' => 'user',
+                        'status' => 'completed',
+                        'reference' => $reference,
+                        'payment_status' => 'verified',
+                    ]);
+
+                    Log::info('Admin updated user coins (reduced)', [
+                        'admin_id' => $admin->id,
+                        'user_id' => $user->id,
+                        'old_balance' => $oldTokenBalance,
+                        'new_balance' => $newTokenBalance,
+                        'coins_sold' => $coinsSold,
+                        'price_per_coin' => $pricePerCoin,
+                        'total_price' => $totalPrice,
+                    ]);
+
+                } elseif ($balanceDifference > 0) {
+                    // Coins increased - Record as admin transfer credit
+                    $coinsAdded = $balanceDifference;
+                    $totalPrice = $coinsAdded * $pricePerCoin;
+
+                    // Transaction for user (credit - coins received)
+                    Transaction::create([
+                        'user_id' => $user->id,
+                        'sender_id' => $admin->id,
+                        'recipient_id' => $user->id,
+                        'type' => 'admin_transfer_credit',
+                        'amount' => $coinsAdded,
+                        'price_per_coin' => $pricePerCoin,
+                        'total_price' => $totalPrice,
+                        'sender_type' => 'admin',
+                        'status' => 'completed',
+                        'reference' => $reference,
+                        'payment_status' => 'verified',
+                    ]);
+
+                    // Transaction for admin (debit tracking)
+                    Transaction::create([
+                        'user_id' => $admin->id,
+                        'sender_id' => $admin->id,
+                        'recipient_id' => $user->id,
+                        'type' => 'admin_transfer_debit',
+                        'amount' => -$coinsAdded,
+                        'price_per_coin' => $pricePerCoin,
+                        'total_price' => $totalPrice,
+                        'sender_type' => 'admin',
+                        'status' => 'completed',
+                        'reference' => $reference,
+                        'payment_status' => 'verified',
+                    ]);
+
+                    Log::info('Admin updated user coins (increased)', [
+                        'admin_id' => $admin->id,
+                        'user_id' => $user->id,
+                        'old_balance' => $oldTokenBalance,
+                        'new_balance' => $newTokenBalance,
+                        'coins_added' => $coinsAdded,
+                        'price_per_coin' => $pricePerCoin,
+                        'total_price' => $totalPrice,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            $message = 'User updated successfully.';
+            if (abs($balanceDifference) > 0.0001) {
+                $pricePerCoin = $validated['price_per_coin'] ?? PriceHelper::getRwampPkrPrice();
+                if ($balanceDifference < 0) {
+                    $message .= ' ' . number_format(abs($balanceDifference), 2) . ' coins recorded as sold at ' . number_format($pricePerCoin, 2) . ' PKR per coin.';
+                } else {
+                    $message .= ' ' . number_format($balanceDifference, 2) . ' coins added to user account at ' . number_format($pricePerCoin, 2) . ' PKR per coin.';
+                }
+            }
+
+            return back()->with('success', $message);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error updating user: ' . $e->getMessage(), [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()->withErrors(['error' => 'Failed to update user. Please try again.'])->withInput();
+        }
     }
 
     /**
@@ -249,21 +402,20 @@ class AdminUserController extends Controller
     public function assignWalletAddress(Request $request, User $user)
     {
         try {
-            if ($user->wallet_address) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User already has a wallet address: ' . $user->wallet_address
-                ], 400);
-            }
-
             $walletAddress = $this->generateUniqueWalletAddress();
             
+            $oldWallet = $user->wallet_address;
             $user->update(['wallet_address' => $walletAddress]);
+
+            $message = $oldWallet 
+                ? 'Wallet address updated successfully' 
+                : 'Wallet address assigned successfully';
 
             return response()->json([
                 'success' => true,
-                'message' => 'Wallet address assigned successfully',
-                'wallet_address' => $walletAddress
+                'message' => $message,
+                'wallet_address' => $walletAddress,
+                'old_wallet_address' => $oldWallet
             ], 200);
         } catch (\Exception $e) {
             Log::error('Error assigning wallet address', [

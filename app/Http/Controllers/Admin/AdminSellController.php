@@ -29,11 +29,43 @@ class AdminSellController extends Controller
         
         $preSelectedUser = null;
         if ($userId) {
-            $preSelectedUser = User::where('id', $userId)
-                ->where('id', '!=', $admin->id)
-                ->whereIn('role', ['investor', 'reseller', 'user'])
-                ->select('id', 'name', 'email', 'token_balance', 'role')
+            // Handle both ULID and numeric ID
+            // ULIDs are 26 characters, numeric IDs are shorter
+            $isUlid = strlen($userId) === 26 && ctype_alnum($userId);
+            
+            $query = User::where('id', '!=', $admin->id)
+                ->whereIn('role', ['investor', 'reseller', 'user']);
+            
+            if ($isUlid) {
+                $query->where('ulid', $userId);
+            } else {
+                // Try as numeric ID
+                $query->where('id', $userId);
+            }
+            
+            $preSelectedUser = $query->select('id', 'ulid', 'name', 'email', 'token_balance', 'role', 'wallet_address')
                 ->first();
+            
+            // Log for debugging
+            if ($preSelectedUser) {
+                Log::info('Pre-selected user found for admin sell', [
+                    'user_id' => $preSelectedUser->id,
+                    'ulid' => $preSelectedUser->ulid,
+                    'name' => $preSelectedUser->name,
+                    'email' => $preSelectedUser->email,
+                    'has_wallet' => !empty($preSelectedUser->wallet_address),
+                    'wallet_address' => $preSelectedUser->wallet_address ? '***' . substr($preSelectedUser->wallet_address, -4) : 'NULL',
+                    'wallet_address_length' => $preSelectedUser->wallet_address ? strlen($preSelectedUser->wallet_address) : 0,
+                    'requested_identifier' => $userId,
+                    'identifier_type' => $isUlid ? 'ULID' : 'ID'
+                ]);
+            } else {
+                Log::warning('Pre-selected user not found for admin sell', [
+                    'requested_user_id' => $userId,
+                    'identifier_type' => $isUlid ? 'ULID' : 'ID',
+                    'admin_id' => $admin->id
+                ]);
+            }
         }
         
         return view('dashboard.admin-sell', compact('defaultPrice', 'preSelectedUser'));
@@ -111,9 +143,21 @@ class AdminSellController extends Controller
             }
 
             $otpController = new \App\Http\Controllers\Auth\EmailVerificationController();
-            $otpController->generateAndSendOtp($email);
+            $generatedOtp = $otpController->generateAndSendOtp($email);
 
-            Log::info('Admin OTP sent successfully', ['email' => $email, 'admin_id' => $admin->id]);
+            // Verify OTP was stored correctly
+            $cacheKey = "otp:{$email}";
+            $storedOtp = Cache::get($cacheKey);
+            $sessionOtp = session()->get("otp_debug_{$email}");
+            
+            Log::info('Admin OTP sent successfully', [
+                'email' => $email,
+                'admin_id' => $admin->id,
+                'cache_key' => $cacheKey,
+                'otp_stored_in_cache' => $storedOtp !== null,
+                'otp_stored_in_session' => isset($sessionOtp['otp']),
+                'cache_driver' => config('cache.default'),
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -215,11 +259,16 @@ class AdminSellController extends Controller
      */
     public function store(Request $request)
     {
+        // Custom validation for OTP to handle spaces
+        $request->merge([
+            'otp' => preg_replace('/\s+/', '', (string) $request->input('otp', ''))
+        ]);
+        
         $validated = $request->validate([
             'recipient_id' => 'required|exists:users,id',
             'coin_quantity' => 'required|numeric|min:1',
             'price_per_coin' => 'required|numeric|min:0.01',
-            'otp' => 'required|string|size:6',
+            'otp' => 'required|string|size:6|regex:/^[0-9]{6}$/',
             'email' => 'required|email',
             'payment_received' => 'required|in:yes,no',
             'payment_type' => 'required_if:payment_received,yes|in:usdt,bank,cash',
@@ -250,23 +299,50 @@ class AdminSellController extends Controller
         $cacheKey = "otp:{$normalizedEmail}";
         $cachedOtpRaw = Cache::get($cacheKey);
         
-        if ($cachedOtpRaw === null && config('app.debug')) {
+        // Clean and normalize submitted OTP (already cleaned in validation, but ensure it's correct)
+        $rawOtp = (string) $validated['otp'];
+        $otp = preg_replace('/\s+/', '', $rawOtp); // Remove all spaces (in case validation didn't catch it)
+        $otp = preg_replace('/[^0-9]/', '', $otp); // Remove any non-numeric characters
+        $otp = str_pad($otp, 6, '0', STR_PAD_LEFT); // Pad to 6 digits
+        
+        // Check session fallback if cache is empty (works in both debug and production)
+        if ($cachedOtpRaw === null) {
             $debugData = session()->get("otp_debug_{$normalizedEmail}");
             if ($debugData && isset($debugData['otp'])) {
                 $cachedOtpRaw = $debugData['otp'];
+                Log::info("Admin Sell OTP retrieved from session fallback", [
+                    'email' => $normalizedEmail,
+                    'cache_key' => $cacheKey,
+                ]);
             }
         }
         
-        $rawOtp = (string) $validated['otp'];
-        $otp = preg_replace('/\s+/', '', $rawOtp);
-        $otp = str_pad($otp, 6, '0', STR_PAD_LEFT);
-        
+        // Normalize cached OTP
         $cachedOtp = $cachedOtpRaw ? str_pad((string) $cachedOtpRaw, 6, '0', STR_PAD_LEFT) : null;
 
         if (!$cachedOtp || $cachedOtp !== $otp) {
+            Log::warning("Admin Sell OTP Verification Failed", [
+                'email' => $normalizedEmail,
+                'admin_email' => $admin->email,
+                'submitted_otp' => $otp,
+                'submitted_otp_raw' => $rawOtp,
+                'cached_otp' => $cachedOtp,
+                'cached_otp_raw' => $cachedOtpRaw,
+                'cache_key' => $cacheKey,
+                'cache_exists' => $cachedOtpRaw !== null,
+                'cache_driver' => config('cache.default'),
+                'session_has_otp' => session()->has("otp_debug_{$normalizedEmail}"),
+            ]);
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid or expired OTP.'
+                'message' => 'Invalid or expired OTP. Please check the code and try again, or request a new OTP.',
+                'debug' => config('app.debug') ? [
+                    'submitted_otp' => $otp,
+                    'cached_otp' => $cachedOtp,
+                    'cache_key' => $cacheKey,
+                    'cache_exists' => $cachedOtpRaw !== null,
+                ] : null
             ], 422);
         }
 

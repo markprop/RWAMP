@@ -82,7 +82,32 @@ class AdminCryptoPaymentController extends Controller
         // Credit tokens to the user account
         $user = $payment->user;
         if ($user) {
+            // Log wallet address and payment details before crediting
+            Log::info('Crypto payment approved - crediting tokens', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'user_wallet_address' => $user->wallet_address,
+                'payment_id' => $payment->id,
+                'tx_hash' => $payment->tx_hash,
+                'network' => $payment->network,
+                'token_amount' => $payment->token_amount,
+                'usd_amount' => $payment->usd_amount,
+                'pkr_amount' => $payment->pkr_amount,
+                'user_token_balance_before' => $user->token_balance,
+                'timestamp' => now()->toDateTimeString(),
+            ]);
+
             $user->addTokens((int) $payment->token_amount, 'Crypto purchase approved');
+
+            // Log token balance after credit
+            $user->refresh();
+            Log::info('Crypto payment approved - tokens credited', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'token_amount_credited' => $payment->token_amount,
+                'user_token_balance_after' => $user->token_balance,
+                'timestamp' => now()->toDateTimeString(),
+            ]);
 
             // Log a transaction record
             Transaction::create([
@@ -159,7 +184,31 @@ class AdminCryptoPaymentController extends Controller
                     ->first();
 
                 if (!$existingTransaction) {
+                    // Log wallet address and payment details before crediting
+                    Log::info('Crypto payment updated to approved - crediting tokens', [
+                        'user_id' => $user->id,
+                        'user_email' => $user->email,
+                        'user_wallet_address' => $user->wallet_address,
+                        'payment_id' => $payment->id,
+                        'tx_hash' => $payment->tx_hash,
+                        'network' => $validated['network'],
+                        'token_amount' => $validated['token_amount'],
+                        'user_token_balance_before' => $user->token_balance,
+                        'timestamp' => now()->toDateTimeString(),
+                    ]);
+
                     $user->addTokens((int) $validated['token_amount'], 'Crypto purchase approved');
+                    
+                    // Log token balance after credit
+                    $user->refresh();
+                    Log::info('Crypto payment updated to approved - tokens credited', [
+                        'user_id' => $user->id,
+                        'user_email' => $user->email,
+                        'token_amount_credited' => $validated['token_amount'],
+                        'user_token_balance_after' => $user->token_balance,
+                        'timestamp' => now()->toDateTimeString(),
+                    ]);
+
                     Transaction::create([
                         'user_id' => $user->id,
                         'type' => 'crypto_purchase',
@@ -256,6 +305,21 @@ class AdminCryptoPaymentController extends Controller
 
         // Transactions query
         $transactionsQuery = Transaction::with('user');
+        
+        // Exclude admin tracking transactions (admin_transfer_debit and admin side of admin_buy_from_user)
+        // Only show user-facing transactions to avoid duplicates
+        $transactionsQuery->where(function($q) {
+            $q->where('type', '!=', 'admin_transfer_debit')
+              ->where(function($subQ) {
+                  // For admin_buy_from_user, only show user's transaction (negative amount = user sold)
+                  // Exclude admin's transaction (positive amount = admin received)
+                  $subQ->where('type', '!=', 'admin_buy_from_user')
+                       ->orWhere(function($buyQ) {
+                           $buyQ->where('type', 'admin_buy_from_user')
+                                ->where('amount', '<', 0); // Only show user's debit transaction
+                       });
+              });
+        });
         
         // Search transactions
         if ($request->filled('transaction_search')) {

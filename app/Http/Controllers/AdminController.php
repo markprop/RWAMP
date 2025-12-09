@@ -432,6 +432,21 @@ class AdminController extends Controller
         // Transactions query
         $transactionsQuery = Transaction::with('user');
         
+        // Exclude admin tracking transactions (admin_transfer_debit and admin side of admin_buy_from_user)
+        // Only show user-facing transactions to avoid duplicates
+        $transactionsQuery->where(function($q) {
+            $q->where('type', '!=', 'admin_transfer_debit')
+              ->where(function($subQ) {
+                  // For admin_buy_from_user, only show user's transaction (negative amount = user sold)
+                  // Exclude admin's transaction (positive amount = admin received)
+                  $subQ->where('type', '!=', 'admin_buy_from_user')
+                       ->orWhere(function($buyQ) {
+                           $buyQ->where('type', 'admin_buy_from_user')
+                                ->where('amount', '<', 0); // Only show user's debit transaction
+                       });
+              });
+        });
+        
         // Search transactions
         if ($request->filled('transaction_search')) {
             $search = $request->transaction_search;
@@ -1973,11 +1988,16 @@ class AdminController extends Controller
      */
     public function sellCoins(Request $request)
     {
+        // Custom validation for OTP to handle spaces
+        $request->merge([
+            'otp' => preg_replace('/\s+/', '', (string) $request->input('otp', ''))
+        ]);
+        
         $validated = $request->validate([
             'recipient_id' => 'required|exists:users,id',
             'coin_quantity' => 'required|numeric|min:1',
             'price_per_coin' => 'required|numeric|min:0.01',
-            'otp' => 'required|string|size:6',
+            'otp' => 'required|string|size:6|regex:/^[0-9]{6}$/',
             'email' => 'required|email',
             'payment_received' => 'required|in:yes,no',
             'payment_type' => 'required_if:payment_received,yes|in:usdt,bank,cash',
@@ -2016,13 +2036,23 @@ class AdminController extends Controller
             }
         }
         
-        // Clean and normalize submitted OTP
+        // Clean and normalize submitted OTP (already cleaned in validation, but ensure it's correct)
         $rawOtp = (string) $validated['otp'];
-        $otp = preg_replace('/\s+/', '', $rawOtp); // Remove all spaces
+        $otp = preg_replace('/\s+/', '', $rawOtp); // Remove all spaces (in case validation didn't catch it)
+        $otp = preg_replace('/[^0-9]/', '', $otp); // Remove any non-numeric characters
         $otp = str_pad($otp, 6, '0', STR_PAD_LEFT); // Pad to 6 digits
         
         // Normalize cached OTP
         $cachedOtp = $cachedOtpRaw ? str_pad((string) $cachedOtpRaw, 6, '0', STR_PAD_LEFT) : null;
+        
+        // Also check session fallback (even in production) for better compatibility
+        if ($cachedOtpRaw === null) {
+            $debugData = session()->get("otp_debug_{$normalizedEmail}");
+            if ($debugData && isset($debugData['otp'])) {
+                $cachedOtpRaw = $debugData['otp'];
+                $cachedOtp = str_pad((string) $cachedOtpRaw, 6, '0', STR_PAD_LEFT);
+            }
+        }
 
         // Comprehensive logging for debugging
         \Log::info("Admin Sell - OTP Verification DETAILED", [

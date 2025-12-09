@@ -61,23 +61,39 @@ class AdminResellerApplicationController extends Controller
      */
     public function show(ResellerApplication $application)
     {
-        return response()->json([
-            'application' => [
-                'id' => $application->id,
-                'name' => $application->name,
-                'email' => $application->email,
-                'phone' => $application->phone,
-                'company' => $application->company,
-                'investment_capacity' => $application->investment_capacity,
-                'investment_capacity_label' => $application->investment_capacity_label,
-                'message' => $application->message,
-                'status' => $application->status,
-                'ip_address' => $application->ip_address,
-                'user_agent' => $application->user_agent,
-                'created_at' => $application->created_at?->format('Y-m-d H:i:s'),
-                'updated_at' => $application->updated_at?->format('Y-m-d H:i:s'),
-            ],
-        ]);
+        // Check if there's an associated user (created when application was approved)
+        $user = User::where('email', $application->email)->first();
+        
+        $applicationData = [
+            'id' => $application->id,
+            'name' => $application->name,
+            'email' => $application->email,
+            'phone' => $application->phone,
+            'company' => $application->company,
+            'investment_capacity' => $application->investment_capacity,
+            'investment_capacity_label' => $application->investment_capacity_label,
+            'message' => $application->message,
+            'status' => $application->status,
+            'ip_address' => $application->ip_address,
+            'user_agent' => $application->user_agent,
+            'created_at' => $application->created_at?->format('Y-m-d H:i:s'),
+            'updated_at' => $application->updated_at?->format('Y-m-d H:i:s'),
+        ];
+        
+        $response = ['application' => $applicationData];
+        
+        // If user exists, include user info for "Sell Coins" button
+        if ($user) {
+            $response['user'] = [
+                'id' => $user->id,
+                'ulid' => $user->ulid,
+                'name' => $user->name,
+                'email' => $user->email,
+                'wallet_address' => $user->wallet_address,
+            ];
+        }
+        
+        return response()->json($response);
     }
 
     /**
