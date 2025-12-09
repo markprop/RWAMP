@@ -24,6 +24,7 @@ class SecurityHeaders
         // Build CSP directives explicitly with validated URLs only
         // Connect sources - explicitly list each domain
         // Note: va.tawk.to is required for tawk.to performance logging
+        // IMPORTANT: All sources must be valid URLs or CSP keywords - no placeholders
         $connectSrcList = [
             "'self'",
             "https://*.walletconnect.com",
@@ -45,6 +46,36 @@ class SecurityHeaders
             "wss://*.tawk.to"
         ];
         
+        // Filter out any sources that might contain invalid patterns
+        $connectSrcList = array_filter($connectSrcList, function($source) {
+            $source = trim($source);
+            // Reject empty, angle brackets, or URL placeholders
+            if (empty($source) || 
+                strpos($source, '<') !== false || 
+                strpos($source, '>') !== false ||
+                stripos($source, '<URL>') !== false ||
+                stripos($source, 'URL>') !== false ||
+                stripos($source, '<URL') !== false ||
+                stripos($source, 'URL') === 0) { // Reject if starts with "URL"
+                \Log::warning('CSP: Filtered invalid connect-src', ['source' => $source]);
+                return false;
+            }
+            return true;
+        });
+        
+        // Additional validation - ensure no <URL> patterns remain
+        $connectSrcList = array_map(function($source) {
+            // Remove any angle brackets or URL placeholders that might have slipped through
+            $cleaned = str_replace(['<', '>'], '', $source);
+            $cleaned = preg_replace('/URL/i', '', $cleaned);
+            return trim($cleaned);
+        }, $connectSrcList);
+        
+        // Filter out any empty sources after cleaning
+        $connectSrcList = array_filter($connectSrcList, function($source) {
+            return !empty(trim($source));
+        });
+        
         // Script sources
         $scriptSrcList = [
             "'self'",
@@ -52,6 +83,7 @@ class SecurityHeaders
             "https://www.googletagmanager.com",
             "https://www.google.com",
             "https://www.gstatic.com",
+            "https://cdnjs.cloudflare.com",
             "https://unpkg.com",
             "https://cdn.jsdelivr.net",
             "https://*.walletconnect.com",
@@ -75,13 +107,15 @@ class SecurityHeaders
         $styleSrcList = [
             "'self'",
             "'unsafe-inline'",
-            "https://fonts.googleapis.com"
+            "https://fonts.googleapis.com",
+            "https://cdnjs.cloudflare.com"
         ];
         
         $styleSrcElemList = [
             "'self'",
             "'unsafe-inline'",
             "https://fonts.googleapis.com",
+            "https://cdnjs.cloudflare.com",
             "https://embed.tawk.to",
             "https://*.tawk.to"
         ];
@@ -217,32 +251,36 @@ class SecurityHeaders
             'connect_src_part' => preg_match('/connect-src[^;]*;/', $csp, $matches) ? $matches[0] : 'not found'
         ]);
         
-        // Final validation - ensure no <URL> placeholder exists
-        if (stripos($csp, '<URL>') !== false || stripos($csp, 'URL>') !== false || stripos($csp, '<URL') !== false) {
-            // Log error with full CSP for debugging
-            \Log::error('CSP contains invalid <URL> placeholder', [
-                'full_csp' => $csp,
-                'csp_length' => strlen($csp),
-                'request_uri' => $request->getRequestUri()
-            ]);
-            // Remove any occurrences of <URL> patterns
+        // AGGRESSIVE validation - ensure no <URL> placeholder exists
+        // Multiple passes to catch all variations
+        $maxIterations = 3;
+        for ($i = 0; $i < $maxIterations; $i++) {
+            if (stripos($csp, '<URL>') === false && 
+                stripos($csp, 'URL>') === false && 
+                stripos($csp, '<URL') === false &&
+                !preg_match('/<[^>]*URL[^>]*>/i', $csp)) {
+                break; // Clean, exit loop
+            }
+            
+            // Remove any occurrences of <URL> patterns (all variations)
             $csp = preg_replace('/<URL[^>]*>/i', '', $csp);
+            $csp = preg_replace('/<[^>]*URL[^>]*>/i', '', $csp);
             $csp = preg_replace('/\s+/', ' ', trim($csp));
+            
+            // If connect-src specifically has issues, rebuild it
+            if (preg_match('/connect-src[^;]*<[^>]*>/i', $csp)) {
+                $csp = preg_replace('/connect-src[^;]*;/i', '', $csp);
+                $cleanConnectSrc = $joinCspSources($connectSrcList);
+                $csp = rtrim($csp, '; ') . '; connect-src ' . $cleanConnectSrc . ';';
+                $csp = preg_replace('/\s+/', ' ', trim($csp));
+            }
         }
         
-        // Additional safety check - ensure connect-src doesn't have <URL>
-        if (preg_match('/connect-src[^;]*<URL>/i', $csp)) {
-            \Log::error('CSP connect-src contains <URL> - rebuilding', [
-                'original_connect_src' => preg_match('/connect-src[^;]*;/i', $csp, $matches) ? $matches[0] : 'not found'
-            ]);
-            // Remove the problematic connect-src and rebuild it
-            $csp = preg_replace('/connect-src[^;]*;/i', '', $csp);
-            $csp = rtrim($csp, '; ') . '; connect-src ' . $joinCspSources($connectSrcList) . ';';
-            $csp = preg_replace('/\s+/', ' ', trim($csp));
-        }
-        
-        // Final sanitization - remove any angle brackets that might have slipped through
+        // Final sanitization - remove ANY remaining angle brackets and URL placeholders
         $csp = str_replace(['<', '>'], '', $csp);
+        // Remove any remaining URL placeholder patterns
+        $csp = preg_replace('/<URL[^>]*>/i', '', $csp);
+        $csp = preg_replace('/URL>/i', '', $csp);
         $csp = preg_replace('/\s+/', ' ', trim($csp));
 
         $response->headers->set('X-Content-Type-Options', 'nosniff');
@@ -266,7 +304,19 @@ class SecurityHeaders
         // Final check - verify CSP doesn't contain any invalid patterns before setting
         // Remove any potential problematic patterns
         $csp = preg_replace('/[<>]/', '', $csp); // Remove any angle brackets
+        // Remove any URL placeholder patterns (case-insensitive)
+        $csp = preg_replace('/<URL[^>]*>/i', '', $csp);
+        $csp = preg_replace('/URL>/i', '', $csp);
+        $csp = preg_replace('/<URL/i', '', $csp);
+        // Remove any standalone "URL" that might be invalid
+        $csp = preg_replace('/\bURL\b/i', '', $csp);
         $csp = preg_replace('/\s+/', ' ', trim($csp)); // Clean spaces
+        // Remove any double semicolons or trailing semicolons
+        $csp = preg_replace('/;+/', ';', $csp);
+        $csp = trim($csp, '; ');
+        if (!empty($csp) && substr($csp, -1) !== ';') {
+            $csp .= ';';
+        }
         
         // Log final CSP for debugging (only in local/dev)
         if ($isLocal || config('app.debug')) {

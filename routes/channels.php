@@ -17,6 +17,12 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });
 
+// Game settings channel - any authenticated user can listen so game UIs
+// can react to admin configuration changes in real time.
+Broadcast::channel('game.settings', function ($user) {
+    return $user !== null;
+});
+
 // Chat channel - only participants and admins can listen
 Broadcast::channel('chat.{chatId}', function ($user, $chatId) {
     try {

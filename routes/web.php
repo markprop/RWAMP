@@ -34,6 +34,9 @@ use App\Http\Controllers\Reseller\ResellerBuyRequestController;
 use App\Http\Controllers\KycController;
 use App\Http\Controllers\WithdrawController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\GameController;
+use App\Http\Controllers\GameSettingController;
+use App\Http\Controllers\WalletConnectController;
 
 /*
 |--------------------------------------------------------------------------
@@ -65,10 +68,10 @@ Route::get('/privacy-policy', function () {
         'description' => 'Learn how RWAMP collects, uses, and protects your personal data. Read our full privacy policy.',
         'ogTitle' => 'Privacy Policy – RWAMP',
         'ogDescription' => 'Learn how RWAMP collects, uses, and protects your personal data.',
-        'ogImage' => asset('images/logo.jpeg'),
+        'ogImage' => asset('images/logo.png'),
         'twitterTitle' => 'Privacy Policy – RWAMP',
         'twitterDescription' => 'How RWAMP handles your data securely and transparently.',
-        'twitterImage' => asset('images/logo.jpeg'),
+        'twitterImage' => asset('images/logo.png'),
     ]);
 })->name('privacy.policy');
 Route::get('/terms-of-service', function () {
@@ -77,10 +80,10 @@ Route::get('/terms-of-service', function () {
         'description' => 'Read RWAMP’s terms of service covering account use, payments, disclaimers, and legal obligations.',
         'ogTitle' => 'Terms of Service – RWAMP',
         'ogDescription' => 'Rules for using RWAMP services, accounts, and limitations.',
-        'ogImage' => asset('images/logo.jpeg'),
+        'ogImage' => asset('images/logo.png'),
         'twitterTitle' => 'Terms of Service – RWAMP',
         'twitterDescription' => 'Rules for using RWAMP services, accounts, and limitations.',
-        'twitterImage' => asset('images/logo.jpeg'),
+        'twitterImage' => asset('images/logo.png'),
     ]);
 })->name('terms.of.service');
 Route::get('/disclaimer', function () {
@@ -89,10 +92,10 @@ Route::get('/disclaimer', function () {
         'description' => 'Important risk disclosures for RWAMP token investors. Not financial advice. Read before investing.',
         'ogTitle' => 'Investment Disclaimer – RWAMP',
         'ogDescription' => 'Notices on risks, liability, and third‑party links for RWAMP users.',
-        'ogImage' => asset('images/logo.jpeg'),
+        'ogImage' => asset('images/logo.png'),
         'twitterTitle' => 'Investment Disclaimer – RWAMP',
         'twitterDescription' => 'Important risk disclosures for RWAMP token investors.',
-        'twitterImage' => asset('images/logo.jpeg'),
+        'twitterImage' => asset('images/logo.png'),
     ]);
 })->name('disclaimer');
 
@@ -243,18 +246,25 @@ Route::middleware(['auth'])->group(function () {
     
     // Legacy admin route aliases for backward compatibility (views use these names)
     // These must be registered BEFORE route groups to avoid conflicts
-    Route::get('/dashboard/admin/users', [AdminUserController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.users');
+    Route::get('/dashboard/admin/users', [AdminUserController::class, 'index'])
+        ->middleware(['role:admin','admin.2fa'])
+        ->name('admin.users');
     Route::get('/dashboard/admin/sell', [AdminSellController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.sell');
     Route::get('/dashboard/admin/applications', [AdminResellerApplicationController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.applications');
-    Route::get('/dashboard/admin/crypto-payments', [AdminCryptoPaymentController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.crypto.payments');
-    Route::get('/dashboard/admin/withdrawals', [AdminWithdrawalController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.withdrawals');
+    Route::get('/dashboard/admin/crypto-payments', [AdminCryptoPaymentController::class, 'index'])
+        ->middleware(['role:admin','admin.2fa'])
+        ->name('admin.crypto.payments');
+    // Admin withdrawals index (backward-compatible path)
+    Route::get('/dashboard/admin/withdrawals', [AdminWithdrawalController::class, 'index'])
+        ->middleware(['role:admin','admin.2fa'])
+        ->name('admin.withdrawals');
     Route::get('/dashboard/admin/kyc', [AdminKycController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.kyc.list');
     Route::get('/dashboard/admin/prices', [AdminPriceController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.prices');
     Route::get('/dashboard/admin/history', [AdminCryptoPaymentController::class, 'history'])->middleware(['role:admin','admin.2fa'])->name('admin.history');
     Route::post('/dashboard/admin/regenerate-recovery-codes', [Admin2FAController::class, 'regenerateRecoveryCodes'])->middleware(['role:admin','admin.2fa'])->name('admin.regenerate-recovery-codes');
     
-    // Admin Crypto Payments
-    Route::prefix('dashboard/admin/crypto-payments')->middleware(['role:admin','admin.2fa'])->name('admin.crypto.payments.')->group(function () {
+    // Admin Crypto Payments (ULID-based short URLs)
+    Route::prefix('a/p')->middleware(['role:admin','admin.2fa'])->name('admin.crypto.payments.')->group(function () {
         // Note: index route is defined above as 'admin.crypto.payments' for backward compatibility
         Route::get('/{payment}/details', [AdminCryptoPaymentController::class, 'show'])->name('details');
         Route::get('/{payment}/screenshot', [AdminCryptoPaymentController::class, 'downloadScreenshot'])->name('screenshot');
@@ -271,8 +281,8 @@ Route::middleware(['auth'])->group(function () {
     // Admin History
     Route::get('/dashboard/admin/history', [AdminCryptoPaymentController::class, 'history'])->middleware(['role:admin','admin.2fa'])->name('admin.history');
     
-    // Admin Applications
-    Route::prefix('dashboard/admin/applications')->middleware(['role:admin','admin.2fa'])->name('admin.applications.')->group(function () {
+    // Admin Applications (reseller applications) - ULID URLs
+    Route::prefix('a/ap')->middleware(['role:admin','admin.2fa'])->name('admin.applications.')->group(function () {
         // Note: index route is defined above as 'admin.applications' for backward compatibility
         Route::get('/{application}/details', [AdminResellerApplicationController::class, 'show'])->name('details');
         Route::put('/{application}/approve', [AdminResellerApplicationController::class, 'approve'])->name('approve');
@@ -286,16 +296,25 @@ Route::middleware(['auth'])->group(function () {
     // Route::get('/dashboard/admin/applications', [AdminResellerApplicationController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.applications');
     // Route::put('/admin/applications/{application}/approve', [AdminResellerApplicationController::class, 'approve'])->middleware(['role:admin','admin.2fa'])->name('admin.applications.approve');
     // Route::put('/admin/applications/{application}/reject', [AdminResellerApplicationController::class, 'reject'])->middleware(['role:admin','admin.2fa'])->name('admin.applications.reject');
-    // Admin User Management
-    Route::middleware(['role:admin','admin.2fa'])->prefix('dashboard/admin/users')->name('admin.users.')->group(function () {
-        // Note: index route is defined above as 'admin.users' for backward compatibility
-        Route::post('/', [AdminUserController::class, 'store'])->name('store');
-        Route::get('/{user}', [AdminUserController::class, 'show'])->name('show');
-        Route::get('/{user}/details', [AdminUserController::class, 'show'])->name('details'); // Alias for backward compatibility with views
-        Route::put('/{user}', [AdminUserController::class, 'update'])->name('update');
-        Route::delete('/{user}', [AdminUserController::class, 'destroy'])->name('destroy');
-        Route::post('/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('reset-password');
-        Route::post('/{user}/assign-wallet', [AdminUserController::class, 'assignWalletAddress'])->name('assign-wallet');
+    // Admin User Management - ULID URLs
+    Route::middleware(['role:admin','admin.2fa'])->group(function () {
+        // Short ULID-based URLs
+        Route::prefix('a/u')->name('admin.users.')->group(function () {
+            // Note: index route is defined above as 'admin.users' for backward compatibility
+            Route::post('/', [AdminUserController::class, 'store'])->name('store');
+            Route::get('/{user}', [AdminUserController::class, 'show'])->name('show');
+            Route::get('/{user}/details', [AdminUserController::class, 'show'])->name('details'); // Alias
+            Route::put('/{user}', [AdminUserController::class, 'update'])->name('update');
+            Route::delete('/{user}', [AdminUserController::class, 'destroy'])->name('destroy');
+            Route::post('/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('reset-password');
+            Route::post('/{user}/assign-wallet', [AdminUserController::class, 'assignWalletAddress'])->name('assign-wallet');
+        });
+
+        // Legacy numeric ID URLs → 301 to ULID URLs
+        Route::get('/dashboard/admin/users/{id}', function (int $id) {
+            $user = \App\Models\User::findOrFail($id);
+            return redirect()->route('admin.users.show', $user);
+        })->whereNumber('id');
     });
     
     // Legacy admin user routes for backward compatibility (commented out - route group above handles these)
@@ -343,8 +362,8 @@ Route::middleware(['auth'])->group(function () {
     // Route::get('/dashboard/admin/prices', [AdminPriceController::class, 'index'])->middleware(['role:admin','admin.2fa'])->name('admin.prices');
     // Route::post('/dashboard/admin/prices/update', [AdminPriceController::class, 'update'])->middleware(['role:admin','admin.2fa'])->name('admin.prices.update');
     
-    // Admin Withdrawal Management routes
-    Route::prefix('dashboard/admin/withdrawals')->middleware(['role:admin','admin.2fa'])->name('admin.withdrawals.')->group(function () {
+    // Admin Withdrawal Management routes - ULID URLs
+    Route::prefix('a/w')->middleware(['role:admin','admin.2fa'])->name('admin.withdrawals.')->group(function () {
         // Note: index route is defined above as 'admin.withdrawals' for backward compatibility
         Route::get('/{withdrawal}', [AdminWithdrawalController::class, 'show'])->name('show');
         Route::post('/{withdrawal}/approve', [AdminWithdrawalController::class, 'approve'])->name('approve');
@@ -416,6 +435,18 @@ Route::middleware(['auth'])->group(function () {
         };
         return redirect()->to($dashboard . '?open=purchase');
     })->name('open.purchase');
+    
+    // Wallet connection return handler (for mobile wallet deep links)
+    Route::get('/wallet-connect', [WalletConnectController::class, 'handleReturn'])->name('wallet.connect');
+
+    // Admin game settings (ULID-style short path: /a/g/settings)
+    Route::prefix('a/g')
+        ->middleware(['role:admin', 'admin.2fa'])
+        ->name('admin.game.')
+        ->group(function () {
+            Route::get('/settings', [GameSettingController::class, 'show'])->name('settings.show');
+            Route::post('/settings', [GameSettingController::class, 'update'])->name('settings.update');
+        });
 });
 
 // Form submissions
@@ -438,6 +469,9 @@ Route::prefix('api')->group(function () {
         Route::post('/check-payment-status', [CryptoPaymentController::class, 'checkPaymentStatus']);
         Route::post('/submit-tx-hash', [CryptoPaymentController::class, 'submitTxHash']);
         Route::post('/check-auto-payment', [CryptoPaymentController::class, 'checkAutoPaymentStatus']);
+        
+        // Wallet connection status check (for polling)
+        Route::get('/wallet-connect-status', [WalletConnectController::class, 'checkStatus'])->name('api.wallet.connect.status');
         
         // Wallet lookup API (admin/reseller only)
         Route::middleware('role:admin,reseller')->group(function () {
@@ -525,8 +559,11 @@ Route::middleware('guest')->group(function () {
 });
 
 // Custom logout route with tab session handling
-// Note: Fortify also registers a logout route, but this one takes precedence when both GET and POST are used
-Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
+// Note: Fortify also registers a logout route named "logout".
+// To keep route:cache compatible, we give this a different name so there is no name collision.
+Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])
+    ->middleware('auth')
+    ->name('logout.custom');
 
 // Profile & Account
 Route::middleware('auth')->group(function () {
@@ -536,4 +573,17 @@ Route::middleware('auth')->group(function () {
     Route::put('/wallet', [ProfileController::class, 'updateWallet'])->name('wallet.update');
     Route::post('/wallet/generate', [ProfileController::class, 'generateWallet'])->name('wallet.generate');
     Route::post('/email/verification/resend', [ProfileController::class, 'resendEmailVerification'])->name('email.verification.resend');
+});
+
+// Game Routes (KYC-approved investors and resellers)
+Route::middleware(['auth', 'kyc.approved'])->prefix('game')->name('game.')->group(function () {
+    Route::get('/', [GameController::class, 'select'])->name('select');
+    Route::get('/trading', [GameController::class, 'index'])->name('index');
+    Route::post('/set-pin', [GameController::class, 'setPin'])->name('set-pin');
+    Route::post('/enter', [GameController::class, 'enter'])->name('enter');
+    Route::get('/price', [GameController::class, 'price'])->name('price');
+    Route::post('/trade', [GameController::class, 'trade'])->name('trade');
+    Route::get('/history', [GameController::class, 'history'])->name('history');
+    Route::post('/exit', [GameController::class, 'exit'])->name('exit');
+    Route::post('/force-reset', [GameController::class, 'forceReset'])->name('force-reset');
 });

@@ -70,5 +70,6 @@ class Kernel extends HttpKernel
         'role' => \App\Http\Middleware\RoleMiddleware::class,
         'admin.2fa' => \App\Http\Middleware\EnsureAdminTwoFactorEnabled::class,
         'kyc.approved' => \App\Http\Middleware\EnsureKycApproved::class,
+        'not.in.game' => \App\Http\Middleware\EnsureNotInGame::class,
     ];
 }
