@@ -1,7 +1,35 @@
 import './bootstrap';
+import './price-helper'; // Import price helper BEFORE Alpine to ensure functions are available
 import Alpine from '@alpinejs/csp';
+import Chart from 'chart.js/auto';
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
+
+// -------------------------------------------------------------------------
+// Global logging guard
+// Disable noisy console logging across the app (debug-only helper).
+// Only disable in production, keep enabled for development/debugging
+// -------------------------------------------------------------------------
+(() => {
+    try {
+        // Check if we're in production mode (you can customize this condition)
+        const isProduction = window.location.hostname !== 'localhost' && 
+                            !window.location.hostname.includes('127.0.0.1') &&
+                            !window.location.hostname.includes('.local');
+        
+        // Only disable console in production, keep it enabled for debugging
+        if (isProduction && typeof console !== 'undefined') {
+            const noop = () => {};
+            // Keep console.error enabled even in production for critical errors
+            // console.log = noop;
+            // console.debug = noop;
+            // if (console.info) console.info = noop;
+            // if (console.warn) console.warn = noop;
+        }
+    } catch (e) {
+        // Ignore any failures here; logging is non-critical
+    }
+})();
 
 // -------------------------------------------------------------------------
 // Per-tab session ID (for independent tab authentication)
@@ -96,6 +124,63 @@ Alpine.data('smoothScroll', () => ({
         }
     }
 }));
+
+// -------------------------------------------------------------------------
+// Intl Tel Input initialisation (phone input with country flags)
+// -------------------------------------------------------------------------
+
+window.initIntlTelInputs = function initIntlTelInputs() {
+    try {
+        // Wait for intlTelInput to be available (handles deferred loading)
+        if (typeof window.intlTelInput !== 'function') {
+            window.__intlTelInitRetries = (window.__intlTelInitRetries || 0) + 1;
+            if (window.__intlTelInitRetries <= 20) {
+                // Retry up to ~5 seconds total (20 * 250ms)
+                setTimeout(initIntlTelInputs, 250);
+            }
+            return;
+        }
+
+        const inputs = document.querySelectorAll('input[data-intl-tel-input]');
+        inputs.forEach((input) => {
+            if (input.dataset.intlTelInitialized === '1') return;
+
+            const iti = window.intlTelInput(input, {
+                initialCountry: 'pk',
+                preferredCountries: ['pk', 'us', 'gb'],
+                autoPlaceholder: 'polite',
+                utilsScript: 'https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/18.1.6/js/utils.js',
+            });
+
+            input.dataset.intlTelInitialized = '1';
+
+            const form = input.closest('form');
+            if (form) {
+                form.addEventListener('submit', () => {
+                    try {
+                        const value = iti.getNumber();
+                        if (value) {
+                            input.value = value;
+                        }
+                    } catch (e) {
+                        // Ignore normalisation errors and submit raw value
+                    }
+                });
+            }
+        });
+    } catch (e) {
+        // Fail silently; forms still work as normal inputs
+    }
+};
+
+// Initialise on DOM ready and on window load (extra safety for slow networks)
+document.addEventListener('DOMContentLoaded', () => {
+    window.initIntlTelInputs();
+});
+
+window.addEventListener('load', () => {
+    window.initIntlTelInputs();
+});
 
 // Form handling
 Alpine.data('contactForm', () => ({
@@ -941,12 +1026,23 @@ Alpine.data('kycForm', (initialIdType = '') => ({
     step: initialIdType ? 2 : 1,
     idType: initialIdType,
     showBackUpload: false,
+    // Alert dialog state
+    showAlert: false,
+    alertMessage: '',
+    alertTitle: '',
+    alertType: 'info',
     nextStep() {
         if (this.idType && this.idType !== '') {
             this.step = 2;
         } else {
-            alert('Please select an ID type');
+            this.showAlertDialog('Please select an ID type', 'warning', 'Validation Error');
         }
+    },
+    showAlertDialog(message, type = 'info', title = '') {
+        this.alertMessage = message;
+        this.alertType = type;
+        this.alertTitle = title || (type === 'success' ? 'Success' : type === 'error' ? 'Error' : type === 'warning' ? 'Warning' : 'Information');
+        this.showAlert = true;
     },
     prevStep() {
         if (this.step > 1) {
@@ -956,14 +1052,14 @@ Alpine.data('kycForm', (initialIdType = '') => ({
     validateStep2() {
         const frontFile = document.querySelector('input[name="kyc_id_front"]');
         if (!frontFile || !frontFile.files || frontFile.files.length === 0) {
-            alert('Please upload ID front image');
+            this.showAlertDialog('Please upload ID front image', 'warning', 'Validation Error');
             return false;
         }
         
         if (this.idType === 'cnic' || this.idType === 'nicop') {
             const backFile = document.querySelector('input[name="kyc_id_back"]');
             if (!backFile || !backFile.files || backFile.files.length === 0) {
-                alert('Please upload ID back image');
+                this.showAlertDialog('Please upload ID back image', 'warning', 'Validation Error');
                 return false;
             }
         }
@@ -978,7 +1074,7 @@ Alpine.data('kycForm', (initialIdType = '') => ({
     validateStep3() {
         const selfieFile = document.querySelector('input[name="kyc_selfie"]');
         if (!selfieFile || !selfieFile.files || selfieFile.files.length === 0) {
-            alert('Please upload selfie with ID');
+            this.showAlertDialog('Please upload selfie with ID', 'warning', 'Validation Error');
             return false;
         }
         return true;
@@ -1097,18 +1193,212 @@ Alpine.data('imageViewer', () => ({
 }));
 
 // Investor Dashboard Component
-Alpine.data('investorDashboard', () => ({
+Alpine.data('investorDashboard', (isInGame = false, hasPin = false) => ({
     purchaseModalOpen: false,
+    // Game-related properties
+    showGameWarning: false,
+    showPinSetup: false,
+    showPinEntry: false,
+    pin: '',
+    pinConfirm: '',
+    stakeAmount: '',
+    isInGame: isInGame,
+    hasPin: hasPin,
+    pinError: '',
+    stakeError: '',
+    pinLoading: false,
+    // Alert dialog state
+    showAlert: false,
+    alertMessage: '',
+    alertTitle: '',
+    alertType: 'info',
+    
     init() {
-        // Check if URL has ?open=purchase parameter
+        console.log('[InvestorDashboard] Initializing component', {
+            isInGame: this.isInGame,
+            hasPin: this.hasPin,
+            url: window.location.href
+        });
+        
+        // Check if URL has ?open=purchase or ?open=game parameter
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('open') === 'purchase') {
+            console.log('[InvestorDashboard] Opening purchase modal from URL parameter');
             const self = this;
             setTimeout(function() {
                 self.purchaseModalOpen = true;
             }, 0);
+        } else if (urlParams.get('open') === 'game') {
+            console.log('[InvestorDashboard] Opening game PIN flow from URL parameter');
+            // If PIN already set, go straight to PIN + stake modal; otherwise open PIN setup
+            if (this.hasPin) {
+                this.showPinEntry = true;
+            } else {
+                this.showPinSetup = true;
+            }
         }
-    }
+        
+        // Clear any previous redirect flags when component initializes
+        sessionStorage.removeItem('gameRedirectAttempted');
+        console.log('[InvestorDashboard] Component initialized successfully');
+    },
+    
+    async setupPin() {
+        if (this.pin.length !== 4 || !/^\d{4}$/.test(this.pin)) {
+            this.pinError = 'PIN must be exactly 4 digits';
+            return;
+        }
+
+        if (this.pin !== this.pinConfirm) {
+            this.pinError = 'PINs do not match';
+            return;
+        }
+
+        this.pinLoading = true;
+        this.pinError = '';
+
+        try {
+            const response = await fetch('/game/set-pin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({ pin: this.pin }),
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                this.hasPin = true;
+                this.showPinSetup = false;
+                this.pin = '';
+                this.pinConfirm = '';
+                this.showAlertDialog('Game PIN set successfully!', 'success', 'Success');
+            } else {
+                this.pinError = data.message || 'Failed to set PIN';
+            }
+        } catch (error) {
+            this.pinError = 'Network error. Please try again.';
+        } finally {
+            this.pinLoading = false;
+        }
+    },
+
+    showAlertDialog(message, type = 'info', title = '') {
+        this.alertMessage = message;
+        this.alertType = type;
+        this.alertTitle = title || (type === 'success' ? 'Success' : type === 'error' ? 'Error' : type === 'warning' ? 'Warning' : 'Information');
+        this.showAlert = true;
+    },
+
+    async enterGame() {
+        console.log('[InvestorDashboard] enterGame() called', {
+            hasPin: this.hasPin,
+            pinLength: this.pin.length
+        });
+        
+        if (!this.hasPin) {
+            console.log('[InvestorDashboard] No PIN set, showing PIN setup modal');
+            this.showPinSetup = true;
+            this.showGameWarning = false;
+            return;
+        }
+
+        console.log('[InvestorDashboard] Sending game entry request with PIN');
+        // Basic stake validation on the frontend for better UX
+        const stake = parseFloat(this.stakeAmount);
+        this.pinError = '';
+        this.stakeError = '';
+
+        if (isNaN(stake) || stake <= 0) {
+            this.stakeError = 'Please enter a valid stake amount greater than 0.';
+            return;
+        }
+
+        this.pinLoading = true;
+
+        try {
+            const response = await fetch('/game/enter', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({ pin: this.pin, amount: this.stakeAmount }),
+            });
+
+            const data = await response.json();
+            console.log('[InvestorDashboard] Game entry response:', data);
+            
+            if (data.success) {
+                console.log('[InvestorDashboard] Game entry successful, redirecting to:', data.redirect_url || '/game/trading');
+                // Close PIN entry modal
+                this.showPinEntry = false;
+                this.pin = '';
+                this.pinError = '';
+                this.stakeAmount = '';
+                this.stakeError = '';
+                
+                // Show success message briefly, then redirect
+                this.showAlertDialog('Entering game...', 'success', 'Success');
+                
+                // Use replace to prevent back button issues and ensure clean redirect
+                setTimeout(() => {
+                    console.log('[InvestorDashboard] Navigating to game page');
+                    window.location.replace(data.redirect_url || '/game/trading');
+                }, 500);
+            } else {
+                console.error('[InvestorDashboard] Game entry failed:', data.message);
+                if (data.locked) {
+                    this.pinError = data.message;
+                } else {
+                    this.pinError = data.message || 'Invalid PIN';
+                }
+            }
+        } catch (error) {
+            console.error('[InvestorDashboard] Enter game error:', error);
+            this.pinError = 'Network error. Please try again.';
+        } finally {
+            this.pinLoading = false;
+        }
+    },
+
+    showAlertDialog(message, type = 'info', title = '') {
+        this.alertMessage = message;
+        this.alertType = type;
+        this.alertTitle = title || (type === 'success' ? 'Success' : type === 'error' ? 'Error' : type === 'warning' ? 'Warning' : 'Information');
+        this.showAlert = true;
+    },
+
+    openGame() {
+        if (!this.hasPin) {
+            this.showPinSetup = true;
+        } else {
+            this.showPinEntry = true;
+        }
+        this.showGameWarning = false;
+    },
+
+    openGamePage() {
+        console.log('[InvestorDashboard] openGamePage() called', {
+            isInGame: this.isInGame,
+            hasPin: this.hasPin,
+            timestamp: new Date().toISOString()
+        });
+        
+        // Since isInGame is already validated server-side, directly navigate
+        // The server will handle validation and redirect if needed
+        console.log('[InvestorDashboard] Navigating to game page directly');
+        console.log('[InvestorDashboard] Current URL:', window.location.href);
+        console.log('[InvestorDashboard] Target URL: /game');
+        
+        // Use href instead of replace to see if that works better
+        // Also add a small delay to ensure logs are visible
+        setTimeout(() => {
+            console.log('[InvestorDashboard] Executing navigation now');
+            window.location.href = '/game/trading';
+        }, 100);
+    },
 }));
 
 // Scroll Animations using Intersection Observer
@@ -1206,6 +1496,614 @@ document.addEventListener('DOMContentLoaded', () => {
         counterObserver.observe(el);
     });
 });
+
+// Game Session Component (for Reseller Dashboard)
+Alpine.data('gameDashboard', (isInGame = false, hasPin = false) => ({
+    showGameWarning: false,
+    showPinSetup: false,
+    showPinEntry: false,
+    pin: '',
+    pinConfirm: '',
+    stakeAmount: '',
+    isInGame: isInGame,
+    hasPin: hasPin,
+    pinError: '',
+    stakeError: '',
+    pinLoading: false,
+    // Alert dialog state
+    showAlert: false,
+    alertMessage: '',
+    alertTitle: '',
+    alertType: 'info',
+
+    init() {
+        console.log('[GameDashboard] Initializing component', {
+            isInGame: this.isInGame,
+            hasPin: this.hasPin,
+            url: window.location.href
+        });
+        
+        // Clear any previous redirect flags when component initializes
+        sessionStorage.removeItem('gameRedirectAttempted');
+        console.log('[GameDashboard] Component initialized successfully');
+    },
+
+    async setupPin() {
+        if (this.pin.length !== 4 || !/^\d{4}$/.test(this.pin)) {
+            this.pinError = 'PIN must be exactly 4 digits';
+            return;
+        }
+
+        if (this.pin !== this.pinConfirm) {
+            this.pinError = 'PINs do not match';
+            return;
+        }
+
+        this.pinLoading = true;
+        this.pinError = '';
+
+        try {
+            const response = await fetch('/game/set-pin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({ pin: this.pin }),
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                this.hasPin = true;
+                this.showPinSetup = false;
+                this.pin = '';
+                this.pinConfirm = '';
+                this.showAlertDialog('Game PIN set successfully!', 'success', 'Success');
+            } else {
+                this.pinError = data.message || 'Failed to set PIN';
+            }
+        } catch (error) {
+            this.pinError = 'Network error. Please try again.';
+        } finally {
+            this.pinLoading = false;
+        }
+    },
+
+    async enterGame() {
+        if (!this.hasPin) {
+            this.showPinSetup = true;
+            this.showGameWarning = false;
+            return;
+        }
+
+        const stake = parseFloat(this.stakeAmount);
+        this.pinError = '';
+        this.stakeError = '';
+
+        if (isNaN(stake) || stake <= 0) {
+            this.stakeError = 'Please enter a valid stake amount greater than 0.';
+            return;
+        }
+
+        this.pinLoading = true;
+
+        try {
+            const response = await fetch('/game/enter', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({ pin: this.pin, amount: this.stakeAmount }),
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                // Redirect to game interface
+                window.location.href = '/game/trading';
+            } else {
+                if (data.locked) {
+                    this.pinError = data.message;
+                } else {
+                    this.pinError = data.message || 'Invalid PIN';
+                }
+            }
+        } catch (error) {
+            this.pinError = 'Network error. Please try again.';
+        } finally {
+            this.pinLoading = false;
+        }
+    },
+
+    openGame() {
+        if (!this.hasPin) {
+            this.showPinSetup = true;
+        } else {
+            this.showPinEntry = true;
+        }
+        this.showGameWarning = false;
+    },
+
+    openGamePage() {
+        console.log('[GameDashboard] openGamePage() called', {
+            isInGame: this.isInGame,
+            hasPin: this.hasPin,
+            timestamp: new Date().toISOString()
+        });
+        
+        // Since isInGame is already validated server-side, directly navigate
+        // The server will handle validation and redirect if needed
+        console.log('[GameDashboard] Navigating to game page directly');
+        window.location.replace('/game/trading');
+    },
+}));
+
+// -------------------------------------------------------------------------
+// Game Session Component (for the actual game page)
+// Chart state is kept outside Alpine to avoid deep proxy recursion.
+// -------------------------------------------------------------------------
+const GAME_TIMEFRAMES = {
+    '1m':  { maxPoints: 60,  pollMs: 5000 },
+    '5m':  { maxPoints: 120, pollMs: 10000 },
+    '15m': { maxPoints: 180, pollMs: 15000 },
+    '1h':  { maxPoints: 240, pollMs: 30000 },
+};
+
+let gamePriceChart = null;
+let gamePriceLabels = [];
+let gamePriceData = [];
+
+Alpine.data('gameSession', (initialBalance = 0, initialPrices = {}, gameBalanceStart = 0, realBalanceStart = 0, initialSettings = null) => ({
+    gameBalance: initialBalance,
+    buyPrice: initialPrices.buy_price || 0,
+    sellPrice: initialPrices.sell_price || 0,
+    midPrice: initialPrices.mid_price || 0,
+    btcUsd: initialPrices.btc_usd || 0,
+    usdPkr: initialPrices.usd_pkr || 0,
+    gameBalanceStart: gameBalanceStart,
+    realBalanceStart: realBalanceStart,
+    currentTimeframe: '1m',
+    // portfolio / platform metrics
+    portfolioValuePkr: 0,
+    portfolioRwamp: 0,
+    pnlPkr: 0,
+    pnlPct: 0,
+    tradesToday: 0,
+    platformRevenueTotal: 0,
+    volumeTodayRw: 0,
+    volumeTodayPkr: 0,
+    lastUpdate: '',
+    // trade history / aggregates
+    trades: [],
+    avgBuyPrice: 0,
+    avgSellPrice: 0,
+    netPositionRwamp: 0,
+    buyAmount: 0,
+    sellAmount: 0,
+    loading: false,
+    showExitModal: false,
+    exiting: false,
+    pricePollInterval: null,
+    // Alert dialog state
+    showAlert: false,
+    alertMessage: '',
+    alertTitle: '',
+    alertType: 'info', // 'success', 'error', 'warning', 'info'
+    // Admin-configurable game settings (runtime adjustable)
+    settings: {
+        entry_multiplier: initialSettings && typeof initialSettings.entry_multiplier !== 'undefined'
+            ? parseFloat(initialSettings.entry_multiplier)
+            : 10.0,
+        exit_divisor: initialSettings && typeof initialSettings.exit_divisor !== 'undefined'
+            ? parseFloat(initialSettings.exit_divisor)
+            : 100.0,
+        exit_fee_rate: initialSettings && typeof initialSettings.exit_fee_rate !== 'undefined'
+            ? parseFloat(initialSettings.exit_fee_rate)
+            : 0.0,
+        game_timeout_seconds: initialSettings && initialSettings.game_timeout_seconds !== null
+            ? parseInt(initialSettings.game_timeout_seconds, 10)
+            : null,
+    },
+
+    init() {
+        console.log('[GameSession] Initializing component', {
+            initialBalance: this.gameBalance,
+            initialPrices: {
+                buyPrice: this.buyPrice,
+                sellPrice: this.sellPrice,
+                midPrice: this.midPrice
+            }
+        });
+
+        this.initChart();
+        this.initSettingsListener();
+        this.fetchPrices();
+        this.fetchGameBalance();
+        this.startPricePolling();
+        console.log('[GameSession] Component initialized successfully');
+    },
+
+    initSettingsListener() {
+        // Seed from any global settings pushed by the admin module (optional)
+        if (window.RWAMP_GAME_SETTINGS) {
+            this.applySettings(window.RWAMP_GAME_SETTINGS);
+        }
+
+        // Listen for live updates from the admin via Echo, if available
+        if (window.Echo && typeof window.Echo.private === 'function') {
+            try {
+                window.Echo.private('game.settings')
+                    .listen('.GameSettingsUpdated', (e) => {
+                        if (!e) return;
+                        this.applySettings(e);
+                    });
+            } catch (error) {
+                console.warn('[GameSession] Unable to subscribe to game.settings channel', error);
+            }
+        }
+    },
+
+    applySettings(payload) {
+        if (!payload) return;
+        if (typeof payload.entry_multiplier !== 'undefined') {
+            this.settings.entry_multiplier = parseFloat(payload.entry_multiplier);
+        }
+        if (typeof payload.exit_divisor !== 'undefined') {
+            this.settings.exit_divisor = parseFloat(payload.exit_divisor);
+        }
+        if (typeof payload.exit_fee_rate !== 'undefined') {
+            this.settings.exit_fee_rate = parseFloat(payload.exit_fee_rate);
+        }
+        if (typeof payload.game_timeout_seconds !== 'undefined') {
+            this.settings.game_timeout_seconds = payload.game_timeout_seconds !== null
+                ? parseInt(payload.game_timeout_seconds, 10)
+                : null;
+        }
+    },
+
+    initChart() {
+        try {
+            const canvas = document.getElementById('gamePriceChart');
+            if (!canvas || gamePriceChart) {
+                return;
+            }
+
+            const ctx = canvas.getContext('2d');
+            gamePriceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: gamePriceLabels,
+                    datasets: [{
+                        label: 'RWAMP Mid Price (PKR)',
+                        data: gamePriceData,
+                        borderWidth: 2,
+                        borderColor: '#2ee58c',
+                        tension: 0.25,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            ticks: { color: '#a0a3b1', font: { size: 10 } },
+                            grid: { color: 'rgba(255,255,255,0.06)' }
+                        },
+                        y: {
+                            ticks: { color: '#a0a3b1', font: { size: 10 } },
+                            grid: { color: 'rgba(255,255,255,0.06)' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#e5e5ef', font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('[GameSession] Failed to initialize chart:', error);
+        }
+    },
+
+    async fetchGameBalance() {
+        try {
+            const response = await fetch('/game/history');
+            const data = await response.json();
+            if (!data.success || !data.session) {
+                return;
+            }
+
+            this.gameBalance = data.session.current_balance;
+            this.gameBalanceStart = data.session.game_balance_start ?? this.gameBalanceStart;
+            this.platformRevenueTotal = parseFloat(data.session.total_revenue || 0);
+
+            // Full trade list for Trade History (Current User)
+            const trades = (data.trades && data.trades.data) ? data.trades.data : [];
+            this.trades = trades;
+
+            // Aggregate metrics for "Trades Today" cards and averages
+            const today = new Date().toISOString().slice(0, 10);
+            let tradesToday = 0;
+            let volumeTodayRw = 0;
+            let volumeTodayPkr = 0;
+            let buyNotional = 0;
+            let buyQty = 0;
+            let sellNotional = 0;
+            let sellQty = 0;
+            let netPositionRwamp = 0;
+
+            trades.forEach(t => {
+                if (!t.created_at || !t.quantity || !t.price_pkr) return;
+                const tradeDate = new Date(t.created_at).toISOString().slice(0, 10);
+                const qty = parseFloat(t.quantity);
+                const price = parseFloat(t.price_pkr);
+
+                if (tradeDate === today) {
+                    tradesToday += 1;
+                    volumeTodayRw += qty;
+                    volumeTodayPkr += qty * price;
+                }
+
+                if (t.side === 'BUY') {
+                    buyQty += qty;
+                    buyNotional += qty * price;
+                } else if (t.side === 'SELL') {
+                    sellQty += qty;
+                    sellNotional += qty * price;
+                }
+
+                // Net RWAMP position for intuitive "RWAMP Balance" display
+                netPositionRwamp += (t.side === 'BUY') ? qty : -qty;
+            });
+
+            this.tradesToday = tradesToday;
+            this.volumeTodayRw = volumeTodayRw;
+            this.volumeTodayPkr = volumeTodayPkr;
+            this.avgBuyPrice = buyQty > 0 ? buyNotional / buyQty : 0;
+            this.avgSellPrice = sellQty > 0 ? sellNotional / sellQty : 0;
+            this.netPositionRwamp = netPositionRwamp;
+
+            this.updatePortfolioMetrics();
+        } catch (error) {
+            console.error('[GameSession] Failed to fetch game balance:', error);
+        }
+    },
+
+    startPricePolling() {
+        if (this.pricePollInterval) {
+            clearInterval(this.pricePollInterval);
+        }
+        const config = GAME_TIMEFRAMES[this.currentTimeframe] || GAME_TIMEFRAMES['1m'];
+        // fetch immediately for new timeframe
+        this.fetchPrices();
+        this.pricePollInterval = setInterval(() => {
+            this.fetchPrices();
+        }, config.pollMs);
+    },
+
+    async fetchPrices() {
+        try {
+            const response = await fetch('/game/price');
+            const data = await response.json();
+            if (data.success) {
+                this.updatePrices(data);
+            }
+        } catch (error) {
+            console.error('[GameSession] Failed to fetch prices:', error);
+        }
+    },
+
+    updatePrices(data) {
+        this.buyPrice = data.buy_price;
+        this.sellPrice = data.sell_price;
+        this.midPrice = data.mid_price;
+        this.btcUsd = data.btc_usd;
+        this.usdPkr = data.usd_pkr;
+        this.lastUpdate = new Date().toLocaleTimeString();
+
+        // push to chart history (module-level arrays, not reactive)
+        const label = new Date().toLocaleTimeString();
+        gamePriceLabels.push(label);
+        gamePriceData.push(this.midPrice);
+
+        const config = GAME_TIMEFRAMES[this.currentTimeframe] || GAME_TIMEFRAMES['1m'];
+        const maxPoints = config.maxPoints;
+
+        if (gamePriceLabels.length > maxPoints) {
+            gamePriceLabels.splice(0, gamePriceLabels.length - maxPoints);
+            gamePriceData.splice(0, gamePriceData.length - maxPoints);
+        }
+
+        if (gamePriceChart) {
+            gamePriceChart.data.labels = gamePriceLabels;
+            gamePriceChart.data.datasets[0].data = gamePriceData;
+            gamePriceChart.update('none');
+        }
+
+        this.updatePortfolioMetrics();
+    },
+
+    setTimeframe(tf) {
+        if (!GAME_TIMEFRAMES[tf]) return;
+        this.currentTimeframe = tf;
+        const maxPoints = GAME_TIMEFRAMES[tf].maxPoints;
+        if (gamePriceLabels.length > maxPoints) {
+            gamePriceLabels.splice(0, gamePriceLabels.length - maxPoints);
+            gamePriceData.splice(0, gamePriceData.length - maxPoints);
+        }
+        if (gamePriceChart) {
+            gamePriceChart.data.labels = gamePriceLabels;
+            gamePriceChart.data.datasets[0].data = gamePriceData;
+            gamePriceChart.update('none');
+        }
+        this.startPricePolling();
+    },
+
+    updatePortfolioMetrics() {
+        // Use netPositionRwamp as the intuitive RWAMP holding,
+        // and value it at current mid price.
+        const rwampPos = this.netPositionRwamp || 0;
+        const currentValue = rwampPos * this.midPrice; // PKR
+
+        this.portfolioRwamp = rwampPos;
+        this.portfolioValuePkr = currentValue;
+
+        // Simple P&L approximation: compare to average buy where possible
+        let basis = 0;
+        if (this.avgBuyPrice && rwampPos > 0) {
+            basis = rwampPos * this.avgBuyPrice;
+        }
+        const pnl = currentValue - basis;
+        this.pnlPkr = pnl;
+        this.pnlPct = basis > 0 ? (pnl / basis) * 100 : 0;
+    },
+
+    get canBuy() {
+        // Note: Frontend validation is basic - backend will validate PKR balance
+        // Users need PKR to buy, which they get by selling RWAMP tokens first
+        return this.buyAmount > 0;
+    },
+
+    get canSell() {
+        // User can sell if they have RWAMP tokens
+        return this.sellAmount > 0 && this.gameBalance >= this.sellAmount;
+    },
+
+    async executeTrade(side) {
+        this.loading = true;
+        const quantity = side === 'BUY' ? this.buyAmount : this.sellAmount;
+        
+        try {
+            const response = await fetch('/game/trade', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({
+                    side: side,
+                    quantity: quantity,
+                    idempotency_key: crypto.randomUUID(),
+                }),
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                this.gameBalance = data.game_balance;
+                if (side === 'BUY') {
+                    this.buyAmount = 0;
+                } else {
+                    this.sellAmount = 0;
+                }
+                // Refresh prices and history after trade so that
+                // Trade History table and "Trades Today" cards update
+                await this.fetchPrices();
+                await this.fetchGameBalance();
+            } else {
+                this.showAlertDialog('Trade failed: ' + data.message, 'error');
+            }
+        } catch (error) {
+            console.error('[GameSession] Trade error:', error);
+            this.showAlertDialog('Trade failed. Please try again.', 'error');
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    async exitGame() {
+        this.exiting = true;
+        try {
+            const response = await fetch('/game/exit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Idempotency-Key': crypto.randomUUID(),
+                },
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                this.showAlertDialog(`Game exited! Final balance: ${this.formatNumber(data.final_real_balance)} RWAMP`, 'success', 'Game Exited');
+                setTimeout(() => {
+                    const userRole = document.body.getAttribute('data-user-role') || 'investor';
+                    if (userRole === 'guest') {
+                        window.location.href = '/dashboard/investor';
+                    } else {
+                        window.location.href = '/dashboard/' + userRole;
+                    }
+                }, 2000);
+            } else {
+                this.showAlertDialog('Exit failed: ' + data.message, 'error');
+            }
+        } catch (error) {
+            console.error('[GameSession] Exit error:', error);
+            this.showAlertDialog('Exit failed. Please try again.', 'error');
+        } finally {
+            this.exiting = false;
+            this.showExitModal = false;
+        }
+    },
+
+    exitPreviewRwamp() {
+        const divisor = this.settings.exit_divisor > 0 ? this.settings.exit_divisor : 100.0;
+        const rawRwamp = this.gameBalance / divisor;
+        const feeRate = this.settings.exit_fee_rate > 0 ? (this.settings.exit_fee_rate / 100.0) : 0.0;
+        const netRwamp = rawRwamp * (1 - feeRate);
+        return netRwamp > 0 ? netRwamp : 0;
+    },
+
+    formatPrice(value) {
+        return 'PKR ' + parseFloat(value || 0).toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+    },
+
+    formatNumber(value) {
+        return parseFloat(value || 0).toLocaleString('en-US', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+        });
+    },
+
+    formatTime(value) {
+        return value || '—';
+    },
+
+    formatTradeTime(isoString) {
+        if (!isoString) return '—';
+        const d = new Date(isoString);
+        return d.toLocaleTimeString();
+    },
+
+    formatTradeNet(trade) {
+        const qty = parseFloat(trade.quantity);
+        const price = parseFloat(trade.price_pkr);
+        const fee = parseFloat(trade.fee_pkr || 0);
+        const gross = qty * price;
+        const net = trade.side === 'SELL' ? (gross - fee) : -(gross + fee);
+        return 'PKR ' + net.toFixed(2);
+    },
+
+    tradeNetClass(trade) {
+        const qty = parseFloat(trade.quantity);
+        const price = parseFloat(trade.price_pkr);
+        const fee = parseFloat(trade.fee_pkr || 0);
+        const gross = qty * price;
+        const net = trade.side === 'SELL' ? (gross - fee) : -(gross + fee);
+        return net >= 0 ? 'text-emerald-300' : 'text-rose-400';
+    },
+
+    showAlertDialog(message, type = 'info', title = '') {
+        this.alertMessage = message;
+        this.alertType = type;
+        this.alertTitle = title || (type === 'success' ? 'Success' : type === 'error' ? 'Error' : type === 'warning' ? 'Warning' : 'Information');
+        this.showAlert = true;
+    },
+})); 
 
 // Start Alpine
 window.Alpine = Alpine;
