@@ -89,7 +89,7 @@
     <div class="email-container">
         <!-- Header -->
         <div class="email-header">
-            <img src="{{ asset('images/logo.jpeg') }}" alt="RWAMP Logo">
+            <img src="{{ asset('images/logo.png') }}" alt="RWAMP Logo">
             <h1 style="color: #ffffff; margin: 15px 0 0 0; font-size: 24px;">Withdrawal Request Approved</h1>
         </div>
 
