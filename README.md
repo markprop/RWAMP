@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=16&duration=4000&pause=800&color=118AB2&center=true&vCenter=true&width=900&lines=✅+KYC-Approved+%7C+🔐+2FA+%2B+ULID+Secured+%7C+🏗️+Live+in+Dubai%2C+PK%2C+KSA+%7C+🤝+Backed+by+Mark+Properties" alt="Trust Bar Animation" />
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=18&duration=3000&pause=600&color=06D6A0&center=true&vCenter=true&width=1000&lines=KYC-Approved+%7C+2FA+ULID+Secured+%7C+Live+in+Dubai+PK+KSA+%7C+Backed+by+Mark+Properties" alt="Trust Bar" />
 </p>
 
 ---
@@ -165,21 +165,21 @@ gantt
     title RWAMP Development Roadmap
     dateFormat YYYY-MM-DD
     section Core Infrastructure
-    Authentication and 2FA :done, auth, 2024-01-01, 2024-03-01
-    Crypto Payment System :done, crypto, 2024-02-01, 2024-04-01
-    Reseller Program :done, reseller, 2024-03-01, 2024-05-01
-    KYC Verification :done, kyc, 2024-04-01, 2024-06-01
+    Authentication and 2FA :done, auth, 2024-01-01, 60d
+    Crypto Payment System :done, crypto, 2024-02-01, 60d
+    Reseller Program :done, reseller, 2024-03-01, 60d
+    KYC Verification :done, kyc, 2024-04-01, 60d
     section Advanced Features
-    Trading Game System :done, game, 2024-11-01, 2025-01-27
-    ULID URL Obfuscation :done, ulid, 2024-12-01, 2025-01-27
-    WalletConnect v2 :done, wallet, 2024-12-01, 2025-01-27
-    Chat System :done, chat, 2024-12-01, 2025-01-27
-    Weighted Average Pricing :done, pricing, 2025-01-01, 2025-01-27
+    Trading Game System :done, game, 2024-11-01, 88d
+    ULID URL Obfuscation :done, ulid, 2024-12-01, 57d
+    WalletConnect v2 :done, wallet, 2024-12-01, 57d
+    Chat System :done, chat, 2024-12-01, 57d
+    Weighted Average Pricing :done, pricing, 2025-01-01, 27d
     section Future Enhancements
-    Mobile Application :active, mobile, 2025-02-01, 2025-06-01
-    Advanced Analytics :future, analytics, 2025-03-01, 2025-05-01
-    Multi-language Support :future, i18n, 2025-04-01, 2025-07-01
-    API v2 :future, api2, 2025-05-01, 2025-08-01
+    Mobile Application :active, mobile, 2025-02-01, 120d
+    Advanced Analytics :crit, analytics, 2025-03-01, 60d
+    Multi-language Support :crit, i18n, 2025-04-01, 90d
+    API v2 :crit, api2, 2025-05-01, 90d
 ```
 
 ---
