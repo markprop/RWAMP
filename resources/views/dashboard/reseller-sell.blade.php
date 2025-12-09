@@ -1,22 +1,26 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="min-h-screen bg-white">
-    <section class="bg-gradient-to-r from-black to-secondary text-white py-12">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex items-center justify-between flex-wrap gap-4">
-                <div>
-                    <h1 class="text-3xl md:text-5xl font-montserrat font-bold">Sell Coins</h1>
-                    <p class="text-white/80">Transfer tokens to your users (OTP protected)</p>
+<div class="min-h-screen bg-gray-50">
+    <!-- Sidebar -->
+    @include('components.reseller-sidebar')
+    
+    <!-- Main Content Area (shifted right for sidebar) -->
+    <div class="md:ml-64 min-h-screen">
+        <!-- Top Header Bar -->
+        <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+            <div class="px-4 sm:px-6 lg:px-8 py-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-montserrat font-bold text-gray-900">Sell Coins</h1>
+                        <p class="text-gray-500 text-sm mt-1.5">Transfer tokens to your users (OTP protected)</p>
+                    </div>
                 </div>
-                <a href="{{ route('dashboard.reseller') }}" class="btn-secondary">
-                    ← Back to Dashboard
-                </a>
             </div>
         </div>
-    </section>
 
-    <div class="max-w-7xl mx-auto px-4 py-10">
+        <!-- Dashboard Content -->
+        <div class="px-4 sm:px-6 lg:px-8 py-6">
         <!-- Share Link Section - At Top -->
         <div class="mb-8">
             <div class="bg-gradient-to-br from-primary to-red-600 rounded-xl shadow-xl p-4 text-white">
@@ -310,11 +314,11 @@
                         </button>
                     </div>
                     
-                    <div class="flex gap-3 pt-4">
-                        <button type="button" onclick="sendOtp()" id="sendOtpBtn" class="btn-primary flex-1">
+                    <div class="flex gap-3 pt-4 flex-col sm:flex-row">
+                        <button type="button" onclick="sendOtp()" id="sendOtpBtn" class="btn-primary btn-small flex-1">
                             Send OTP
                         </button>
-                        <button type="button" id="submitSellBtn" class="btn-primary flex-1 hidden" onclick="document.getElementById('sellForm').dispatchEvent(new Event('submit'))">
+                        <button type="button" id="submitSellBtn" class="btn-primary btn-small flex-1 hidden" onclick="document.getElementById('sellForm').dispatchEvent(new Event('submit'))">
                             Confirm Transfer
                         </button>
                     </div>

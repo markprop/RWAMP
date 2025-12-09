@@ -1,15 +1,26 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="min-h-screen bg-white" x-data="buyFromReseller()">
-    <section class="bg-gradient-to-r from-black to-secondary text-white py-12">
-        <div class="max-w-7xl mx-auto px-4">
-            <h1 class="text-3xl md:text-5xl font-montserrat font-bold">Buy Coins From Reseller</h1>
-            <p class="text-white/80">Purchase RWAMP tokens from a reseller</p>
+<div class="min-h-screen bg-gray-50" x-data="buyFromReseller()">
+    <!-- Sidebar -->
+    @include('components.investor-sidebar')
+    
+    <!-- Main Content Area (shifted right for sidebar) -->
+    <div class="md:ml-64 min-h-screen">
+        <!-- Top Header Bar -->
+        <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+            <div class="px-4 sm:px-6 lg:px-8 py-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-montserrat font-bold text-gray-900">Buy Coins From Reseller</h1>
+                        <p class="text-gray-500 text-sm mt-1.5">Purchase RWAMP tokens from a reseller</p>
+                    </div>
+                </div>
+            </div>
         </div>
-    </section>
 
-    <div class="max-w-4xl mx-auto px-4 py-10">
+        <!-- Dashboard Content -->
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         @if (session('success'))
             <div class="mb-6 rounded-lg border border-green-300 bg-green-50 text-green-800 px-4 py-3">{{ session('success') }}</div>
         @endif

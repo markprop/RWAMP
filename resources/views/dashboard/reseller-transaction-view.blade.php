@@ -1,27 +1,31 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="min-h-screen bg-white">
-    <section class="bg-gradient-to-r from-black to-secondary text-white py-12">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex items-center justify-between flex-wrap gap-4">
-                <div>
-                    <h1 class="text-3xl md:text-5xl font-montserrat font-bold">Transaction Details</h1>
-                    <p class="text-white/80">View complete transaction information</p>
-                </div>
-                <div class="flex gap-3">
-                    <button onclick="shareTransactionDetails()" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors">
-                        📋 Share Details
-                    </button>
-                    <a href="{{ route('reseller.transactions') }}" class="btn-secondary">
-                        ← Back to Transactions
-                    </a>
+<div class="min-h-screen bg-gray-50">
+    <!-- Sidebar -->
+    @include('components.reseller-sidebar')
+    
+    <!-- Main Content Area (shifted right for sidebar) -->
+    <div class="md:ml-64 min-h-screen">
+        <!-- Top Header Bar -->
+        <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+            <div class="px-4 sm:px-6 lg:px-8 py-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-montserrat font-bold text-gray-900">Transaction Details</h1>
+                        <p class="text-gray-500 text-sm mt-1.5">View complete transaction information</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="shareTransactionDetails()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm">
+                            📋 Share Details
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-    </section>
 
-    <div class="max-w-7xl mx-auto px-4 py-10">
+        <!-- Dashboard Content -->
+        <div class="px-4 sm:px-6 lg:px-8 py-6">
         <!-- Transaction Information Card -->
         <div class="bg-white rounded-xl shadow-xl p-6">
             <div data-transaction-details style="display: none;">

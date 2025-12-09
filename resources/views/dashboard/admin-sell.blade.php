@@ -1,22 +1,26 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="min-h-screen bg-white">
-    <section class="bg-gradient-to-r from-black to-secondary text-white py-8 sm:py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 class="text-2xl sm:text-3xl md:text-5xl font-montserrat font-bold">Sell Coins</h1>
-                    <p class="text-white/80 text-sm sm:text-base mt-1">Transfer tokens to users/resellers (OTP protected)</p>
+<div class="min-h-screen bg-gray-50">
+    <!-- Sidebar -->
+    @include('components.admin-sidebar')
+    
+    <!-- Main Content Area (shifted right for sidebar) -->
+    <div class="md:ml-64 min-h-screen">
+        <!-- Top Header Bar -->
+        <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+            <div class="px-4 sm:px-6 lg:px-8 py-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-montserrat font-bold text-gray-900">Sell Coins</h1>
+                        <p class="text-gray-500 text-sm mt-1.5">Transfer tokens to users/resellers (OTP protected)</p>
+                    </div>
                 </div>
-                <a href="{{ route('dashboard.admin') }}" class="btn-secondary text-center text-sm sm:text-base px-4 py-2 sm:px-6 sm:py-3 whitespace-nowrap">
-                    ← Back to Dashboard
-                </a>
             </div>
         </div>
-    </section>
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        <!-- Dashboard Content -->
+        <div class="px-4 sm:px-6 lg:px-8 py-6">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
             <!-- Sell Form -->
             <div class="bg-white rounded-xl shadow-xl p-4 sm:p-6">
@@ -65,6 +69,7 @@
                                 maxlength="16"
                                 pattern="[0-9]{16}"
                                 oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 16)"
+                                value="@if(isset($preSelectedUser) && $preSelectedUser && !empty($preSelectedUser->wallet_address)){{ $preSelectedUser->wallet_address }}@endif"
                             >
                             <div class="absolute right-3 top-1/2 transform -translate-y-1/2">
                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -78,6 +83,23 @@
                         <div id="walletLookupLoading" class="hidden mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                             <p class="text-sm text-blue-800">Looking up wallet address...</p>
                         </div>
+                        @if(isset($preSelectedUser) && $preSelectedUser)
+                        <div id="selectedUser" class="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="font-semibold text-green-900">✓ Found: <span id="selectedUserName">{{ $preSelectedUser->name }}</span></p>
+                                    @if(empty($preSelectedUser->wallet_address))
+                                        <p class="text-xs text-yellow-700 mt-1">⚠️ This user does not have a wallet address set.</p>
+                                    @endif
+                                </div>
+                                <button type="button" onclick="clearSelectedUser()" class="text-red-600 hover:text-red-800">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        @else
                         <div id="selectedUser" class="hidden mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                             <div class="flex items-center justify-between">
                                 <div>
@@ -90,7 +112,8 @@
                                 </button>
                             </div>
                         </div>
-                        <input type="hidden" id="recipientId" required>
+                        @endif
+                        <input type="hidden" id="recipientId" value="{{ isset($preSelectedUser) && $preSelectedUser ? $preSelectedUser->id : '' }}" required>
                         <p class="text-xs text-gray-500 mt-1">Enter the 16-digit wallet address of the recipient</p>
                     </div>
                     
@@ -237,10 +260,13 @@
                         <input 
                             type="text" 
                             id="sellOtp" 
+                            name="otp"
                             class="form-input" 
                             maxlength="10" 
-                            placeholder="Enter 6-digit OTP (spaces will be removed)"
-                            oninput="this.value = this.value.replace(/\s+/g, '').slice(0, 6)"
+                            placeholder="Enter 6-digit OTP (e.g., 391093 or 391 093)"
+                            oninput="this.value = this.value.replace(/[^0-9\s]/g, '').replace(/\s+/g, ' ').trim().slice(0, 7)"
+                            pattern="[0-9\s]{6,7}"
+                            autocomplete="one-time-code"
                         >
                         <button type="button" onclick="sendOtp()" class="text-sm text-primary mt-1 hover:underline">
                             Resend OTP
@@ -352,24 +378,60 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     
-    // Pre-select user if user_id is provided in URL (for backward compatibility)
+    // If user is pre-selected, ensure everything is set up correctly
     @if(isset($preSelectedUser) && $preSelectedUser)
-        const preSelectedUser = {
+        const preSelectedWallet = {!! json_encode($preSelectedUser->wallet_address ?? '') !!};
+        
+        console.log('Pre-selected user detected:', {
             id: {{ $preSelectedUser->id }},
             name: {!! json_encode($preSelectedUser->name) !!},
             email: {!! json_encode($preSelectedUser->email) !!},
-            token_balance: {{ (float) ($preSelectedUser->token_balance ?? 0) }},
-            role: {!! json_encode($preSelectedUser->role ?? 'investor') !!}
+            has_wallet: {{ !empty($preSelectedUser->wallet_address) ? 'true' : 'false' }},
+            wallet: preSelectedWallet,
+            wallet_length: preSelectedWallet ? preSelectedWallet.length : 0
+        });
+        
+        // Set selectedUserData for form submission
+        selectedUserData = {
+            id: {{ $preSelectedUser->id }},
+            name: {!! json_encode($preSelectedUser->name) !!},
+            email: {!! json_encode($preSelectedUser->email) !!},
+            balance: {{ (float) ($preSelectedUser->token_balance ?? 0) }},
+            role: {!! json_encode($preSelectedUser->role ?? 'investor') !!},
+            walletAddress: preSelectedWallet
         };
         
-        // Pre-select the user
-        selectUser(
-            preSelectedUser.id,
-            preSelectedUser.name,
-            preSelectedUser.email,
-            preSelectedUser.token_balance,
-            preSelectedUser.role
-        );
+        // Ensure wallet address input is set
+        if (walletAddressInput && preSelectedWallet && preSelectedWallet.trim() !== '') {
+            walletAddressInput.value = preSelectedWallet.trim();
+            console.log('✅ Wallet address auto-filled:', preSelectedWallet);
+            
+            // Set recipient ID
+            const recipientIdEl = document.getElementById('recipientId');
+            if (recipientIdEl) {
+                recipientIdEl.value = {{ $preSelectedUser->id }};
+            }
+            
+            // Show selected user info
+            const selectedUserDiv = document.getElementById('selectedUser');
+            const selectedUserNameSpan = document.getElementById('selectedUserName');
+            if (selectedUserDiv) {
+                selectedUserDiv.classList.remove('hidden');
+            }
+            if (selectedUserNameSpan) {
+                selectedUserNameSpan.textContent = {!! json_encode($preSelectedUser->name) !!};
+            }
+            
+            // If wallet is valid 16 digits, optionally verify it (but don't overwrite)
+            if (preSelectedWallet.length === 16 && /^\d{16}$/.test(preSelectedWallet)) {
+                console.log('✅ Wallet address is valid 16-digit format');
+                // Don't auto-trigger lookup as it might interfere - wallet is already set
+            } else {
+                console.warn('⚠️ Wallet address format is not 16 digits:', preSelectedWallet);
+            }
+        } else if (walletAddressInput) {
+            console.log('⚠️ No wallet address to auto-fill for pre-selected user');
+        }
     @endif
     
     // Wallet lookup on blur
@@ -534,11 +596,23 @@ function hideWalletError() {
     document.getElementById('walletLookupError').classList.add('hidden');
 }
 
-function selectUser(userId, userName, userEmail, userBalance, userRole) {
-    selectedUserData = { id: userId, name: userName, email: userEmail, balance: userBalance, role: userRole };
+function selectUser(userId, userName, userEmail, userBalance, userRole, walletAddress) {
+    console.log('selectUser called with:', { userId, userName, walletAddress });
     
-    document.getElementById('recipientId').value = userId;
-    document.getElementById('selectedUserName').textContent = userName;
+    selectedUserData = { id: userId, name: userName, email: userEmail, balance: userBalance, role: userRole, walletAddress: walletAddress };
+    
+    // Set recipient ID
+    const recipientIdEl = document.getElementById('recipientId');
+    if (recipientIdEl) {
+        recipientIdEl.value = userId;
+    }
+    
+    // Set user name
+    const selectedUserNameEl = document.getElementById('selectedUserName');
+    if (selectedUserNameEl) {
+        selectedUserNameEl.textContent = userName;
+    }
+    
     if (document.getElementById('selectedUserEmail')) {
         document.getElementById('selectedUserEmail').textContent = userEmail;
     }
@@ -549,13 +623,43 @@ function selectUser(userId, userName, userEmail, userBalance, userRole) {
         document.getElementById('selectedUserRole').textContent = (userRole || 'investor').charAt(0).toUpperCase() + (userRole || 'investor').slice(1);
     }
     
-    document.getElementById('walletAddressInput').value = '';
-    document.getElementById('selectedUser').classList.remove('hidden');
+    // Auto-fill wallet address if provided
+    const walletInput = document.getElementById('walletAddressInput');
+    if (walletInput) {
+        if (walletAddress && walletAddress.trim() !== '') {
+            walletInput.value = walletAddress.trim();
+            console.log('✅ Wallet address filled:', walletAddress);
+            // Hide any wallet lookup errors since we're pre-selecting
+            hideWalletError();
+        } else {
+            walletInput.value = '';
+            console.log('⚠️ No wallet address provided for user');
+        }
+    } else {
+        console.error('walletAddressInput element not found!');
+    }
+    
+    // Show the selected user section
+    const selectedUserDiv = document.getElementById('selectedUser');
+    if (selectedUserDiv) {
+        selectedUserDiv.classList.remove('hidden');
+        console.log('✅ Selected user section shown');
+    } else {
+        console.error('selectedUser element not found!');
+    }
+    
+    const walletLookupLoading = document.getElementById('walletLookupLoading');
+    if (walletLookupLoading) {
+        walletLookupLoading.classList.add('hidden');
+    }
     
     // Show payment section if quantity is already entered
     const quantity = parseFloat(document.getElementById('coinQuantity')?.value) || 0;
     if (quantity > 0) {
-        document.getElementById('paymentSection')?.classList.remove('hidden');
+        const paymentSection = document.getElementById('paymentSection');
+        if (paymentSection) {
+            paymentSection.classList.remove('hidden');
+        }
     }
     
     // If payment type is already selected, fetch proof
@@ -563,6 +667,8 @@ function selectUser(userId, userName, userEmail, userBalance, userRole) {
     if (paymentType && (paymentType === 'usdt' || paymentType === 'bank')) {
         fetchPaymentProof(userId, paymentType);
     }
+    
+    console.log('✅ selectUser completed successfully');
 }
 
 function clearSelectedUser() {
@@ -1088,6 +1194,7 @@ function showInfo(message) {
 function hideInfo() {
     document.getElementById('infoMessage').classList.add('hidden');
 }
+
 
 </script>
 @endsection

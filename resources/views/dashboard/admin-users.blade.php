@@ -3,7 +3,11 @@
 @section('content')
 <script>
 document.addEventListener('alpine:init', () => {
-    Alpine.data('userManagement', () => ({
+    try {
+        Alpine.data('userManagement', () => ({
+        // Pricing context
+        officialPrice: {{ is_numeric($defaultPrice ?? 0) ? (float)($defaultPrice ?? 0) : 0 }},
+
         deleteModalOpen: false,
         deleteUserId: null,
         deleteUserName: '',
@@ -23,7 +27,11 @@ document.addEventListener('alpine:init', () => {
         editUserEmail: '',
         editUserPhone: '',
         editUserRole: '',
+        editUserTokenBalance: 0,
+        editUserCoinPrice: 0,
+        editUserOriginalBalance: 0,
         editFormAction: '',
+        editFormActionUpdateWallet: '',
         resetPasswordModalOpen: false,
         resetPasswordUserId: null,
         resetPasswordUserName: '',
@@ -34,10 +42,30 @@ document.addEventListener('alpine:init', () => {
         assignWalletModalOpen: false,
         assignWalletUserId: null,
         assignWalletUserName: '',
+        assignWalletFormAction: '',
+        updateWalletLoading: false,
+        confirmModalOpen: false,
+        confirmModalTitle: '',
+        confirmModalMessage: '',
+        confirmModalAction: null,
+        confirmModalActionText: 'Confirm',
+        confirmModalType: 'warning', // warning, danger, info
+        // List loading + toast
+        isListLoading: false,
         toast: {
             visible: false,
             message: '',
             type: 'success' // success, error, warning, info
+        },
+        init() {
+            // Initialize pagination handlers after DOM is ready
+            this.$nextTick(() => {
+                try {
+                    this.initPaginationHandlers();
+                } catch (e) {
+                    console.warn('Pagination init error:', e);
+                }
+            });
         },
         showToast(message, type = 'success') {
             this.toast.message = message;
@@ -47,7 +75,222 @@ document.addEventListener('alpine:init', () => {
                 this.toast.visible = false;
             }, 3000);
         },
+        // Admin Users – AJAX filters (no full page reload)
+        async submitFilters(form) {
+            if (!form) {
+                console.error('submitFilters called without form element');
+                return;
+            }
+            
+            const formData = new FormData(form);
+            const params = new URLSearchParams(formData).toString();
+            const baseUrl = (form && form.getAttribute) ? form.getAttribute('action') || '{{ route('admin.users') }}' : '{{ route('admin.users') }}';
+            const url = baseUrl + (params ? ('?' + params) : '');
+
+            this.isListLoading = true;
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Server error: ' + response.status);
+                }
+
+                const html = await response.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const incoming = doc.querySelector('#adminUsersTable');
+                const current = document.querySelector('#adminUsersTable');
+
+                if (incoming && current && current.innerHTML !== undefined) {
+                    try {
+                        current.innerHTML = incoming.innerHTML;
+                    } catch (err) {
+                        console.error('Error updating table content:', err);
+                    }
+                }
+
+                // Update pagination section
+                const incomingPagination = doc.querySelector('[data-pagination-section]');
+                const currentPagination = document.querySelector('[data-pagination-section]');
+                if (incomingPagination && currentPagination && currentPagination.innerHTML !== undefined) {
+                    try {
+                        currentPagination.innerHTML = incomingPagination.innerHTML;
+                    } catch (err) {
+                        console.error('Error updating pagination:', err);
+                    }
+                }
+
+                // Update showing text
+                const incomingShowing = doc.querySelector('[data-showing-text]');
+                const currentShowing = document.querySelector('[data-showing-text]');
+                if (incomingShowing && currentShowing && currentShowing.innerHTML !== undefined) {
+                    try {
+                        currentShowing.innerHTML = incomingShowing.innerHTML;
+                    } catch (err) {
+                        console.error('Error updating showing text:', err);
+                    }
+                }
+
+                if (window.history && window.history.replaceState) {
+                    try {
+                        window.history.replaceState({}, '', url);
+                    } catch (err) {
+                        console.error('Error updating URL:', err);
+                    }
+                }
+
+                // Re-initialize pagination click handlers after content update
+                this.initPaginationHandlers();
+            } catch (e) {
+                console.error(e);
+                this.showToast('Failed to load users. Please try again.', 'error');
+            } finally {
+                this.isListLoading = false;
+            }
+        },
+        clearFilters() {
+            const form = document.querySelector('[data-admin-users-filters]');
+            if (!form) {
+                console.warn('Filter form not found');
+                return;
+            }
+
+            try {
+                // Reset visible inputs
+                if (form.reset && typeof form.reset === 'function') {
+                    form.reset();
+                }
+
+                // Explicitly clear known query params
+                ['q','role','sort','dir','page','per_page'].forEach((name) => {
+                    try {
+                        const field = form.querySelector(`[name="${name}"]`);
+                        if (field && field.value !== undefined) {
+                            field.value = '';
+                        }
+                    } catch (err) {
+                        console.warn(`Error clearing field ${name}:`, err);
+                    }
+                });
+
+                this.submitFilters(form);
+            } catch (err) {
+                console.error('Error clearing filters:', err);
+                this.showToast('Error clearing filters. Please try again.', 'error');
+            }
+        },
+        async loadPage(url) {
+            // Load a specific page via AJAX
+            this.isListLoading = true;
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Server error: ' + response.status);
+                }
+
+                const html = await response.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const incoming = doc.querySelector('#adminUsersTable');
+                const current = document.querySelector('#adminUsersTable');
+
+                if (incoming && current && current.innerHTML !== undefined) {
+                    try {
+                        current.innerHTML = incoming.innerHTML;
+                    } catch (err) {
+                        console.error('Error updating table content:', err);
+                    }
+                }
+
+                // Update pagination section
+                const incomingPagination = doc.querySelector('[data-pagination-section]');
+                const currentPagination = document.querySelector('[data-pagination-section]');
+                if (incomingPagination && currentPagination && currentPagination.innerHTML !== undefined) {
+                    try {
+                        currentPagination.innerHTML = incomingPagination.innerHTML;
+                    } catch (err) {
+                        console.error('Error updating pagination:', err);
+                    }
+                }
+
+                // Update showing text
+                const incomingShowing = doc.querySelector('[data-showing-text]');
+                const currentShowing = document.querySelector('[data-showing-text]');
+                if (incomingShowing && currentShowing && currentShowing.innerHTML !== undefined) {
+                    try {
+                        currentShowing.innerHTML = incomingShowing.innerHTML;
+                    } catch (err) {
+                        console.error('Error updating showing text:', err);
+                    }
+                }
+
+                // Update URL without reload
+                if (window.history && window.history.pushState) {
+                    try {
+                        window.history.pushState({}, '', url);
+                    } catch (err) {
+                        console.error('Error updating URL:', err);
+                    }
+                }
+
+                // Re-initialize pagination click handlers
+                this.initPaginationHandlers();
+            } catch (e) {
+                console.error(e);
+                this.showToast('Failed to load page. Please try again.', 'error');
+            } finally {
+                this.isListLoading = false;
+            }
+        },
+        initPaginationHandlers() {
+            // Intercept all pagination link clicks
+            try {
+                const paginationLinks = document.querySelectorAll('[data-pagination-section] a[href]');
+                if (!paginationLinks || paginationLinks.length === 0) {
+                    return; // No pagination links found, exit early
+                }
+                
+                paginationLinks.forEach(link => {
+                    if (!link || !link.parentNode) {
+                        return; // Skip if link or parent is null
+                    }
+                    
+                    try {
+                        // Remove existing listener to avoid duplicates
+                        const newLink = link.cloneNode(true);
+                        if (link.parentNode) {
+                            link.parentNode.replaceChild(newLink, link);
+                        }
+                        
+                        newLink.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            const url = newLink.getAttribute('href');
+                            if (url) {
+                                this.loadPage(url);
+                            }
+                        });
+                    } catch (err) {
+                        console.warn('Error initializing pagination link:', err);
+                        // Continue with other links even if one fails
+                    }
+                });
+            } catch (err) {
+                console.warn('Error initializing pagination handlers:', err);
+                // Fail silently - pagination will still work with default behavior
+            }
+        },
         openAssignWalletModal(userId, userName) {
+            // Use ULID route
+            this.assignWalletFormAction = '{{ url("/a/u") }}/' + encodeURIComponent(userId) + '/assign-wallet';
             this.assignWalletUserId = userId;
             this.assignWalletUserName = userName;
             this.assignWalletModalOpen = true;
@@ -73,22 +316,29 @@ document.addEventListener('alpine:init', () => {
             }
         },
         async confirmAssignWalletAddress() {
-            if (!this.assignWalletUserId) return;
+            if (!this.assignWalletUserId || !this.assignWalletFormAction) return;
             
             this.assignWalletLoading = true;
             try {
-                const url = `/dashboard/admin/users/${this.assignWalletUserId}/assign-wallet`;
+                const url = this.assignWalletFormAction;
                 console.log('Assigning wallet address to user:', this.assignWalletUserId);
                 console.log('Request URL:', url);
+                
+                // Get CSRF token
+                const csrfToken = document.querySelector('input[name="_token"]')?.value || 
+                                 document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                                 '{{ csrf_token() }}';
+                
+                const formData = new FormData();
+                formData.append('_token', csrfToken);
                 
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}',
                         'X-Requested-With': 'XMLHttpRequest'
                     },
+                    body: formData,
                     credentials: 'same-origin'
                 });
                 
@@ -126,27 +376,33 @@ document.addEventListener('alpine:init', () => {
                 this.assignWalletLoading = false;
             }
         },
-        openEditModal(userId, userName, userEmail, userPhone, userRole) {
+        openEditModal(userId, userName, userEmail, userPhone, userRole, userTokenBalance) {
             this.editUserId = userId;
             this.editUserName = userName;
             this.editUserEmail = userEmail;
             this.editUserPhone = userPhone || '';
             this.editUserRole = userRole;
-            this.editFormAction = '{{ url("/dashboard/admin/users") }}/' + userId;
+            this.editUserTokenBalance = userTokenBalance || 0;
+            this.editUserOriginalBalance = userTokenBalance || 0;
+            // Initialize coin price with current market price (can be updated by admin)
+            this.editUserCoinPrice = {{ \App\Helpers\PriceHelper::getRwampPkrPrice() ?? 0 }};
+            // Use ULID route
+            this.editFormAction = '{{ url("/a/u") }}/' + encodeURIComponent(userId);
+            this.editFormActionUpdateWallet = '{{ url("/a/u") }}/' + encodeURIComponent(userId) + '/assign-wallet';
             this.editModalOpen = true;
         },
         openResetPasswordModal(userId, userName, userEmail) {
             this.resetPasswordUserId = userId;
             this.resetPasswordUserName = userName;
             this.resetPasswordUserEmail = userEmail;
-            this.resetPasswordFormAction = '{{ url("/dashboard/admin/users") }}/' + userId + '/reset-password';
+            this.resetPasswordFormAction = '{{ url("/a/u") }}/' + encodeURIComponent(userId) + '/reset-password';
             this.resetPasswordModalOpen = true;
         },
         openDeleteModal(userId, userName, userEmail) {
             this.deleteUserId = userId;
             this.deleteUserName = userName;
             this.deleteUserEmail = userEmail;
-            this.deleteFormAction = '{{ url("/dashboard/admin/users") }}/' + userId;
+            this.deleteFormAction = '{{ url("/a/u") }}/' + encodeURIComponent(userId);
             this.deleteModalOpen = true;
         },
         async openViewDetailsModal(userId) {
@@ -155,12 +411,33 @@ document.addEventListener('alpine:init', () => {
             this.viewDetailsData = null;
             
             try {
-                const response = await fetch('{{ url("/dashboard/admin/users") }}/' + userId + '/details');
+                // Use ULID route
+                const url = '{{ url("/a/u") }}/' + encodeURIComponent(userId) + '/details';
+                const response = await fetch(url, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'same-origin'
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Response error:', response.status, errorText);
+                    throw new Error('Failed to fetch user details: ' + response.status);
+                }
+                
                 const data = await response.json();
+                
+                if (!data || !data.user) {
+                    throw new Error('Invalid response format');
+                }
+                
                 this.viewDetailsData = data;
             } catch (error) {
-                console.error('Error fetching user details:', error)
+                console.error('Error fetching user details:', error);
                 this.showToast('Failed to load user details. Please try again.', 'error');
+                // Keep modal open to show error state
             } finally {
                 this.viewDetailsLoading = false;
             }
@@ -192,12 +469,141 @@ document.addEventListener('alpine:init', () => {
             return balance.toLocaleString();
         },
         getTokenValue() {
+            const price = Number(this.officialPrice || 0);
             const balance = (this.viewDetailsData && this.viewDetailsData.user && this.viewDetailsData.user.token_balance) || 0;
-            const value = balance * 0.70;
+            if (!price || !balance) {
+                return (0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            }
+            const value = balance * price;
             return value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        },
+        getTokenValueNumeric() {
+            const price = Number(this.officialPrice || 0);
+            const balance = (this.viewDetailsData && this.viewDetailsData.user && this.viewDetailsData.user.token_balance) || 0;
+            if (!price || !balance) {
+                return 0;
+            }
+            return balance * price;
+        },
+        getAverageBuyPrice() {
+            const transactions = this.getTransactions();
+            if (!transactions || !transactions.length) return null;
+
+            let totalCoins = 0;
+            let totalValue = 0;
+
+            transactions.forEach(tx => {
+                const amount = Number(tx.amount || 0);
+                const pricePerCoin = tx.price_per_coin !== null && tx.price_per_coin !== undefined
+                    ? Number(tx.price_per_coin)
+                    : null;
+                const totalPrice = tx.total_price !== null && tx.total_price !== undefined
+                    ? Number(tx.total_price)
+                    : null;
+
+                // Consider only credit/positive amounts as purchases
+                if (amount > 0 && (pricePerCoin || totalPrice)) {
+                    const coins = Math.abs(amount);
+                    totalCoins += coins;
+
+                    if (!isNaN(totalPrice) && totalPrice > 0) {
+                        totalValue += totalPrice;
+                    } else if (!isNaN(pricePerCoin) && pricePerCoin > 0) {
+                        totalValue += coins * pricePerCoin;
+                    }
+                }
+            });
+
+            if (!totalCoins || !totalValue) return null;
+
+            return totalValue / totalCoins;
+        },
+        getValuePriceLine() {
+            const official = Number(this.officialPrice || 0);
+            const avgBuy = this.getAverageBuyPrice();
+
+            if (official && avgBuy) {
+                const officialLabel = official.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                const buyLabel = avgBuy.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                return `Official: Rs ${officialLabel} / token • Bought at: Rs ${buyLabel} / token`;
+            }
+
+            if (official) {
+                const officialLabel = official.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                return `@ Rs ${officialLabel} per token`;
+            }
+
+            return 'No pricing data available';
+        },
+        getValuePriceLineHtml() {
+            const official = Number(this.officialPrice || 0);
+            const avgBuy = this.getAverageBuyPrice();
+
+            // Check if formatPriceTag is available
+            if (typeof window.formatPriceTag !== 'function') {
+                // Fallback to plain text if formatPriceTag is not available
+                if (official && avgBuy) {
+                    const officialLabel = official.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    const buyLabel = avgBuy.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    return `Official: Rs ${officialLabel} / token • Bought at: Rs ${buyLabel} / token`;
+                }
+                if (official) {
+                    const officialLabel = official.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    return `Rs ${officialLabel} per token`;
+                }
+                return 'No pricing data available';
+            }
+
+            if (official && avgBuy) {
+                const officialHtml = this.safeFormatPriceTag(official, {size: 'small', class: 'inline'});
+                const buyHtml = this.safeFormatPriceTag(avgBuy, {size: 'small', class: 'inline'});
+                return `Official: ${officialHtml} / token • Bought at: ${buyHtml} / token`;
+            }
+
+            if (official) {
+                const officialHtml = this.safeFormatPriceTag(official, {size: 'small', class: 'inline'});
+                return `${officialHtml} per token`;
+            }
+
+            return 'No pricing data available';
+        },
+        // Safe wrapper for formatPriceTag to prevent null reference errors
+        safeFormatPriceTag(pkr, options = {}) {
+            if (typeof window !== 'undefined' && typeof window.formatPriceTag === 'function') {
+                return window.formatPriceTag(pkr, options);
+            }
+            // Fallback to plain number formatting if formatPriceTag is not available
+            if (!pkr || pkr <= 0) return '<span class="text-gray-400">—</span>';
+            const formatted = new Intl.NumberFormat('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(pkr);
+            return `<span>PKR ${formatted}</span>`;
         },
         getWalletAddress() {
             return (this.viewDetailsData && this.viewDetailsData.user && this.viewDetailsData.user.wallet_address) || 'Not set';
+        },
+        hasValidUserId() {
+            try {
+                if (!this.viewDetailsData || !this.viewDetailsData.user) return false;
+                const user = this.viewDetailsData.user;
+                return !!(user && (user.ulid || user.id));
+            } catch (e) {
+                console.error('hasValidUserId error:', e);
+                return false;
+            }
+        },
+        getSellCoinsUrl() {
+            try {
+                if (!this.viewDetailsData || !this.viewDetailsData.user) return '#';
+                const user = this.viewDetailsData.user;
+                const userId = user.ulid || user.id;
+                if (!userId) return '#';
+                return '{{ route('admin.sell') }}?user_id=' + encodeURIComponent(userId);
+            } catch (e) {
+                console.error('getSellCoinsUrl error:', e);
+                return '#';
+            }
         },
         getTransactionCount() {
             const count = (this.viewDetailsData && this.viewDetailsData.transactions && this.viewDetailsData.transactions.length) || 0;
@@ -207,7 +613,18 @@ document.addEventListener('alpine:init', () => {
             return this.viewDetailsData && this.viewDetailsData.transactions && this.viewDetailsData.transactions.length > 0;
         },
         getTransactions() {
-            return (this.viewDetailsData && this.viewDetailsData.transactions) || [];
+            try {
+                if (!this.viewDetailsData || !this.viewDetailsData.transactions) {
+                    return [];
+                }
+                // Ensure it's an array
+                return Array.isArray(this.viewDetailsData.transactions) 
+                    ? this.viewDetailsData.transactions 
+                    : [];
+            } catch (err) {
+                console.warn('Error getting transactions:', err);
+                return [];
+            }
         },
         formatTransactionType(type) {
             if (!type) return '—';
@@ -293,7 +710,7 @@ document.addEventListener('alpine:init', () => {
         },
         openKycImage(url, title) {
             if (!url || url === '#') {
-                alert('Invalid image URL. Please try again.');
+                this.showCustomAlert('Invalid image URL. Please try again.', 'error');
                 return;
             }
             // Set the image source and title
@@ -318,8 +735,111 @@ document.addEventListener('alpine:init', () => {
         closeViewDetailsModal() {
             this.viewDetailsModalOpen = false;
             this.viewDetailsData = null;
+        },
+        openConfirmModal(title, message, action, type = 'warning', actionText = 'Confirm') {
+            this.confirmModalTitle = title;
+            this.confirmModalMessage = message;
+            this.confirmModalAction = action;
+            this.confirmModalType = type;
+            this.confirmModalActionText = actionText;
+            this.confirmModalOpen = true;
+        },
+        closeConfirmModal() {
+            this.confirmModalOpen = false;
+            this.confirmModalTitle = '';
+            this.confirmModalMessage = '';
+            this.confirmModalAction = null;
+            this.confirmModalActionText = 'Confirm';
+            this.confirmModalType = 'warning';
+        },
+        confirmAction() {
+            if (this.confirmModalAction && typeof this.confirmModalAction === 'function') {
+                this.confirmModalAction();
+            }
+            this.closeConfirmModal();
+        },
+        async updateWalletAddress() {
+            if (!this.editUserId || !this.editFormActionUpdateWallet) {
+                this.showToast('Invalid user ID. Please try again.', 'error');
+                return;
+            }
+            
+            // Show custom confirmation modal
+            this.openConfirmModal(
+                'Update Wallet Address',
+                'Are you sure you want to update the wallet address? This will generate a new wallet address for this user.',
+                () => this.executeUpdateWalletAddress(),
+                'warning',
+                'Update Wallet'
+            );
+        },
+        async executeUpdateWalletAddress() {
+            this.updateWalletLoading = true;
+            
+            try {
+                // Get CSRF token from form or meta tag
+                const csrfToken = document.querySelector('input[name="_token"]')?.value || 
+                                 document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                                 '{{ csrf_token() }}';
+                
+                const formData = new FormData();
+                formData.append('_token', csrfToken);
+                
+                const response = await fetch(this.editFormActionUpdateWallet, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    body: formData,
+                    credentials: 'same-origin'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.showToast(data.message || 'Wallet address updated successfully!', 'success');
+                    // Reload the page to show updated wallet address
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    this.showToast(data.message || 'Failed to update wallet address.', 'error');
+                }
+            } catch (error) {
+                console.error('Error updating wallet address:', error);
+                this.showToast('Failed to update wallet address. Please try again.', 'error');
+            } finally {
+                this.updateWalletLoading = false;
+            }
+        },
+        showCustomAlert(message, type = 'info') {
+            this.openConfirmModal(
+                type === 'error' ? 'Error' : type === 'warning' ? 'Warning' : 'Information',
+                message,
+                () => {},
+                type,
+                'OK'
+            );
         }
     }));
+    } catch (error) {
+        console.error('Error initializing userManagement Alpine component:', error);
+        // Provide a minimal fallback component to prevent complete failure
+        Alpine.data('userManagement', () => ({
+            officialPrice: 0,
+            toast: { visible: false, message: '', type: 'success' },
+            showToast(message, type = 'success') {
+                this.toast.message = message;
+                this.toast.type = type;
+                this.toast.visible = true;
+                setTimeout(() => { this.toast.visible = false; }, 3000);
+            },
+            initPaginationHandlers() {
+                // Empty fallback
+            }
+        }));
+    }
 });
 
 // Calculate total price for create user form
@@ -341,30 +861,36 @@ function calculateCreateUserTotal() {
 }
 </script>
 
-<div class="min-h-screen bg-white" x-data="userManagement">
-    <section class="bg-gradient-to-r from-black to-secondary text-white py-8 sm:py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 class="text-2xl sm:text-3xl md:text-5xl font-montserrat font-bold">User Management</h1>
-                    <p class="text-white/80 text-sm sm:text-base mt-1">Search, filter, and manage all users.</p>
-                </div>
-                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                    <button 
-                        @click="createUserModalOpen = true"
-                        class="btn-primary flex items-center justify-center gap-2 text-sm sm:text-base px-4 py-2 sm:px-6 sm:py-3">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                        </svg>
-                        <span class="whitespace-nowrap">Create New User</span>
-                    </button>
-                    <a href="{{ route('dashboard.admin') }}" class="btn-secondary text-center text-sm sm:text-base px-4 py-2 sm:px-6 sm:py-3">Back to Dashboard</a>
+<div class="min-h-screen bg-gray-50" x-data="userManagement">
+    <!-- Sidebar -->
+    @include('components.admin-sidebar')
+    
+    <!-- Main Content Area (shifted right for sidebar) -->
+    <div class="md:ml-64 min-h-screen">
+        <!-- Top Header Bar -->
+        <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+            <div class="px-4 sm:px-6 lg:px-8 py-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-montserrat font-bold text-gray-900">User Management</h1>
+                        <p class="text-gray-500 text-sm mt-1.5">Search, filter, and manage all users</p>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <button 
+                            @click="createUserModalOpen = true"
+                            class="btn-primary flex items-center justify-center gap-2 text-sm px-4 py-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            <span class="whitespace-nowrap">Create New User</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-    </section>
 
-    <div class="max-w-7xl mx-auto px-4 py-8 space-y-6">
+        <!-- Dashboard Content -->
+        <div class="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         @if (session('success'))
             <div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded">
                 {{ session('success') }}
@@ -377,14 +903,30 @@ function calculateCreateUserTotal() {
         @endif
 
         <!-- Filters -->
-        <form method="GET" class="bg-white rounded-xl shadow p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="sm:col-span-2">
-                <label class="block text-sm text-gray-600 mb-1">Search</label>
-                <input name="q" value="{{ request('q') }}" placeholder="Name, Email or Phone" class="rw-input w-full text-sm sm:text-base" />
+        <form
+            method="GET"
+            action="{{ route('admin.users') }}"
+            data-admin-users-filters
+            class="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4"
+            @submit.prevent="submitFilters($event.target)"
+        >
+            <!-- Main Filter Row -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5 sm:gap-3 mb-3">
+                <!-- Search -->
+                <div class="sm:col-span-2 lg:col-span-2">
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Search</label>
+                    <input 
+                        name="q" 
+                        value="{{ request('q') }}" 
+                        placeholder="Name, Email or Phone" 
+                        class="w-full px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors" 
+                    />
             </div>
+                
+                <!-- Role -->
             <div>
-                <label class="block text-sm text-gray-600 mb-1">Role</label>
-                <select name="role" class="rw-input w-full text-sm sm:text-base">
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Role</label>
+                    <select name="role" class="w-full px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors bg-white">
                     <option value="">All</option>
                     <option value="investor" @selected(request('role')==='investor')>Investor</option>
                     <option value="reseller" @selected(request('role')==='reseller')>Reseller</option>
@@ -392,28 +934,92 @@ function calculateCreateUserTotal() {
                     <option value="user" @selected(request('role')==='user')>User</option>
                 </select>
             </div>
-            <div class="flex items-end">
-                <button class="btn-primary w-full text-sm sm:text-base px-4 py-2 sm:px-6 sm:py-3">Apply</button>
+                
+                <!-- Rows/Page -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Rows/Page</label>
+                    <select name="per_page" class="w-full px-2.5 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors bg-white" @change="submitFilters($event.target.closest('form'))">
+                        <option value="10" @selected(request('per_page')==10 || (!request('per_page') && ($perPage ?? 15)==10))>10</option>
+                        <option value="20" @selected(request('per_page')==20 || (!request('per_page') && ($perPage ?? 15)==20))>20</option>
+                        <option value="50" @selected(request('per_page')==50 || (!request('per_page') && ($perPage ?? 15)==50))>50</option>
+                        <option value="100" @selected(request('per_page')==100 || (!request('per_page') && ($perPage ?? 15)==100))>100</option>
+                        <option value="15" @selected(request('per_page')==15 || (!request('per_page') && ($perPage ?? 15)==15))>15</option>
+                    </select>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="sm:col-span-2 lg:col-span-2 flex items-end gap-2">
+                <button
+                    type="submit"
+                        class="flex-1 px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-200 shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                    :disabled="isListLoading"
+                >
+                    <span x-show="!isListLoading">Apply</span>
+                        <span x-show="isListLoading" class="flex items-center justify-center gap-1.5">
+                            <svg class="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Loading…
+                        </span>
+                </button>
+                <button
+                    type="button"
+                        class="px-4 py-2 text-xs sm:text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg transition-colors duration-200 shadow-sm hover:shadow"
+                    @click="clearFilters"
+                >
+                    Clear
+                </button>
             </div>
-            <div class="sm:col-span-2 lg:col-span-4 flex flex-wrap items-center gap-2 sm:gap-3">
-                <label class="text-xs sm:text-sm text-gray-600 whitespace-nowrap">Sort by:</label>
+            </div>
+            
+            <!-- Sort Options -->
+            <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-200">
+                <label class="text-xs font-medium text-gray-700 whitespace-nowrap">Sort by:</label>
                 @php
                     $qs = request()->except(['sort', 'dir', 'page']);
                 @endphp
-                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'created_at', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" class="rw-badge text-xs sm:text-sm">Date</a>
-                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'name', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" class="rw-badge text-xs sm:text-sm">Name</a>
-                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'email', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" class="rw-badge text-xs sm:text-sm">Email</a>
-                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'role', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" class="rw-badge text-xs sm:text-sm">Role</a>
-                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'token_balance', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" class="rw-badge text-xs sm:text-sm">Balance</a>
+                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'created_at', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" 
+                   class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors {{ request('sort') === 'created_at' ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300' }}">
+                    Date
+                </a>
+                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'name', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" 
+                   class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors {{ request('sort') === 'name' ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300' }}">
+                    Name
+                </a>
+                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'email', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" 
+                   class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors {{ request('sort') === 'email' ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300' }}">
+                    Email
+                </a>
+                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'role', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" 
+                   class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors {{ request('sort') === 'role' ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300' }}">
+                    Role
+                </a>
+                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'token_balance', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" 
+                   class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors {{ request('sort') === 'token_balance' ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300' }}">
+                    Balance
+                </a>
             </div>
         </form>
 
         <!-- Users table -->
-        <div class="bg-white rounded-xl shadow overflow-hidden">
-            <div class="overflow-x-auto -mx-4 sm:mx-0">
+        <div id="adminUsersTable" class="bg-white rounded-xl shadow overflow-hidden">
+            <!-- Total Users Count -->
+            <div class="px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                <div class="text-sm text-gray-700">
+                    <span class="font-semibold">Total Users:</span>
+                    <span class="ml-2">{{ number_format($users->total()) }}</span>
+                    @if($users->total() > 0)
+                        <span class="text-gray-500 ml-2">
+                            (Showing {{ $users->firstItem() }} - {{ $users->lastItem() }} of {{ $users->total() }})
+                        </span>
+                    @endif
+                </div>
+            </div>
+            <div class="rw-table-scroll overflow-x-auto -mx-4 sm:mx-0">
                 <div class="inline-block min-w-full align-middle">
                     <div class="overflow-hidden">
-                        <table class="min-w-full text-xs sm:text-sm divide-y divide-gray-200">
+                        <table class="min-w-full text-xs sm:text-sm divide-y divide-gray-200 whitespace-nowrap">
                     <thead class="bg-gray-50">
                         <tr class="text-left text-gray-600">
                             <th class="px-3 sm:px-6 py-3 text-xs sm:text-sm font-medium text-gray-700 uppercase tracking-wider">Name</th>
@@ -448,7 +1054,7 @@ function calculateCreateUserTotal() {
                                 @else
                                     <div class="text-xs sm:hidden mt-1">
                                         <button 
-                                            @click="openAssignWalletModal({{ $u->id }}, '{{ addslashes($u->name) }}')"
+                                            @click="openAssignWalletModal('{{ $u->ulid ?? $u->id }}', '{{ addslashes($u->name) }}')"
                                             class="inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap w-full"
                                             style="background-color: #2563eb; color: #ffffff; border: none;"
                                             onmouseover="this.style.backgroundColor='#1d4ed8'"
@@ -488,7 +1094,7 @@ function calculateCreateUserTotal() {
                                     </div>
                                 @else
                                     <button 
-                                        @click="openAssignWalletModal({{ $u->id }}, '{{ addslashes($u->name) }}')"
+                                        @click="openAssignWalletModal('{{ $u->ulid ?? $u->id }}', '{{ addslashes($u->name) }}')"
                                         class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all duration-200 shadow-md hover:shadow-lg whitespace-nowrap min-w-[100px]"
                                         style="background-color: #2563eb; color: #ffffff; border: none;"
                                         onmouseover="this.style.backgroundColor='#1d4ed8'"
@@ -518,7 +1124,7 @@ function calculateCreateUserTotal() {
                                 <div class="flex flex-wrap items-center gap-1 sm:gap-2">
                                     <!-- Edit Button -->
                                     <button 
-                                        @click="openEditModal({{ $u->id }}, '{{ addslashes($u->name) }}', '{{ addslashes($u->email) }}', '{{ addslashes($u->phone ?? '') }}', '{{ $u->role }}')"
+                                        @click="openEditModal('{{ $u->ulid ?? $u->id }}', '{{ addslashes($u->name) }}', '{{ addslashes($u->email) }}', '{{ addslashes($u->phone ?? '') }}', '{{ $u->role }}', {{ $u->token_balance ?? 0 }})"
                                         class="inline-flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow">
                                         <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
@@ -528,7 +1134,7 @@ function calculateCreateUserTotal() {
                                     
                                     <!-- Reset Password Button -->
                                     <button 
-                                        @click="openResetPasswordModal({{ $u->id }}, '{{ addslashes($u->name) }}', '{{ addslashes($u->email) }}')"
+                                        @click="openResetPasswordModal('{{ $u->ulid ?? $u->id }}', '{{ addslashes($u->name) }}', '{{ addslashes($u->email) }}')"
                                         class="inline-flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow">
                                         <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
@@ -538,7 +1144,7 @@ function calculateCreateUserTotal() {
                                     
                                     <!-- View Details Button -->
                                     <button 
-                                        @click="openViewDetailsModal({{ $u->id }})"
+                                        @click="openViewDetailsModal('{{ $u->ulid ?? $u->id }}')"
                                         class="inline-flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow">
                                         <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -549,7 +1155,7 @@ function calculateCreateUserTotal() {
                                     
                                     <!-- Delete Button -->
                                     <button 
-                                        @click="openDeleteModal({{ $u->id }}, '{{ addslashes($u->name) }}', '{{ addslashes($u->email) }}')"
+                                        @click="openDeleteModal('{{ $u->ulid ?? $u->id }}', '{{ addslashes($u->name) }}', '{{ addslashes($u->email) }}')"
                                         class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -565,7 +1171,22 @@ function calculateCreateUserTotal() {
                     </tbody>
                 </table>
             </div>
-            <div class="mt-4">{{ $users->links() }}</div>
+            </div>
+            <!-- Pagination -->
+            @if($users->hasPages())
+                <div class="px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200" data-pagination-section>
+                    <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div class="text-sm text-gray-700" data-showing-text>
+                            Showing <span class="font-semibold">{{ $users->firstItem() }}</span> to 
+                            <span class="font-semibold">{{ $users->lastItem() }}</span> of 
+                            <span class="font-semibold">{{ $users->total() }}</span> users
+                        </div>
+                        <div class="flex items-center gap-2">
+                            {{ $users->links('pagination::tailwind') }}
+                        </div>
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 
@@ -710,6 +1331,83 @@ function calculateCreateUserTotal() {
                                 <p class="text-xs text-gray-500 mt-1.5">Select the appropriate role for this user</p>
                             </div>
 
+                            <!-- Coin Quantity Update Section -->
+                            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                                <div class="flex items-start gap-3">
+                                    <div class="flex-shrink-0">
+                                        <svg class="h-5 w-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="flex-1 space-y-4">
+                                        <div>
+                                            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                                Coin Quantity <span class="text-gray-500 text-xs font-normal">(Current: <span x-text="editUserTokenBalance || 0"></span> coins)</span>
+                                            </label>
+                                            <input 
+                                                name="token_balance" 
+                                                type="number" 
+                                                x-model="editUserTokenBalance"
+                                                min="0" 
+                                                step="0.01"
+                                                class="rw-input w-full" 
+                                                placeholder="Enter new coin quantity"
+                                            />
+                                            <p class="text-xs text-gray-500 mt-1.5">
+                                                Update the user's token balance. Enter a value different from the current balance to create a transaction:
+                                                <span class="block mt-1">
+                                                    • <strong>Increase value:</strong> Credits coins to the user (purchase/credit transaction)
+                                                    <br>
+                                                    • <strong>Decrease value:</strong> Deducts coins from the user (sale/debit transaction)
+                                                    <br>
+                                                    • <strong>Keep same:</strong> No transaction will be created
+                                                </span>
+                                                <span class="text-red-600 font-semibold block mt-1" x-show="Math.abs((editUserTokenBalance || 0) - (editUserOriginalBalance || 0)) > 0.01">
+                                                    Note: Price per coin is required when balance changes.
+                                                </span>
+                                            </p>
+                                        </div>
+                                        
+                                        <div>
+                                            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                                Price Per Coin (PKR) <span class="text-red-500">*</span>
+                                            </label>
+                                            <input 
+                                                name="price_per_coin" 
+                                                type="number" 
+                                                x-model="editUserCoinPrice"
+                                                min="0" 
+                                                step="0.01"
+                                                class="rw-input w-full" 
+                                                placeholder="Enter price per coin in PKR"
+                                                :required="Math.abs((editUserTokenBalance || 0) - (editUserOriginalBalance || 0)) > 0.01"
+                                            />
+                                            <p class="text-xs text-gray-500 mt-1.5">
+                                                Enter the price per coin at which the transaction will be recorded in history. 
+                                                <span class="text-red-600 font-semibold" x-show="Math.abs((editUserTokenBalance || 0) - (editUserOriginalBalance || 0)) > 0.01">Required when coin balance changes.</span>
+                                            </p>
+                                        </div>
+                                        
+                                        <div x-show="Math.abs((editUserTokenBalance || 0) - (editUserOriginalBalance || 0)) > 0.01" class="mt-2 p-3 bg-white rounded-lg border border-blue-300">
+                                            <p class="text-xs text-gray-700 font-medium">
+                                                <span x-show="(editUserTokenBalance || 0) < (editUserOriginalBalance || 0)">
+                                                    <span class="text-red-600 font-semibold">Sale Transaction:</span> 
+                                                    <span x-text="Math.abs((editUserTokenBalance || 0) - (editUserOriginalBalance || 0)).toFixed(2)"></span> coins will be sold at 
+                                                    <span x-text="(editUserCoinPrice || 0).toFixed(2)"></span> PKR per coin 
+                                                    (Total: <span x-text="(Math.abs((editUserTokenBalance || 0) - (editUserOriginalBalance || 0)) * (editUserCoinPrice || 0)).toFixed(2)"></span> PKR)
+                                                </span>
+                                                <span x-show="(editUserTokenBalance || 0) > (editUserOriginalBalance || 0)">
+                                                    <span class="text-green-600 font-semibold">Credit Transaction:</span> 
+                                                    <span x-text="Math.abs((editUserTokenBalance || 0) - (editUserOriginalBalance || 0)).toFixed(2)"></span> coins will be credited at 
+                                                    <span x-text="(editUserCoinPrice || 0).toFixed(2)"></span> PKR per coin 
+                                                    (Total: <span x-text="(Math.abs((editUserTokenBalance || 0) - (editUserOriginalBalance || 0)) * (editUserCoinPrice || 0)).toFixed(2)"></span> PKR)
+                                                </span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Guidelines Box -->
                             <div class="bg-accent/10 border-l-4 border-accent p-4 rounded-r-lg">
                                 <div class="flex">
@@ -730,16 +1428,35 @@ function calculateCreateUserTotal() {
                             </div>
 
                             <!-- Action Buttons -->
-                            <div class="flex justify-between items-center pt-4 border-t-2 border-gray-300">
+                            <div class="space-y-3 pt-4 border-t-2 border-gray-300">
+                                <!-- Top Row: Wallet Update & Sell Coins -->
+                                <div class="flex flex-wrap gap-3">
+                                    <button 
+                                        type="button"
+                                        @click="updateWalletAddress()"
+                                        :disabled="updateWalletLoading"
+                                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow">
+                                        <svg x-show="!updateWalletLoading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                        </svg>
+                                        <svg x-show="updateWalletLoading" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span x-text="updateWalletLoading ? 'Updating...' : 'Update Wallet Address'"></span>
+                                    </button>
                                 <a 
                                     :href="'{{ route('admin.sell') }}?user_id=' + editUserId"
-                                    class="inline-flex items-center gap-2 px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow">
+                                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
                                     Sell Coins to User
                                 </a>
-                                <div class="flex gap-3">
+                                </div>
+                                
+                                <!-- Bottom Row: Cancel & Save -->
+                                <div class="flex justify-end gap-3">
                                     <button 
                                         @click="editModalOpen = false"
                                         type="button"
@@ -1167,6 +1884,22 @@ function calculateCreateUserTotal() {
                         <p class="mt-4 text-gray-600">Loading user details...</p>
                     </div>
 
+                    <!-- Error State -->
+                    <div x-show="!viewDetailsLoading && !viewDetailsData && viewDetailsModalOpen" class="text-center py-12">
+                        <div class="text-red-600 mb-4">
+                            <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <p class="text-lg font-semibold text-gray-900 mb-2">Failed to Load User Details</p>
+                        <p class="text-sm text-gray-600 mb-4">Unable to fetch user information. Please try again.</p>
+                        <button 
+                            @click="closeViewDetailsModal()"
+                            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors">
+                            Close
+                        </button>
+                    </div>
+
                     <!-- User Details Content -->
                     <div x-show="!viewDetailsLoading && viewDetailsData" class="space-y-6">
                         <!-- User Information -->
@@ -1213,9 +1946,9 @@ function calculateCreateUserTotal() {
                                 <p class="text-sm text-white/70 mt-2">RWAMP Tokens</p>
                             </div>
                             <div class="bg-accent text-black rounded-lg p-6">
-                                <p class="text-xs text-black/70 mb-2">Value (Rs)</p>
-                                <p class="text-3xl font-bold" x-text="getTokenValue()"></p>
-                                <p class="text-sm text-black/70 mt-2">@ Rs 0.70 per token</p>
+                                <p class="text-xs text-black/70 mb-2">Value</p>
+                                <div class="text-3xl font-bold" x-html="safeFormatPriceTag(getTokenValueNumeric() || 0, {size: 'large'})"></div>
+                                <div class="text-sm text-black/70 mt-2" x-html="getValuePriceLineHtml()"></div>
                             </div>
                         </div>
 
@@ -1342,11 +2075,11 @@ function calculateCreateUserTotal() {
                                                 </td>
                                                 <td class="py-2 pr-4 font-semibold" x-text="formatTransactionAmount(Math.abs(transaction.amount || 0))"></td>
                                                 <td class="py-2 pr-4">
-                                                    <span x-show="transaction.price_per_coin" x-text="'PKR ' + (transaction.price_per_coin || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})"></span>
+                                                    <span x-show="transaction.price_per_coin" x-html="safeFormatPriceTag(transaction.price_per_coin || 0, {size: 'small', class: 'inline'})"></span>
                                                     <span x-show="!transaction.price_per_coin" class="text-gray-400">—</span>
                                                 </td>
                                                 <td class="py-2 pr-4">
-                                                    <span x-show="transaction.total_price" x-text="'PKR ' + (transaction.total_price || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})"></span>
+                                                    <span x-show="transaction.total_price" x-html="safeFormatPriceTag(transaction.total_price || 0, {size: 'small', class: 'inline'})"></span>
                                                     <span x-show="!transaction.total_price" class="text-gray-400">—</span>
                                                 </td>
                                                 <td class="py-2 pr-4">
@@ -1365,7 +2098,18 @@ function calculateCreateUserTotal() {
                 </div>
 
                 <!-- Footer -->
-                <div class="bg-gray-50 px-6 py-4 flex justify-end border-t-2 border-gray-300">
+                <div class="bg-gray-50 px-6 py-4 flex justify-between items-center border-t-2 border-gray-300">
+                    <template x-if="hasValidUserId()">
+                        <a 
+                            x-bind:href="getSellCoinsUrl()"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Sell Coins to User
+                        </a>
+                    </template>
                     <button 
                         @click="closeViewDetailsModal()"
                         type="button"
@@ -1860,6 +2604,99 @@ function calculateCreateUserTotal() {
                             </span>
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirmation Modal -->
+    <div x-show="confirmModalOpen" 
+         x-cloak
+         @keydown.escape.window="closeConfirmModal()"
+         class="fixed inset-0 z-50 overflow-y-auto p-4"
+         style="display: none;">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Backdrop -->
+            <div x-show="confirmModalOpen"
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 @click="closeConfirmModal()"
+                 class="fixed inset-0 transition-opacity bg-gray-900/70 backdrop-blur-sm"></div>
+
+            <!-- Modal Panel -->
+            <div x-show="confirmModalOpen"
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 @click.stop
+                 class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full max-w-full border-4 border-primary relative z-10">
+                
+                <!-- Header -->
+                <div class="bg-gradient-to-r from-black via-gray-900 to-secondary px-6 py-5 border-b-4 border-primary">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center shadow-xl"
+                                 :class="{
+                                     'bg-yellow-500': confirmModalType === 'warning',
+                                     'bg-red-600': confirmModalType === 'danger',
+                                     'bg-blue-600': confirmModalType === 'info'
+                                 }">
+                                <svg x-show="confirmModalType === 'warning'" class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                                <svg x-show="confirmModalType === 'danger'" class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <svg x-show="confirmModalType === 'info'" class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="text-2xl font-montserrat font-bold text-white tracking-tight" x-text="confirmModalTitle"></h3>
+                        </div>
+                        <button @click="closeConfirmModal()" class="text-white/90 hover:text-white transition-all duration-200 p-2 hover:bg-white/20 rounded-xl">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="px-6 py-6 bg-white">
+                    <p class="text-gray-700 text-sm leading-relaxed" x-text="confirmModalMessage"></p>
+                </div>
+
+                <!-- Footer -->
+                <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+                    <button 
+                        @click="closeConfirmModal()"
+                        type="button"
+                        class="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200 shadow-sm hover:shadow">
+                        Cancel
+                    </button>
+                    <button 
+                        @click="confirmAction()"
+                        type="button"
+                        class="px-5 py-2.5 text-sm font-bold rounded-lg transition-colors duration-200 shadow-sm hover:shadow"
+                        :style="{
+                            color: '#ffffff',
+                            backgroundColor: confirmModalType === 'warning' ? '#d97706' : confirmModalType === 'danger' ? '#dc2626' : '#2563eb',
+                            fontWeight: '700'
+                        }"
+                        :class="{
+                            'hover:bg-yellow-700': confirmModalType === 'warning',
+                            'hover:bg-red-700': confirmModalType === 'danger',
+                            'hover:bg-blue-700': confirmModalType === 'info'
+                        }">
+                        <span x-text="confirmModalActionText" style="color: #ffffff !important; font-weight: 700 !important;"></span>
+                    </button>
                 </div>
             </div>
         </div>

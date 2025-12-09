@@ -108,75 +108,115 @@
 @endpush
 
 @section('content')
-<div class="min-h-screen bg-white" x-data="investorDashboard" x-cloak>
-    <section class="bg-gradient-to-r from-black to-secondary text-white py-12">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex items-start justify-between flex-wrap gap-6">
-                <div class="flex-1">
-                    <h1 class="text-3xl md:text-5xl font-montserrat font-bold mb-2">Investor Dashboard</h1>
-                    <p class="text-white/80 mb-4">Welcome, {{ auth()->user()->name }}.</p>
-                    @if(auth()->user()->referral_code)
-                        <div class="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20 inline-block">
-                            <span class="text-xs text-white/70 uppercase tracking-wide">Your Referral Code:</span>
-                            <span class="text-lg font-mono font-bold text-white ml-2">{{ auth()->user()->referral_code }}</span>
+<div class="min-h-screen bg-gray-50" x-data="investorDashboard({{ ($isInGame ?? false) ? 'true' : 'false' }}, {{ ($hasPin ?? false) ? 'true' : 'false' }})" x-cloak>
+    @include('components.game-modals')
+    
+    <!-- Sidebar -->
+    @include('components.investor-sidebar')
+    
+    <!-- Main Content Area (shifted right for sidebar) -->
+    <div class="md:ml-64 min-h-screen">
+        <!-- Top Header Bar with User Info -->
+        <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+            <div class="px-4 sm:px-6 lg:px-8 py-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-montserrat font-bold text-gray-900">Investor Dashboard</h1>
+                        <p class="text-gray-500 text-sm mt-1.5">Welcome back, <span class="font-semibold text-gray-700">{{ auth()->user()->name }}</span></p>
+                    </div>
+                    <!-- User Avatar Dropdown (Top Right) -->
+                    <div class="flex items-center space-x-4">
+                        @if(auth()->user()->referral_code)
+                            <div class="hidden md:block bg-gray-100 rounded-lg px-4 py-2 border border-gray-200">
+                                <span class="text-xs text-gray-600 uppercase tracking-wide">Referral Code:</span>
+                                <span class="text-sm font-mono font-bold text-gray-900 ml-2">{{ auth()->user()->referral_code }}</span>
+                            </div>
+                        @endif
+                        <div class="relative" x-data="{ open: false }">
+                            <button @click="open = !open" class="flex items-center space-x-2 focus:outline-none">
+                                <div class="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-red-600 flex items-center justify-center text-white font-bold">
+                                    {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                                </div>
+                                <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+                            <div x-show="open" 
+                                 @click.away="open = false"
+                                 x-cloak
+                                 class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50 border border-gray-200"
+                                 style="display: none;">
+                                <a href="{{ route('profile.show') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</a>
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Logout</button>
+                                </form>
+                            </div>
                         </div>
-                    @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Dashboard Content -->
+        <div class="px-4 sm:px-6 lg:px-8 py-6 rw-page-shell">
+            <!-- Portfolio Cards Row -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 rw-card-grid">
+                <!-- Token Balance Card -->
+                <div class="bg-gradient-to-br from-primary to-red-600 rounded-xl px-6 py-6 shadow-xl min-h-[140px] flex flex-col justify-between">
+                    <div class="text-xs text-white/90 uppercase tracking-wide mb-3 font-semibold">Token Balance</div>
+                    <div class="flex items-baseline gap-2 flex-wrap">
+                        <span class="text-3xl md:text-4xl font-extrabold text-white drop-shadow-lg leading-tight">
+                            {{ number_format($metrics['token_balance'] ?? auth()->user()->token_balance ?? 0, 0) }}
+                        </span>
+                        <span class="text-lg md:text-xl font-bold text-white/95">RWAMP</span>
+                    </div>
                 </div>
                 
-                <!-- Portfolio Cards Row -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full md:w-auto">
-                    <!-- Token Balance Card -->
-                    <div class="bg-gradient-to-br from-primary to-red-600 rounded-xl px-6 py-5 border-2 border-white/40 shadow-2xl min-w-[200px]">
-                        <div class="text-xs text-white uppercase tracking-wide mb-2 font-bold" style="color: #ffffff !important;">Token Balance</div>
-                        <div class="text-3xl md:text-4xl font-extrabold text-white drop-shadow-lg" style="color: #ffffff !important;">
-                            {{ number_format($metrics['token_balance'] ?? auth()->user()->token_balance ?? 0, 0) }} <span class="text-xl md:text-2xl font-bold" style="color: #ffffff !important;">RWAMP</span>
+                <!-- Portfolio Value Card -->
+                <div class="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl px-6 py-6 shadow-xl min-h-[140px] flex flex-col justify-between">
+                    <div class="text-xs text-white/90 uppercase tracking-wide mb-3 font-semibold">Portfolio Value</div>
+                    <div>
+                        <div class="text-3xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-2 leading-tight">
+                            @include('components.price-tag', [
+                                'pkr' => $metrics['portfolio_value'] ?? 0,
+                                'size' => 'large',
+                                'variant' => 'dark'
+                            ])
+                        </div>
+                        <div class="text-xs text-white/90 font-medium">
+                            Avg: @include('components.price-tag', [
+                                'pkr' => $metrics['average_purchase_price'] ?? 0,
+                                'size' => 'small',
+                                'variant' => 'dark',
+                                'class' => 'inline'
+                            ])/coin
                         </div>
                     </div>
-                    
-                    <!-- Portfolio Value Card -->
-                    <div class="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl px-6 py-5 border-2 border-white/40 shadow-2xl min-w-[200px]">
-                        <div class="text-xs text-white uppercase tracking-wide mb-2 font-bold" style="color: #ffffff !important;">Portfolio Value</div>
-                        <div class="text-3xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-1" style="color: #ffffff !important;">
-                            PKR {{ number_format($metrics['portfolio_value'] ?? 0, 0) }}
+                </div>
+                
+                <!-- Official Portfolio Value Card -->
+                <div class="bg-gradient-to-br from-green-500 to-green-700 rounded-xl px-6 py-6 shadow-xl min-h-[140px] flex flex-col justify-between">
+                    <div class="text-xs text-white/90 uppercase tracking-wide mb-3 font-semibold">Official Portfolio Value</div>
+                    <div>
+                        <div class="text-3xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-2 leading-tight">
+                            @include('components.price-tag', [
+                                'pkr' => $metrics['official_portfolio_value'] ?? 0,
+                                'size' => 'large',
+                                'variant' => 'dark'
+                            ])
                         </div>
-                        <div class="text-xs text-white" style="color: #ffffff !important;">Avg: PKR {{ number_format($metrics['average_purchase_price'] ?? 0, 2) }}/coin</div>
-                    </div>
-                    
-                    <!-- Official Portfolio Value Card -->
-                    <div class="bg-gradient-to-br from-green-500 to-green-700 rounded-xl px-6 py-5 border-2 border-white/40 shadow-2xl min-w-[200px]">
-                        <div class="text-xs text-white uppercase tracking-wide mb-2 font-bold" style="color: #ffffff !important;">Official Portfolio Value</div>
-                        <div class="text-3xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-1" style="color: #ffffff !important;">
-                            PKR {{ number_format($metrics['official_portfolio_value'] ?? 0, 0) }}
+                        <div class="text-xs text-white/90 font-medium">
+                            Official: @include('components.price-tag', [
+                                'pkr' => $metrics['official_price'] ?? 0,
+                                'size' => 'small',
+                                'variant' => 'dark',
+                                'class' => 'inline'
+                            ])/coin
                         </div>
-                        <div class="text-xs text-white" style="color: #ffffff !important;">Official: PKR {{ number_format($metrics['official_price'] ?? 0, 2) }}/coin</div>
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
-    <div class="max-w-7xl mx-auto px-4 py-10 grid md:grid-cols-4 gap-6">
-        <div class="bg-white rounded-xl shadow-xl p-6 card-hover animate-fadeInUp">
-            <h3 class="font-montserrat font-bold mb-2">Purchase History</h3>
-            <p class="text-gray-600">View your recent token purchases.</p>
-            <div class="mt-4">
-                <a href="{{ route('user.history') }}" class="btn-secondary">View History</a>
-            </div>
-        </div>
-        <div class="bg-white rounded-xl shadow-xl p-6 card-hover animate-fadeInUp">
-            <h3 class="font-montserrat font-bold mb-2">Buy Coins</h3>
-            <p class="text-gray-600">Purchase RWAMP tokens using cryptocurrency.</p>
-            <div class="mt-4">
-                <button @click="$dispatch('open-purchase-modal')" class="btn-primary w-full">Buy Coins</button>
-            </div>
-        </div>
-        <div class="bg-white rounded-xl shadow-xl p-6 card-hover animate-fadeInUp">
-            <h3 class="font-montserrat font-bold mb-2">Buy From Reseller</h3>
-            <p class="text-gray-600">Purchase RWAMP tokens from a reseller.</p>
-            <div class="mt-4">
-                <button @click="$dispatch('open-buy-from-reseller-modal')" class="btn-primary w-full">Buy From Reseller</button>
-            </div>
-        </div>
-    </div>
 
     {{-- CHAT SYSTEM DISABLED - See CHAT_REENABLE_GUIDE.md to re-enable --}}
     {{-- <!-- Chat Section -->
@@ -201,161 +241,198 @@
         </div>
     </div> --}}
 
-    <!-- Pending Buy Requests Section -->
-    @if(isset($pendingBuyRequests) && $pendingBuyRequests->count() > 0)
-    <div class="max-w-7xl mx-auto px-4 pb-6">
-        <div class="bg-white rounded-xl shadow-xl p-6 card-hover animate-fadeInUp">
-            <div class="flex items-center justify-between mb-4">
-                <div>
-                    <h3 class="font-montserrat font-bold text-xl">Pending Buy Requests</h3>
-                    <p class="text-gray-600 text-sm mt-1">Your pending coin purchase requests waiting for approval</p>
-                </div>
-            </div>
-            <div class="border rounded-lg overflow-hidden">
-                <div class="max-h-96 overflow-y-auto">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-gray-50 sticky top-0">
-                            <tr>
-                                <th class="text-left px-4 py-2">Date</th>
-                                <th class="text-left px-4 py-2">Seller</th>
-                                <th class="text-left px-4 py-2">Coins</th>
-                                <th class="text-left px-4 py-2">Price per Coin</th>
-                                <th class="text-left px-4 py-2">Total Amount</th>
-                                <th class="text-left px-4 py-2">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($pendingBuyRequests as $buyRequest)
-                                <tr class="border-t">
-                                    <td class="px-4 py-2 whitespace-nowrap">{{ $buyRequest->created_at->format('Y-m-d H:i') }}</td>
-                                    <td class="px-4 py-2">
-                                        <div class="font-semibold">
-                                            @if($buyRequest->reseller)
-                                                {{ $buyRequest->reseller->name }} <span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Reseller</span>
-                                            @else
-                                                <span class="text-gray-500">Unknown</span>
-                                            @endif
-                                        </div>
-                                    </td>
-                                    <td class="px-4 py-2">{{ number_format($buyRequest->coin_quantity, 0) }} RWAMP</td>
-                                    <td class="px-4 py-2">PKR {{ number_format($buyRequest->coin_price, 2) }}</td>
-                                    <td class="px-4 py-2 font-semibold">PKR {{ number_format($buyRequest->total_amount, 2) }}</td>
-                                    <td class="px-4 py-2">
-                                        <span class="rw-badge bg-yellow-100 text-yellow-800">
-                                            Pending Approval
-                                        </span>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <!-- Pending Buy Requests Section -->
+            @if(isset($pendingBuyRequests) && $pendingBuyRequests->count() > 0)
+            <div class="mb-8">
+                <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+                    <div class="flex items-center justify-between mb-5">
+                        <div>
+                            <h3 class="font-montserrat font-bold text-xl text-gray-900">Pending Buy Requests</h3>
+                            <p class="text-gray-500 text-sm mt-1.5">Your pending coin purchase requests waiting for approval</p>
+                        </div>
+                    </div>
+                    <div class="border border-gray-200 rounded-lg rw-table-scroll overflow-x-auto">
+                        <div class="max-h-96 overflow-y-auto">
+                            <table class="min-w-[720px] whitespace-nowrap text-sm w-full">
+                                <thead class="bg-gray-50 sticky top-0 border-b border-gray-200">
+                                    <tr>
+                                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">Date</th>
+                                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">Seller</th>
+                                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">Coins</th>
+                                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">Price per Coin</th>
+                                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">Total Amount</th>
+                                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @foreach($pendingBuyRequests as $buyRequest)
+                                        <tr class="hover:bg-gray-50 transition-colors">
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{{ $buyRequest->created_at->format('Y-m-d H:i') }}</td>
+                                            <td class="px-4 py-3">
+                                                <div class="font-semibold text-gray-900">
+                                                    @if($buyRequest->reseller)
+                                                        {{ $buyRequest->reseller->name }} <span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-medium">Reseller</span>
+                                                    @else
+                                                        <span class="text-gray-500">Unknown</span>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-gray-700 font-medium">{{ number_format($buyRequest->coin_quantity, 0) }} RWAMP</td>
+                                            <td class="px-4 py-3 text-sm text-gray-700">PKR {{ number_format($buyRequest->coin_price, 2) }}</td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 font-semibold">PKR {{ number_format($buyRequest->total_amount, 2) }}</td>
+                                            <td class="px-4 py-3">
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                    Pending Approval
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
         </div>
     </div>
     @endif
 
-    <!-- Recent Activity -->
-    <div class="max-w-7xl mx-auto px-4 pb-12 grid md:grid-cols-2 gap-6">
-        <!-- Recent Payment Submissions -->
-        <div class="bg-white rounded-xl shadow-xl p-6 card-hover animate-fadeInUp">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="font-montserrat font-bold text-xl">Recent Payment Submissions</h3>
-                <a href="{{ route('user.history') }}" class="text-sm underline">View all</a>
-            </div>
-            <div class="border rounded-lg overflow-hidden">
-                <div class="max-h-96 overflow-y-auto">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-gray-50 sticky top-0">
-                            <tr>
-                                <th class="text-left px-4 py-2">Date</th>
-                                <th class="text-left px-4 py-2">Tokens</th>
-                                <th class="text-left px-4 py-2">Network</th>
-                                <th class="text-left px-4 py-2">TX Hash</th>
-                                <th class="text-left px-4 py-2">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse(($paymentsRecent ?? []) as $p)
-                                <tr class="border-t">
-                                    <td class="px-4 py-2 whitespace-nowrap">{{ $p->created_at->format('Y-m-d H:i') }}</td>
-                                    <td class="px-4 py-2">{{ number_format($p->token_amount) }}</td>
-                                    <td class="px-4 py-2">{{ $p->network }}</td>
-                                    <td class="px-4 py-2"><span class="break-all">{{ \Illuminate\Support\Str::limit($p->tx_hash, 24) }}</span></td>
-                                    <td class="px-4 py-2">
-                                        @php($status = strtolower($p->status ?? 'pending'))
-                                        <span class="rw-badge">
-                                            @if($status === 'pending')
-                                                Wait for Admin Approval
-                                            @elseif($status === 'approved')
-                                                Approved
-                                            @elseif($status === 'rejected')
-                                                Rejected
-                                            @else
-                                                {{ ucfirst($p->status ?? 'Pending') }}
-                                            @endif
-                                        </span>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr><td colspan="5" class="px-4 py-6 text-center text-gray-500">No submissions yet.</td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <!-- Recent Activity -->
+            <div class="grid md:grid-cols-2 gap-6 mb-8">
+                <!-- Recent Payment Submissions -->
+                <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+                        <h3 class="font-montserrat font-bold text-xl text-gray-900">Recent Payment Submissions</h3>
+                        <a href="{{ route('user.history') }}" class="btn-secondary btn-small self-start sm:self-auto">View all</a>
+                    </div>
+                    <div class="border border-gray-200 rounded-lg rw-table-scroll">
+                        <div class="max-h-96 overflow-y-auto">
+                            <table class="min-w-full text-sm w-full">
+                                <thead class="bg-gray-50 sticky top-0 border-b border-gray-200">
+                                    <tr>
+                                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">Date</th>
+                                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">Tokens</th>
+                                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider sm:table-cell hidden">Network</th>
+                                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider lg:table-cell hidden">TX Hash</th>
+                                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @forelse(($paymentsRecent ?? []) as $p)
+                                        <tr class="hover:bg-gray-50 transition-colors">
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                                                {{ $p->created_at->format('Y-m-d H:i') }}
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 font-medium">
+                                                {{ number_format($p->token_amount) }}
+                                                <div class="block sm:hidden text-xs text-gray-500 mt-1">
+                                                    <span class="font-medium">{{ $p->network }}</span>
+                                                    @if($p->tx_hash)
+                                                        <span class="mx-1">•</span>
+                                                        <span class="font-mono break-all">
+                                                            {{ \Illuminate\Support\Str::limit($p->tx_hash, 18) }}
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-gray-700 hidden sm:table-cell">
+                                                {{ $p->network }}
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-gray-600 font-mono hidden lg:table-cell">
+                                                <span class="break-all">
+                                                    {{ \Illuminate\Support\Str::limit($p->tx_hash, 24) }}
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                @php($status = strtolower($p->status ?? 'pending'))
+                                                @if($status === 'pending')
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Wait for Admin Approval</span>
+                                                @elseif($status === 'approved')
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Approved</span>
+                                                @elseif($status === 'rejected')
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Rejected</span>
+                                                @else
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">{{ ucfirst($p->status ?? 'Pending') }}</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr><td colspan="5" class="px-4 py-8 text-center text-gray-500 text-sm">No submissions yet.</td></tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
         </div>
 
-        <!-- Recent Token Transactions -->
-        <div class="bg-white rounded-xl shadow-xl p-6 card-hover animate-fadeInUp">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="font-montserrat font-bold text-xl">Recent Token Transactions</h3>
-                <a href="{{ route('user.history') }}" class="text-sm underline">View all</a>
-            </div>
-            <div class="border rounded-lg overflow-hidden">
-                <div class="max-h-96 overflow-y-auto">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-gray-50 sticky top-0">
-                            <tr>
-                                <th class="text-left px-4 py-2">Date</th>
-                                <th class="text-left px-4 py-2">Type</th>
-                                <th class="text-left px-4 py-2">Amount</th>
-                                <th class="text-left px-4 py-2">Reference</th>
-                                <th class="text-left px-4 py-2">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse(($transactionsRecent ?? []) as $t)
-                                <tr class="border-t">
-                                    <td class="px-4 py-2 whitespace-nowrap">{{ $t->created_at->format('Y-m-d H:i') }}</td>
-                                    <td class="px-4 py-2 capitalize">{{ $t->type }}</td>
-                                    <td class="px-4 py-2">{{ number_format($t->amount) }}</td>
-                                    <td class="px-4 py-2">
-                                        @php($ref = trim((string)($t->reference ?? '')))
-                                        @if($ref === '')
-                                            @php($ref = $t->type === 'credit' ? 'Token credit (wallet purchase)' : ($t->type === 'debit' ? 'Token debit' : 'Transaction'))
-                                        @elseif(strlen($ref) > 24 && (substr($ref, 0, 2) === '0x' || strlen($ref) === 64))
-                                            @php($ref = substr($ref, 0, 12) . '...' . substr($ref, -8))
-                                        @endif
-                                        <span class="break-all">{{ $ref }}</span>
-                                    </td>
-                                    <td class="px-4 py-2"><span class="rw-badge">{{ ucfirst($t->status ?? 'completed') }}</span></td>
-                                </tr>
-                            @empty
-                                <tr><td colspan="5" class="px-4 py-6 text-center text-gray-500">No transactions yet.</td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                <!-- Recent Token Transactions -->
+                <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+                        <h3 class="font-montserrat font-bold text-xl text-gray-900">Recent Token Transactions</h3>
+                        <a href="{{ route('user.history') }}" class="btn-secondary btn-small self-start sm:self-auto">View all</a>
+                    </div>
+                    <div class="border border-gray-200 rounded-lg rw-table-scroll">
+                        <div class="max-h-96 overflow-y-auto">
+                            <table class="min-w-full text-sm w-full">
+                                <thead class="bg-gray-50 sticky top-0 border-b border-gray-200">
+                                    <tr>
+                                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">Date</th>
+                                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">Type</th>
+                                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">Amount</th>
+                                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider sm:table-cell hidden">Reference</th>
+                                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @forelse(($transactionsRecent ?? []) as $t)
+                                        <tr class="hover:bg-gray-50 transition-colors">
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                                                {{ $t->created_at->format('Y-m-d H:i') }}
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 font-medium capitalize">
+                                                {{ $t->type }}
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 font-semibold">
+                                                {{ number_format($t->amount) }}
+                                                <div class="block sm:hidden text-xs text-gray-500 mt-1">
+                                                    @php($refMobile = trim((string)($t->reference ?? '')))
+                                                    @if($refMobile === '')
+                                                        @php($refMobile = $t->type === 'credit' ? 'Token credit (wallet purchase)' : ($t->type === 'debit' ? 'Token debit' : 'Transaction'))
+                                                    @elseif(strlen($refMobile) > 24 && (substr($refMobile, 0, 2) === '0x' || strlen($refMobile) === 64))
+                                                        @php($refMobile = substr($refMobile, 0, 12) + '...' + substr($refMobile, -8))
+                                                    @endif
+                                                    <span class="break-all">{{ $refMobile }}</span>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-gray-600 hidden sm:table-cell">
+                                                @php($ref = trim((string)($t->reference ?? '')))
+                                                @if($ref === '')
+                                                    @php($ref = $t->type === 'credit' ? 'Token credit (wallet purchase)' : ($t->type === 'debit' ? 'Token debit' : 'Transaction'))
+                                                @elseif(strlen($ref) > 24 && (substr($ref, 0, 2) === '0x' || strlen($ref) === 64))
+                                                    @php($ref = substr($ref, 0, 12) . '...' . substr($ref, -8))
+                                                @endif
+                                                <span class="break-all">{{ $ref }}</span>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                    {{ ucfirst($t->status ?? 'completed') }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr><td colspan="5" class="px-4 py-8 text-center text-gray-500 text-sm">No transactions yet.</td></tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+        </div>
+        
+        <!-- Purchase Modal -->
+        @include('components.purchase-modal', ['rates' => $rates, 'wallets' => $wallets, 'paymentsDisabled' => $paymentsDisabled])
+        
+        <!-- Buy From Reseller Modal -->
+        @include('components.buy-from-reseller-modal')
         </div>
     </div>
-    
-    <!-- Purchase Modal -->
-    @include('components.purchase-modal', ['rates' => $rates, 'wallets' => $wallets, 'paymentsDisabled' => $paymentsDisabled])
-    
-    <!-- Buy From Reseller Modal -->
-    @include('components.buy-from-reseller-modal')
 </div>
 @endsection
 

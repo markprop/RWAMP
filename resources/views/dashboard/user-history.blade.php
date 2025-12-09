@@ -1,20 +1,26 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="min-h-screen bg-white">
-    <section class="bg-gradient-to-r from-black to-secondary text-white py-12">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h1 class="text-3xl md:text-5xl font-montserrat font-bold">Your Purchase History</h1>
-                    <p class="text-white/80">Only shows activity for {{ auth()->user()->name }}.</p>
+<div class="min-h-screen bg-gray-50" x-data="userHistoryFilters()" x-cloak>
+    <!-- Sidebar -->
+    @include('components.investor-sidebar')
+    
+    <!-- Main Content Area (shifted right for sidebar) -->
+    <div class="md:ml-64 min-h-screen">
+        <!-- Top Header Bar -->
+        <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+            <div class="px-4 sm:px-6 lg:px-8 py-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-montserrat font-bold text-gray-900">Your Purchase History</h1>
+                        <p class="text-gray-500 text-sm mt-1.5">Only shows activity for {{ auth()->user()->name }}</p>
+                    </div>
                 </div>
-                <a href="{{ route('dashboard.investor') }}" class="btn-secondary">Back to Dashboard</a>
             </div>
         </div>
-    </section>
 
-    <div class="max-w-7xl mx-auto px-4 py-10 space-y-10">
+        <!-- Dashboard Content -->
+        <div class="px-4 sm:px-6 lg:px-8 py-6 space-y-10">
         <!-- Payment Submissions -->
         <div class="bg-white rounded-xl shadow-xl p-6 card-hover">
             <div class="flex items-center justify-between mb-4">
@@ -27,7 +33,13 @@
 
             <!-- Payment Filters -->
             <div class="mb-4 pb-4 border-b">
-                <form method="GET" action="{{ route('user.history') }}" class="grid md:grid-cols-4 gap-4">
+                <form 
+                    method="GET" 
+                    action="{{ route('user.history') }}" 
+                    class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4"
+                    x-ref="paymentsForm"
+                    @submit.prevent="submitPayments($refs.paymentsForm)"
+                >
                     <input type="hidden" name="transactions_page" value="{{ request('transactions_page') }}">
                     <input type="hidden" name="transaction_search" value="{{ request('transaction_search') }}">
                     <input type="hidden" name="transaction_type" value="{{ request('transaction_type') }}">
@@ -65,14 +77,27 @@
                         </select>
                     </div>
                     <div class="flex items-end gap-2">
-                        <button type="submit" class="btn-primary flex-1">Filter</button>
-                        <a href="{{ route('user.history') }}" class="btn-secondary">Clear</a>
+                        <button 
+                            type="submit" 
+                            class="btn-primary flex-1 min-h-[44px] flex items-center justify-center text-sm font-semibold"
+                            x-bind:disabled="isLoadingPayments"
+                        >
+                            <span x-show="!isLoadingPayments">Filter</span>
+                            <span x-show="isLoadingPayments">Filtering…</span>
+                        </button>
+                        <button 
+                            type="button" 
+                            @click="clearPayments" 
+                            class="btn-secondary min-h-[44px] flex items-center justify-center text-sm font-semibold"
+                        >
+                            Clear
+                        </button>
                     </div>
                 </form>
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
+            <div id="userPaymentsTable" class="rw-table-scroll overflow-x-auto">
+                <table class="min-w-[720px] whitespace-nowrap text-sm w-full">
                     <thead>
                         <tr class="text-left text-gray-600 border-b">
                             <th class="py-3 pr-6">
@@ -85,8 +110,8 @@
                                     Tokens @if(request('payment_sort') === 'token_amount') {{ request('payment_dir') === 'asc' ? '↑' : '↓' }} @endif
                                 </a>
                             </th>
-                            <th class="py-3 pr-6">Price (Rs)</th>
-                            <th class="py-3 pr-6">Total (Rs)</th>
+                            <th class="py-3 pr-6">Price</th>
+                            <th class="py-3 pr-6">Total</th>
                             <th class="py-3 pr-6">
                                 <a href="{{ request()->fullUrlWithQuery(array_merge(request()->except(['payment_sort', 'payment_dir', 'payments_page']), ['payment_sort' => 'network', 'payment_dir' => request('payment_dir') === 'asc' ? 'desc' : 'asc'])) }}" class="hover:text-primary">
                                     Network @if(request('payment_sort') === 'network') {{ request('payment_dir') === 'asc' ? '↑' : '↓' }} @endif
@@ -105,8 +130,18 @@
                             <tr class="border-b">
                                 <td class="py-3 pr-6">{{ $p->created_at->format('Y-m-d H:i') }}</td>
                                 <td class="py-3 pr-6">{{ number_format($p->token_amount) }}</td>
-                                <td class="py-3 pr-6">{{ number_format($p->coin_price_rs ?? ($p->token_amount ? ($p->pkr_amount / $p->token_amount) : 0), 2) }}</td>
-                                <td class="py-3 pr-6">{{ number_format(($p->coin_price_rs ?? 0) * $p->token_amount, 2) }}</td>
+                                <td class="py-3 pr-6">
+                                    @include('components.price-tag', [
+                                        'pkr' => $p->coin_price_rs ?? ($p->token_amount ? ($p->pkr_amount / $p->token_amount) : 0),
+                                        'size' => 'small'
+                                    ])
+                                </td>
+                                <td class="py-3 pr-6">
+                                    @include('components.price-tag', [
+                                        'pkr' => ($p->coin_price_rs ?? 0) * $p->token_amount,
+                                        'size' => 'small'
+                                    ])
+                                </td>
                                 <td class="py-3 pr-6"><span class="rw-badge">{{ $p->network }}</span></td>
                                 <td class="py-3 pr-6"><span class="break-all font-mono text-xs">{{ \Illuminate\Support\Str::limit($p->tx_hash, 30) }}</span></td>
                                 <td class="py-3 pr-6">
@@ -154,7 +189,13 @@
 
             <!-- Transaction Filters -->
             <div class="mb-4 pb-4 border-b">
-                <form method="GET" action="{{ route('user.history') }}" class="grid md:grid-cols-4 gap-4">
+                <form 
+                    method="GET" 
+                    action="{{ route('user.history') }}" 
+                    class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4"
+                    x-ref="transactionsForm"
+                    @submit.prevent="submitTransactions($refs.transactionsForm)"
+                >
                     <input type="hidden" name="payments_page" value="{{ request('payments_page') }}">
                     <input type="hidden" name="payment_search" value="{{ request('payment_search') }}">
                     <input type="hidden" name="payment_status" value="{{ request('payment_status') }}">
@@ -192,14 +233,27 @@
                         </select>
                     </div>
                     <div class="flex items-end gap-2">
-                        <button type="submit" class="btn-primary flex-1">Filter</button>
-                        <a href="{{ route('user.history') }}" class="btn-secondary">Clear</a>
+                        <button 
+                            type="submit" 
+                            class="btn-primary flex-1 min-h-[44px] flex items-center justify-center text-sm font-semibold"
+                            x-bind:disabled="isLoadingTransactions"
+                        >
+                            <span x-show="!isLoadingTransactions">Filter</span>
+                            <span x-show="isLoadingTransactions">Filtering…</span>
+                        </button>
+                        <button 
+                            type="button" 
+                            @click="clearTransactions" 
+                            class="btn-secondary min-h-[44px] flex items-center justify-center text-sm font-semibold"
+                        >
+                            Clear
+                        </button>
                     </div>
                 </form>
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
+            <div id="userTransactionsTable" class="rw-table-scroll overflow-x-auto">
+                <table class="min-w-[720px] whitespace-nowrap text-sm w-full">
                     <thead>
                         <tr class="text-left text-gray-600 border-b">
                             <th class="py-3 pr-6">
@@ -284,7 +338,13 @@
 
             <!-- Buy Request Filters -->
             <div class="mb-4 pb-4 border-b">
-                <form method="GET" action="{{ route('user.history') }}" class="grid md:grid-cols-4 gap-4">
+                <form 
+                    method="GET" 
+                    action="{{ route('user.history') }}" 
+                    class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4"
+                    x-ref="buyRequestsForm"
+                    @submit.prevent="submitBuyRequests($refs.buyRequestsForm)"
+                >
                     <input type="hidden" name="payments_page" value="{{ request('payments_page') }}">
                     <input type="hidden" name="payment_search" value="{{ request('payment_search') }}">
                     <input type="hidden" name="payment_status" value="{{ request('payment_status') }}">
@@ -318,14 +378,18 @@
                         </select>
                     </div>
                     <div class="flex items-end gap-2">
-                        <button type="submit" class="btn-primary flex-1">Filter</button>
-                        <a href="{{ route('user.history') }}" class="btn-secondary">Clear</a>
+                        <button 
+                            type="submit" 
+                            class="btn-primary flex-1 min-h-[44px] flex items-center justify-center text-sm font-semibold"
+                            x-bind:disabled="isLoadingBuyRequests"
+                        >Filter</button>
+                        <button type="button" @click="clearBuyRequests" class="btn-secondary min-h-[44px] flex items-center justify-center text-sm font-semibold">Clear</button>
                     </div>
                 </form>
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
+            <div id="userBuyRequestsTable" class="rw-table-scroll overflow-x-auto">
+                <table class="min-w-[720px] whitespace-nowrap text-sm w-full">
                     <thead>
                         <tr class="text-left text-gray-600 border-b">
                             <th class="py-3 pr-6">
@@ -404,5 +468,190 @@
             <div class="mt-4">{{ $buyRequests->links() }}</div>
         </div>
     </div>
+        <!-- Toast (shared) -->
+        <div 
+            x-show="toast.open"
+            x-transition
+            class="fixed bottom-4 right-4 z-50 max-w-sm w-full px-4"
+            role="alert"
+            aria-live="assertive"
+        >
+            <div
+                class="rounded-lg shadow-lg px-4 py-3 text-sm"
+                :class="toast.type === 'error'
+                    ? 'bg-red-600 text-white'
+                    : 'bg-gray-900 text-white'"
+            >
+                <span x-text="toast.message"></span>
+            </div>
+        </div>
+    </div>
 </div>
+
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('userHistoryFilters', () => ({
+        isLoadingPayments: false,
+        isLoadingTransactions: false,
+        isLoadingBuyRequests: false,
+        toast: { open: false, message: '', type: 'info' },
+
+        showToast(message, type = 'info') {
+            this.toast.message = message;
+            this.toast.type = type;
+            this.toast.open = true;
+            setTimeout(() => { this.toast.open = false }, 3000);
+        },
+
+        async submitPayments(form) {
+            this.isLoadingPayments = true;
+            try {
+                const params = new URLSearchParams(new FormData(form)).toString();
+                const url = form.action + (params ? ('?' + params) : '');
+
+                const response = await fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+
+                if (!response.ok) throw new Error('Server error: ' + response.status);
+
+                const html = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const incoming = doc.querySelector('#userPaymentsTable');
+                const current = document.querySelector('#userPaymentsTable');
+
+                if (incoming && current) {
+                    current.innerHTML = incoming.innerHTML;
+                }
+
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState({}, '', url);
+                }
+            } catch (e) {
+                console.error(e);
+                this.showToast('Failed to load payments. Please try again.', 'error');
+            } finally {
+                this.isLoadingPayments = false;
+            }
+        },
+
+        clearPayments() {
+            const form = this.$refs.paymentsForm;
+            if (!form) return;
+
+            // clear visible filters
+            ['payment_search', 'payment_status', 'payment_network'].forEach(name => {
+                const field = form.querySelector(`[name="${name}"]`);
+                if (field) field.value = '';
+            });
+            // reset payment-specific paging/sort
+            ['payments_page', 'payment_sort', 'payment_dir'].forEach(name => {
+                const field = form.querySelector(`[name="${name}"]`);
+                if (field) field.value = '';
+            });
+
+            this.submitPayments(form);
+        },
+
+        async submitTransactions(form) {
+            this.isLoadingTransactions = true;
+            try {
+                const params = new URLSearchParams(new FormData(form)).toString();
+                const url = form.action + (params ? ('?' + params) : '');
+
+                const response = await fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+
+                if (!response.ok) throw new Error('Server error: ' + response.status);
+
+                const html = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const incoming = doc.querySelector('#userTransactionsTable');
+                const current = document.querySelector('#userTransactionsTable');
+
+                if (incoming && current) {
+                    current.innerHTML = incoming.innerHTML;
+                }
+
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState({}, '', url);
+                }
+            } catch (e) {
+                console.error(e);
+                this.showToast('Failed to load transactions. Please try again.', 'error');
+            } finally {
+                this.isLoadingTransactions = false;
+            }
+        },
+
+        clearTransactions() {
+            const form = this.$refs.transactionsForm;
+            if (!form) return;
+
+            ['transaction_search', 'transaction_type', 'transaction_status'].forEach(name => {
+                const field = form.querySelector(`[name="${name}"]`);
+                if (field) field.value = '';
+            });
+            ['transactions_page', 'transaction_sort', 'transaction_dir'].forEach(name => {
+                const field = form.querySelector(`[name="${name}"]`);
+                if (field) field.value = '';
+            });
+
+            this.submitTransactions(form);
+        },
+
+        async submitBuyRequests(form) {
+            this.isLoadingBuyRequests = true;
+            try {
+                const params = new URLSearchParams(new FormData(form)).toString();
+                const url = form.action + (params ? ('?' + params) : '');
+
+                const response = await fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+
+                if (!response.ok) throw new Error('Server error: ' + response.status);
+
+                const html = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const incoming = doc.querySelector('#userBuyRequestsTable');
+                const current = document.querySelector('#userBuyRequestsTable');
+
+                if (incoming && current) {
+                    current.innerHTML = incoming.innerHTML;
+                }
+
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState({}, '', url);
+                }
+            } catch (e) {
+                console.error(e);
+                this.showToast('Failed to load buy requests. Please try again.', 'error');
+            } finally {
+                this.isLoadingBuyRequests = false;
+            }
+        },
+
+        clearBuyRequests() {
+            const form = this.$refs.buyRequestsForm;
+            if (!form) return;
+
+            ['buy_request_search', 'buy_request_status'].forEach(name => {
+                const field = form.querySelector(`[name="${name}"]`);
+                if (field) field.value = '';
+            });
+            ['buy_requests_page', 'buy_request_sort', 'buy_request_dir'].forEach(name => {
+                const field = form.querySelector(`[name="${name}"]`);
+                if (field) field.value = '';
+            });
+
+            this.submitBuyRequests(form);
+        }
+    }));
+});
+</script>
 @endsection

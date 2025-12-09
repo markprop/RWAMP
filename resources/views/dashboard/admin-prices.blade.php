@@ -1,15 +1,26 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="min-h-screen bg-white">
-    <section class="bg-gradient-to-r from-black to-secondary text-white py-12">
-        <div class="max-w-7xl mx-auto px-4">
-            <h1 class="text-3xl md:text-5xl font-montserrat font-bold">Price Management</h1>
-            <p class="text-white/80">Manage RWAMP token price - Enter PKR price and system auto-detects all cryptocurrency prices</p>
+<div class="min-h-screen bg-gray-50">
+    <!-- Sidebar -->
+    @include('components.admin-sidebar')
+    
+    <!-- Main Content Area (shifted right for sidebar) -->
+    <div class="md:ml-64 min-h-screen">
+        <!-- Top Header Bar -->
+        <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+            <div class="px-4 sm:px-6 lg:px-8 py-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-montserrat font-bold text-gray-900">Price Management</h1>
+                        <p class="text-gray-500 text-sm mt-1.5">Manage RWAMP token price - Enter PKR price and system auto-detects all cryptocurrency prices</p>
+                    </div>
+                </div>
+            </div>
         </div>
-    </section>
 
-    <div class="max-w-6xl mx-auto px-4 py-10">
+        <!-- Dashboard Content -->
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         @if(session('success'))
             <div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg mb-6">
                 {{ session('success') }}

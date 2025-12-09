@@ -22,114 +22,122 @@
 @endphp
 
 @section('content')
-<div class="min-h-screen bg-white" x-data x-cloak>
-    <section class="bg-gradient-to-r from-black to-secondary text-white py-12">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex items-start justify-between flex-wrap gap-6">
-                <div class="flex-1">
-                    <h1 class="text-3xl md:text-5xl font-montserrat font-bold mb-2">Reseller Dashboard</h1>
-                    <p class="text-white/80 mb-4">Welcome, {{ auth()->user()->name }}.</p>
-                    @if(auth()->user()->referral_code)
-                        <div class="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20 inline-block">
-                            <span class="text-xs text-white/70 uppercase tracking-wide">Your Referral Code:</span>
-                            <span class="text-lg font-mono font-bold text-white ml-2">{{ auth()->user()->referral_code }}</span>
+<div class="min-h-screen bg-gray-50" x-data="gameDashboard({{ ($isInGame ?? false) ? 'true' : 'false' }}, {{ ($hasPin ?? false) ? 'true' : 'false' }})" x-cloak>
+    @include('components.game-modals')
+    
+    <!-- Sidebar -->
+    @include('components.reseller-sidebar')
+    
+    <!-- Main Content Area (shifted right for sidebar) -->
+    <div class="md:ml-64 min-h-screen">
+        <!-- Top Header Bar with User Info -->
+        <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+            <div class="px-4 sm:px-6 lg:px-8 py-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-montserrat font-bold text-gray-900">Reseller Dashboard</h1>
+                        <p class="text-gray-500 text-sm mt-1.5">Welcome back, <span class="font-semibold text-gray-700">{{ auth()->user()->name }}</span></p>
+                    </div>
+                    <!-- User Avatar Dropdown (Top Right) -->
+                    <div class="flex items-center space-x-4">
+                        @if(auth()->user()->referral_code)
+                            <div class="hidden md:block bg-gray-100 rounded-lg px-4 py-2 border border-gray-200">
+                                <span class="text-xs text-gray-600 uppercase tracking-wide">Referral Code:</span>
+                                <span class="text-sm font-mono font-bold text-gray-900 ml-2">{{ auth()->user()->referral_code }}</span>
+                            </div>
+                        @endif
+                        <div class="relative" x-data="{ open: false }">
+                            <button @click="open = !open" class="flex items-center space-x-2 focus:outline-none">
+                                <div class="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-red-600 flex items-center justify-center text-white font-bold">
+                                    {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                                </div>
+                                <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+                            <div x-show="open" 
+                                 @click.away="open = false"
+                                 x-cloak
+                                 class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50 border border-gray-200"
+                                 style="display: none;">
+                                <a href="{{ route('profile.show') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</a>
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Logout</button>
+                                </form>
+                            </div>
                         </div>
-                    @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Dashboard Content -->
+        <div class="px-4 sm:px-6 lg:px-8 py-6 rw-page-shell">
+            <!-- Portfolio Cards Row -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 rw-card-grid">
+                <!-- Token Balance Card -->
+                <div class="bg-gradient-to-br from-primary to-red-600 rounded-xl px-6 py-6 shadow-xl min-h-[140px] flex flex-col justify-between">
+                    <div class="text-xs text-white/90 uppercase tracking-wide mb-3 font-semibold">Token Balance</div>
+                    <div class="flex items-baseline gap-2 flex-wrap">
+                        <span class="text-3xl md:text-4xl font-extrabold text-white drop-shadow-lg leading-tight">
+                            {{ number_format($metrics['token_balance'] ?? 0, 0) }}
+                        </span>
+                        <span class="text-lg md:text-xl font-bold text-white/95">RWAMP</span>
+                    </div>
                 </div>
                 
-                <!-- Portfolio Cards Row -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full md:w-auto">
-                    <!-- Token Balance Card -->
-                    <div class="bg-gradient-to-br from-primary to-red-600 rounded-xl px-6 py-5 border-2 border-white/40 shadow-2xl min-w-[200px]">
-                        <div class="text-xs text-white uppercase tracking-wide mb-2 font-bold" style="color: #ffffff !important;">Token Balance</div>
-                        <div class="text-3xl md:text-4xl font-extrabold text-white drop-shadow-lg" style="color: #ffffff !important;">
-                            {{ number_format($metrics['token_balance'] ?? 0, 0) }} <span class="text-xl md:text-2xl font-bold" style="color: #ffffff !important;">RWAMP</span>
-                        </div>
-                    </div>
-                    
-                    <!-- Portfolio Value Card -->
-                    <div class="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl px-6 py-5 border-2 border-white/40 shadow-2xl min-w-[200px]">
-                        <div class="text-xs text-white uppercase tracking-wide mb-2 font-bold" style="color: #ffffff !important;">Portfolio Value</div>
-                        <div class="text-3xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-1" style="color: #ffffff !important;">
+                <!-- Portfolio Value Card -->
+                <div class="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl px-6 py-6 shadow-xl min-h-[140px] flex flex-col justify-between">
+                    <div class="text-xs text-white/90 uppercase tracking-wide mb-3 font-semibold">Portfolio Value</div>
+                    <div>
+                        <div class="text-3xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-2 leading-tight">
                             PKR {{ number_format($metrics['portfolio_value'] ?? 0, 0) }}
                         </div>
-                        <div class="text-xs text-white" style="color: #ffffff !important;">Avg: PKR {{ number_format($metrics['average_purchase_price'] ?? 0, 2) }}/coin</div>
+                        <div class="text-xs text-white/90 font-medium">Avg: PKR {{ number_format($metrics['average_purchase_price'] ?? 0, 2) }}/coin</div>
                     </div>
-                    
-                    <!-- Official Portfolio Value Card -->
-                    <div class="bg-gradient-to-br from-green-500 to-green-700 rounded-xl px-6 py-5 border-2 border-white/40 shadow-2xl min-w-[200px]">
-                        <div class="text-xs text-white uppercase tracking-wide mb-2 font-bold" style="color: #ffffff !important;">Official Portfolio Value</div>
-                        <div class="text-3xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-1" style="color: #ffffff !important;">
-                            PKR {{ number_format($metrics['official_portfolio_value'] ?? 0, 0) }}
+                </div>
+                
+                <!-- Official Portfolio Value Card -->
+                <div class="bg-gradient-to-br from-green-500 to-green-700 rounded-xl px-6 py-6 shadow-xl min-h-[140px] flex flex-col justify-between">
+                    <div class="text-xs text-white/90 uppercase tracking-wide mb-3 font-semibold">Official Portfolio Value</div>
+                    <div>
+                        <div class="text-3xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-2 leading-tight">
+                            @include('components.price-tag', [
+                                'pkr' => $metrics['official_portfolio_value'] ?? 0,
+                                'size' => 'large',
+                                'variant' => 'dark'
+                            ])
                         </div>
-                        <div class="text-xs text-white" style="color: #ffffff !important;">Official: PKR {{ number_format($metrics['official_price'] ?? 0, 2) }}/coin</div>
+                        <div class="text-xs text-white/90 font-medium">
+                            Official: @include('components.price-tag', [
+                                'pkr' => $metrics['official_price'] ?? 0,
+                                'size' => 'small',
+                                'variant' => 'dark',
+                                'class' => 'inline'
+                            ])/coin
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
-
-    <div class="max-w-7xl mx-auto px-4 py-10">
-        <!-- Metrics Cards -->
-        <div class="grid md:grid-cols-4 gap-6 mb-8">
-            <a href="{{ route('reseller.users') }}" class="bg-white rounded-xl shadow-xl p-6 card-hover block w-full text-left cursor-pointer hover:shadow-2xl transition-all duration-300">
-                <div class="text-sm text-gray-600 mb-1">My Users</div>
-                <div class="text-3xl font-bold text-primary">{{ $metrics['total_users'] ?? 0 }}</div>
-                <div class="text-xs text-gray-500 mt-2">Users under you</div>
-            </a>
-            <a href="{{ route('reseller.payments', ['status' => 'approved']) }}" class="bg-white rounded-xl shadow-xl p-6 card-hover block w-full text-left cursor-pointer hover:shadow-2xl transition-all duration-300">
-                <div class="text-sm text-gray-600 mb-1">Total Payments</div>
-                <div class="text-3xl font-bold text-blue-600">{{ $metrics['total_payments'] ?? 0 }}</div>
-                <div class="text-xs text-gray-500 mt-2">All time payments</div>
-            </a>
-            <a href="{{ route('reseller.transactions', ['type' => 'commission']) }}" class="bg-white rounded-xl shadow-xl p-6 card-hover block w-full text-left cursor-pointer hover:shadow-2xl transition-all duration-300">
-                <div class="text-sm text-gray-600 mb-1">Total Commission</div>
-                <div class="text-3xl font-bold text-green-600">{{ number_format($metrics['total_commission'] ?? 0, 0) }}</div>
-                <div class="text-xs text-gray-500 mt-2">RWAMP tokens earned</div>
-            </a>
-        </div>
-
-        <!-- Quick Actions Section -->
-        <div class="grid md:grid-cols-2 gap-6 mb-8">
-            <!-- Buy Coins Card -->
-            <div class="bg-gradient-to-br from-primary to-red-600 rounded-xl shadow-xl p-6 text-white">
-                <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <h3 class="font-montserrat font-bold text-xl mb-2 text-white">Buy Coins</h3>
-                        <p class="text-white/90 text-sm">Purchase RWAMP tokens directly from the platform</p>
-                    </div>
-                    <div class="bg-white/20 rounded-full p-3">
-                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                    </div>
-                </div>
-                <button 
-                    @click="$dispatch('open-purchase-modal')" 
-                    class="w-full bg-white text-primary hover:bg-gray-100 px-6 py-3 rounded-lg font-semibold transition-colors duration-200 shadow-lg hover:shadow-xl"
-                >
-                    Buy Coins Now
-                </button>
-            </div>
-
-            <!-- Sell Coins Card -->
-            <div class="bg-gradient-to-br from-primary to-red-600 rounded-xl shadow-xl p-6 text-white">
-                <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <h3 class="font-montserrat font-bold text-xl mb-2 text-white">Sell Coins</h3>
-                        <p class="text-white/90 text-sm">Sell RWAMP tokens to your users</p>
-                    </div>
-                    <div class="bg-white/20 rounded-full p-3">
-                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                        </svg>
-                    </div>
-                </div>
-                <a href="{{ route('reseller.sell') }}" class="inline-block w-full text-center bg-white text-primary hover:bg-gray-100 px-6 py-3 rounded-lg font-semibold transition-colors duration-200 shadow-lg hover:shadow-xl">
-                    Sell Coins Now
+            <!-- Metrics Cards -->
+            <div class="grid md:grid-cols-3 gap-6 mb-8 rw-card-grid">
+                <a href="{{ route('reseller.users') }}" class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow block">
+                    <div class="text-sm text-gray-600 mb-1">My Users</div>
+                    <div class="text-3xl font-bold text-primary">{{ $metrics['total_users'] ?? 0 }}</div>
+                    <div class="text-xs text-gray-500 mt-2">Users under you</div>
+                </a>
+                <a href="{{ route('reseller.payments', ['status' => 'approved']) }}" class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow block">
+                    <div class="text-sm text-gray-600 mb-1">Total Payments</div>
+                    <div class="text-3xl font-bold text-blue-600">{{ $metrics['total_payments'] ?? 0 }}</div>
+                    <div class="text-xs text-gray-500 mt-2">All time payments</div>
+                </a>
+                <a href="{{ route('reseller.transactions', ['type' => 'commission']) }}" class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow block">
+                    <div class="text-sm text-gray-600 mb-1">Total Commission</div>
+                    <div class="text-3xl font-bold text-green-600">{{ number_format($metrics['total_commission'] ?? 0, 0) }}</div>
+                    <div class="text-xs text-gray-500 mt-2">RWAMP tokens earned</div>
                 </a>
             </div>
-        </div>
 
         {{-- CHAT SYSTEM DISABLED - See CHAT_REENABLE_GUIDE.md to re-enable --}}
         {{-- <!-- Chat Dashboard Section -->
@@ -167,7 +175,7 @@
             @endphp
             
             <!-- Price Display -->
-            <div class="grid md:grid-cols-2 gap-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-sm font-medium text-gray-700">Super-Admin Price</span>
@@ -204,13 +212,13 @@
             </div>
             
             <!-- Price Form and Profit Calculator Side by Side -->
-            <div class="grid md:grid-cols-2 gap-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 items-start">
                 <!-- Left: Price Form -->
-                <div>
+                <div class="bg-white rounded-lg p-4 sm:p-5 border border-gray-200 space-y-4">
                     <form method="POST" action="{{ route('reseller.update-coin-price') }}">
                 @csrf
                 @method('PUT')
-                <div class="mb-4">
+                <div class="mb-3 sm:mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         Your Custom Price per Coin (PKR)
                         <span class="text-gray-500 text-xs font-normal">(Optional)</span>
@@ -238,13 +246,13 @@
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                     @enderror
                 </div>
-                <div class="flex gap-3">
-                    <button type="submit" class="btn-primary">Update My Price</button>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button type="submit" class="btn-primary btn-small w-full sm:w-auto justify-center">Update My Price</button>
                     @if($resellerPrice)
                         <button 
                             type="button" 
                             onclick="if(confirm('Are you sure you want to remove your custom price and use the default price?')) { document.getElementById('remove-price-form').submit(); }"
-                            class="btn-secondary"
+                            class="btn-secondary btn-small w-full sm:w-auto justify-center"
                         >
                             Remove Custom Price
                         </button>
@@ -262,11 +270,10 @@
                 </div>
                 
                 <!-- Right: Profit Calculator -->
-                <div class="bg-gradient-to-r from-accent to-yellow-500 rounded-lg p-4 text-black" x-data="profitCalculator">
-                    <div class="flex items-start justify-between gap-4">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-2">
-                                <h4 class="font-montserrat font-bold text-base">Profit Calculator</h4>
+                <div class="bg-gradient-to-r from-accent to-yellow-500 rounded-lg p-4 sm:p-5 text-black shadow-md" x-data="profitCalculator">
+                    <div class="flex flex-col gap-3">
+                        <div class="flex items-center gap-2">
+                            <h4 class="font-montserrat font-bold text-base sm:text-lg">Profit Calculator</h4>
                                 <div class="relative group">
                                     <svg class="h-4 w-4 text-black/60 cursor-pointer hover:text-black transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" @click.stop="showInfo = !showInfo">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -285,7 +292,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-3 text-sm">
+                            <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 text-sm">
                                 <div class="flex items-center gap-2">
                                     <span class="font-medium">Buy:</span>
                                     <input 
@@ -294,10 +301,10 @@
                                         step="0.01" 
                                         min="0"
                                         placeholder="0.00"
-                                        class="w-20 px-2 py-1 text-right text-sm font-mono font-bold bg-white/90 border border-black/20 rounded text-black"
+                                        class="w-24 sm:w-20 px-2 py-2 text-right text-sm font-mono font-bold bg-white/90 border border-black/20 rounded text-black"
                                     />
                                 </div>
-                                <span class="text-black/60">-</span>
+                                <span class="hidden sm:inline text-black/60">-</span>
                                 <div class="flex items-center gap-2">
                                     <span class="font-medium">Sell:</span>
                                     <input 
@@ -306,16 +313,16 @@
                                         step="0.01" 
                                         min="0"
                                         placeholder="0.00"
-                                        class="w-20 px-2 py-1 text-right text-sm font-mono font-bold bg-white/90 border border-black/20 rounded text-black"
+                                        class="w-24 sm:w-20 px-2 py-2 text-right text-sm font-mono font-bold bg-white/90 border border-black/20 rounded text-black"
                                     />
                                 </div>
-                                <span class="text-black/60">=</span>
+                                <span class="hidden sm:inline text-black/60">=</span>
                                 <div class="flex items-center gap-2">
                                     <span class="font-medium">Profit:</span>
                                     <span class="font-mono font-bold text-base" x-text="'Rs ' + profitPerToken">Rs 0.00</span>
                                 </div>
                             </div>
-                            <p class="text-xs text-black/70 mt-2">Enter buy and sell prices to calculate profit per token</p>
+                            <p class="text-xs sm:text-sm text-black/70 mt-2">Enter buy and sell prices to calculate profit per token</p>
                         </div>
                     </div>
                 </div>
@@ -329,13 +336,13 @@
                     <h3 class="font-montserrat font-bold text-xl">My Users</h3>
                     <p class="text-gray-600 text-sm mt-1">Manage users who registered with your referral code</p>
                 </div>
-                <a href="{{ route('reseller.users') }}" class="btn-secondary">
+                <a href="{{ route('reseller.users') }}" class="btn-secondary btn-small">
                     View All Users
                 </a>
             </div>
             
             @if($myUsers->count() > 0)
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto rw-table-scroll">
                     <table class="w-full">
                         <thead>
                             <tr class="border-b">
@@ -384,7 +391,7 @@
                     <h3 class="font-montserrat font-bold text-xl">Pending Buy Requests</h3>
                     <p class="text-gray-600 text-sm mt-1">Approve or reject coin purchase requests from users</p>
                 </div>
-                <a href="{{ route('reseller.buy-requests') }}" class="btn-secondary">
+                <a href="{{ route('reseller.buy-requests') }}" class="btn-secondary btn-small">
                     View All Requests
                 </a>
             </div>
@@ -441,7 +448,7 @@
             </div>
             
             @if($recentTransactions->count() > 0)
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto rw-table-scroll">
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="border-b bg-gray-50">
@@ -615,7 +622,7 @@
         <div id="my-users-list" class="bg-white rounded-xl shadow-xl p-6 mb-8">
             <h3 class="font-montserrat font-bold text-xl mb-6">All My Users</h3>
             @if($myUsers->count() > 0)
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto rw-table-scroll">
                     <table class="w-full">
                         <thead>
                             <tr class="border-b">
@@ -1169,22 +1176,24 @@ document.getElementById('rejectBuyRequestModal')?.addEventListener('click', func
 </script>
 
     <!-- Contact Us Section -->
-    <div class="max-w-7xl mx-auto px-4 pb-10">
-        <div class="bg-gradient-to-br from-primary to-red-600 rounded-xl shadow-xl p-6 text-white">
-            <div class="flex items-center justify-between mb-4">
-                <div>
-                    <h3 class="font-montserrat font-bold text-xl mb-2 text-white">Need Help?</h3>
-                    <p class="text-white text-sm opacity-95">Contact our support team for assistance</p>
+    <div class="md:ml-64">
+        <div class="rw-cta-container pb-10">
+            <div class="bg-gradient-to-br from-primary to-red-600 rounded-xl shadow-xl p-6 text-white">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="font-montserrat font-bold text-xl mb-2 text-white">Need Help?</h3>
+                        <p class="text-white text-sm opacity-95">Contact our support team for assistance</p>
+                    </div>
+                    <div class="bg-white/20 rounded-full p-3">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                        </svg>
+                    </div>
                 </div>
-                <div class="bg-white/20 rounded-full p-3">
-                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                    </svg>
-                </div>
+                <a href="{{ route('contact') }}" class="inline-block w-full sm:w-auto text-center bg-white text-primary hover:bg-gray-100 px-6 py-3 rounded-lg font-semibold transition-colors duration-200 shadow-lg hover:shadow-xl">
+                    Contact Us
+                </a>
             </div>
-            <a href="{{ route('contact') }}" class="inline-block w-full sm:w-auto text-center bg-white text-primary hover:bg-gray-100 px-6 py-3 rounded-lg font-semibold transition-colors duration-200 shadow-lg hover:shadow-xl">
-                Contact Us
-            </a>
         </div>
     </div>
 

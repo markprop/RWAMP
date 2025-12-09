@@ -1,20 +1,26 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="min-h-screen bg-white">
-    <section class="bg-gradient-to-r from-black to-secondary text-white py-8 sm:py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 class="text-2xl sm:text-3xl md:text-5xl font-montserrat font-bold">Transaction History</h1>
-                    <p class="text-white/80 text-sm sm:text-base mt-1">Complete audit trail of crypto payment submissions and token credits/debits.</p>
+<div class="min-h-screen bg-gray-50" x-data="adminHistoryFilters()">
+    <!-- Sidebar -->
+    @include('components.admin-sidebar')
+    
+    <!-- Main Content Area (shifted right for sidebar) -->
+    <div class="md:ml-64 min-h-screen">
+        <!-- Top Header Bar -->
+        <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+            <div class="px-4 sm:px-6 lg:px-8 py-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-montserrat font-bold text-gray-900">Transaction History</h1>
+                        <p class="text-gray-500 text-sm mt-1.5">Complete audit trail of crypto payment submissions and token credits/debits</p>
+                    </div>
                 </div>
-                <a href="{{ route('dashboard.admin') }}" class="btn-secondary text-center text-sm sm:text-base px-4 py-2 sm:px-6 sm:py-3 whitespace-nowrap">Back to Dashboard</a>
             </div>
         </div>
-    </section>
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-10">
+        <!-- Dashboard Content -->
+        <div class="px-4 sm:px-6 lg:px-8 py-6 space-y-6 sm:space-y-10">
         <!-- Payment Submissions -->
         <div class="bg-white rounded-xl shadow-xl p-4 sm:p-6 card-hover">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
@@ -27,7 +33,12 @@
 
             <!-- Payment Filters -->
             <div class="mb-4 pb-4 border-b">
-                <form method="GET" action="{{ route('admin.history') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <form 
+                    method="GET" 
+                    action="{{ route('admin.history') }}" 
+                    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
+                    @submit.prevent="submitPayments($event.target)"
+                >
                     <input type="hidden" name="transactions_page" value="{{ request('transactions_page') }}">
                     <input type="hidden" name="transaction_search" value="{{ request('transaction_search') }}">
                     <input type="hidden" name="transaction_type" value="{{ request('transaction_type') }}">
@@ -65,16 +76,30 @@
                         </select>
                     </div>
                     <div class="flex items-end gap-2">
-                        <button type="submit" class="btn-primary flex-1">Filter</button>
-                        <a href="{{ route('admin.history') }}" class="btn-secondary">Clear</a>
+                        <button 
+                            type="submit" 
+                            class="btn-primary flex-1 min-h-[44px]"
+                            :disabled="isLoadingPayments"
+                        >
+                            <span x-show="!isLoadingPayments">Filter</span>
+                            <span x-show="isLoadingPayments">Loading…</span>
+                        </button>
+                        <button 
+                            type="button" 
+                            class="btn-secondary min-h-[44px] hidden sm:inline-flex"
+                            @click="clearPayments"
+                        >
+                            Clear
+                        </button>
                     </div>
                 </form>
             </div>
 
-            <div class="overflow-x-auto -mx-4 sm:mx-0">
-                <div class="inline-block min-w-full align-middle">
-                    <div class="overflow-hidden">
-                        <table class="min-w-full text-xs sm:text-sm divide-y divide-gray-200">
+            <div id="adminPaymentsTableContent">
+                <div class="rw-table-scroll overflow-x-auto -mx-4 sm:mx-0">
+                    <div class="inline-block min-w-full align-middle">
+                        <div class="overflow-hidden">
+                            <table class="min-w-full text-xs sm:text-sm divide-y divide-gray-200 whitespace-nowrap">
                     <thead class="bg-gray-50">
                         <tr class="text-left text-gray-600">
                             <th class="px-3 sm:px-6 py-3 text-xs sm:text-sm font-medium text-gray-700 uppercase tracking-wider">
@@ -138,10 +163,11 @@
                         @endforelse
                     </tbody>
                 </table>
+                        </div>
                     </div>
                 </div>
+                <div class="mt-4">{{ $payments->links() }}</div>
             </div>
-            <div class="mt-4">{{ $payments->links() }}</div>
         </div>
 
         <!-- Token Transactions -->
@@ -156,7 +182,12 @@
 
             <!-- Transaction Filters -->
             <div class="mb-4 pb-4 border-b">
-                <form method="GET" action="{{ route('admin.history') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <form 
+                    method="GET" 
+                    action="{{ route('admin.history') }}" 
+                    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
+                    @submit.prevent="submitTransactions($event.target)"
+                >
                     <input type="hidden" name="payments_page" value="{{ request('payments_page') }}">
                     <input type="hidden" name="payment_search" value="{{ request('payment_search') }}">
                     <input type="hidden" name="payment_status" value="{{ request('payment_status') }}">
@@ -192,16 +223,30 @@
                         </select>
                     </div>
                     <div class="flex items-end gap-2 sm:col-span-2 lg:col-span-1">
-                        <button type="submit" class="btn-primary flex-1 text-sm sm:text-base px-4 py-2 sm:px-6 sm:py-3">Filter</button>
-                        <a href="{{ route('admin.history') }}" class="btn-secondary text-sm sm:text-base px-4 py-2 sm:px-6 sm:py-3">Clear</a>
+                        <button 
+                            type="submit" 
+                            class="btn-primary flex-1 min-h-[44px] text-sm sm:text-base"
+                            :disabled="isLoadingTransactions"
+                        >
+                            <span x-show="!isLoadingTransactions">Filter</span>
+                            <span x-show="isLoadingTransactions">Loading…</span>
+                        </button>
+                        <button 
+                            type="button" 
+                            class="btn-secondary min-h-[44px] hidden sm:inline-flex text-sm sm:text-base"
+                            @click="clearTransactions"
+                        >
+                            Clear
+                        </button>
                     </div>
                 </form>
             </div>
 
-            <div class="overflow-x-auto -mx-4 sm:mx-0">
-                <div class="inline-block min-w-full align-middle">
-                    <div class="overflow-hidden">
-                        <table class="min-w-full text-xs sm:text-sm divide-y divide-gray-200">
+            <div id="adminTransactionsTableContent">
+                <div class="rw-table-scroll overflow-x-auto -mx-4 sm:mx-0">
+                    <div class="inline-block min-w-full align-middle">
+                        <div class="overflow-hidden">
+                            <table class="min-w-full text-xs sm:text-sm divide-y divide-gray-200 whitespace-nowrap">
                     <thead class="bg-gray-50">
                         <tr class="text-left text-gray-600">
                             <th class="px-3 sm:px-6 py-3 text-xs sm:text-sm font-medium text-gray-700 uppercase tracking-wider">
@@ -270,10 +315,11 @@
                         @endforelse
                     </tbody>
                 </table>
+                        </div>
                     </div>
                 </div>
+                <div class="mt-4">{{ $transactions->links() }}</div>
             </div>
-            <div class="mt-4">{{ $transactions->links() }}</div>
         </div>
 
         <!-- Profit Calculator -->
@@ -299,5 +345,103 @@
             <div class="mt-4 text-lg">Estimated Profit: <span class="font-semibold">Rs <span x-text="profit"></span></span></div>
         </div>
     </div>
+
+    <!-- Toast Notification -->
+    <div x-show="toast.visible" 
+         x-cloak
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-2"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed bottom-4 right-4 z-50 max-w-sm w-full"
+         @click="toast.visible = false">
+        <div :class="{
+            'bg-green-50 border-green-200 text-green-800': toast.type === 'success',
+            'bg-red-50 border-red-200 text-red-800': toast.type === 'error',
+            'bg-yellow-50 border-yellow-200 text-yellow-800': toast.type === 'warning',
+            'bg-blue-50 border-blue-200 text-blue-800': toast.type === 'info'
+        }" class="border rounded-lg shadow-lg p-4 cursor-pointer">
+            <p class="text-sm font-medium" x-text="toast.message"></p>
+        </div>
+    </div>
 </div>
+
+@push('scripts')
+<script>
+function adminHistoryFilters() {
+    return {
+        isLoadingPayments: false,
+        isLoadingTransactions: false,
+        toast: { visible: false, message: '', type: 'success' },
+        showToast(message, type = 'success') {
+            this.toast.message = message;
+            this.toast.type = type;
+            this.toast.visible = true;
+            setTimeout(() => { this.toast.visible = false; }, 3000);
+        },
+        async submitPayments(form) {
+            this.isLoadingPayments = true;
+            try {
+                const params = new URLSearchParams(new FormData(form)).toString();
+                const url = form.action + (params ? ('?' + params) : '');
+                const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                if (!response.ok) throw new Error('Server error: ' + response.status);
+                const html = await response.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const incoming = doc.querySelector('#adminPaymentsTableContent');
+                const current = document.querySelector('#adminPaymentsTableContent');
+                if (incoming && current) current.innerHTML = incoming.innerHTML;
+                if (window.history && window.history.replaceState) window.history.replaceState({}, '', url);
+            } catch (e) {
+                console.error(e);
+                this.showToast('Failed to load payments. Please try again.', 'error');
+            } finally {
+                this.isLoadingPayments = false;
+            }
+        },
+        clearPayments() {
+            const form = document.querySelector('form[action="{{ route('admin.history') }}"]');
+            if (!form) return;
+            ['payment_search', 'payment_status', 'payment_network'].forEach(name => {
+                const field = form.querySelector(`[name="${name}"]`);
+                if (field) field.value = '';
+            });
+            this.submitPayments(form);
+        },
+        async submitTransactions(form) {
+            this.isLoadingTransactions = true;
+            try {
+                const params = new URLSearchParams(new FormData(form)).toString();
+                const url = form.action + (params ? ('?' + params) : '');
+                const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                if (!response.ok) throw new Error('Server error: ' + response.status);
+                const html = await response.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const incoming = doc.querySelector('#adminTransactionsTableContent');
+                const current = document.querySelector('#adminTransactionsTableContent');
+                if (incoming && current) current.innerHTML = incoming.innerHTML;
+                if (window.history && window.history.replaceState) window.history.replaceState({}, '', url);
+            } catch (e) {
+                console.error(e);
+                this.showToast('Failed to load transactions. Please try again.', 'error');
+            } finally {
+                this.isLoadingTransactions = false;
+            }
+        },
+        clearTransactions() {
+            const forms = document.querySelectorAll('form[action="{{ route('admin.history') }}"]');
+            const form = forms[forms.length - 1]; // Get the transactions form
+            if (!form) return;
+            ['transaction_search', 'transaction_type', 'transaction_status'].forEach(name => {
+                const field = form.querySelector(`[name="${name}"]`);
+                if (field) field.value = '';
+            });
+            this.submitTransactions(form);
+        }
+    };
+}
+</script>
+@endpush
 @endsection

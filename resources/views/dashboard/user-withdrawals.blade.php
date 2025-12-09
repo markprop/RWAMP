@@ -2,19 +2,25 @@
 
 @section('content')
 <div class="min-h-screen bg-gray-50">
-    <section class="bg-gradient-to-r from-black to-secondary text-white py-8 sm:py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 class="text-2xl sm:text-3xl md:text-5xl font-montserrat font-bold">My Withdrawal Requests</h1>
-                    <p class="text-white/80 text-sm sm:text-base mt-1">View your withdrawal request status and details</p>
+    <!-- Sidebar -->
+    @include('components.investor-sidebar')
+    
+    <!-- Main Content Area (shifted right for sidebar) -->
+    <div class="md:ml-64 min-h-screen">
+        <!-- Top Header Bar -->
+        <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+            <div class="px-4 sm:px-6 lg:px-8 py-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-montserrat font-bold text-gray-900">My Withdrawal Requests</h1>
+                        <p class="text-gray-500 text-sm mt-1.5">View your withdrawal request status and details</p>
+                    </div>
                 </div>
-                <a href="{{ route('profile.show') }}" class="btn-secondary text-center">Back to Profile</a>
             </div>
         </div>
-    </section>
 
-    <div class="max-w-7xl mx-auto px-4 py-10">
+        <!-- Dashboard Content -->
+        <div class="px-4 sm:px-6 lg:px-8 py-6">
         <!-- Current Balance Card -->
         <div class="bg-white rounded-xl shadow-xl p-6 mb-6">
             <h2 class="text-lg font-montserrat font-bold mb-4">Current Balance</h2>

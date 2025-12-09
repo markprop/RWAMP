@@ -1,52 +1,84 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="min-h-screen bg-white">
-    <section class="bg-gradient-to-r from-black to-secondary text-white py-12">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex items-center justify-between flex-wrap gap-4">
-                <div>
-                    <h1 class="text-3xl md:text-5xl font-montserrat font-bold">Payments</h1>
-                    <p class="text-white/80">Manage crypto payments from your users</p>
+<div class="min-h-screen bg-gray-50">
+    <!-- Sidebar -->
+    @include('components.reseller-sidebar')
+    
+    <!-- Main Content Area (shifted right for sidebar) -->
+    <div class="md:ml-64 min-h-screen">
+        <!-- Top Header Bar -->
+        <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+            <div class="px-4 sm:px-6 lg:px-8 py-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-montserrat font-bold text-gray-900">Payments</h1>
+                        <p class="text-gray-500 text-sm mt-1.5">Manage crypto payments from your users</p>
+                    </div>
                 </div>
-                <a href="{{ route('dashboard.reseller') }}" class="btn-secondary">
-                    ← Back to Dashboard
-                </a>
             </div>
         </div>
-    </section>
 
-    <div class="max-w-7xl mx-auto px-4 py-10">
-        <!-- Filters -->
-        <div class="bg-white rounded-xl shadow-xl p-6 mb-6">
-            <form method="GET" action="{{ route('reseller.payments') }}" class="flex gap-4 flex-wrap">
-                <div class="flex-1 min-w-[250px]">
-                    <input 
-                        type="text" 
-                        name="search" 
-                        value="{{ request('search') }}"
-                        placeholder="Search by TX hash, user name, or email..." 
-                        class="form-input w-full"
-                    />
-                </div>
-                <select name="status" class="form-input">
-                    <option value="">All Status</option>
-                    <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Pending</option>
-                    <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Approved</option>
-                    <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Rejected</option>
-                </select>
-                <button type="submit" class="btn-primary">Filter</button>
-                @if(request('search') || request('status'))
-                    <a href="{{ route('reseller.payments') }}" class="btn-secondary">Clear</a>
-                @endif
-            </form>
-        </div>
+        <!-- Dashboard Content -->
+        <div class="px-4 sm:px-6 lg:px-8 py-6" x-data="resellerPaymentsFilters()">
+            <!-- Filters -->
+            <div class="bg-white rounded-xl shadow-xl p-5 sm:p-6 mb-6 border border-gray-100">
+                <form 
+                    method="GET" 
+                    action="{{ route('reseller.payments') }}" 
+                    class="grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto_auto] gap-3 md:gap-4 items-stretch"
+                    @submit.prevent="submit($event)"
+                >
+                    <div class="w-full">
+                        <label for="payments-search" class="sr-only">Search payments</label>
+                        <input 
+                            id="payments-search"
+                            type="text" 
+                            name="search" 
+                            value="{{ request('search') }}"
+                            placeholder="Search by TX hash, user name, or email..." 
+                            class="form-input w-full min-h-[44px]"
+                            aria-label="Search payments"
+                        />
+                    </div>
+                    <div class="w-full">
+                        <label for="payments-status" class="sr-only">Status</label>
+                        <select 
+                            id="payments-status"
+                            name="status" 
+                            class="form-input w-full min-h-[44px]"
+                            aria-label="Filter by payment status"
+                        >
+                            <option value="">All Status</option>
+                            <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Pending</option>
+                            <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Approved</option>
+                            <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                        </select>
+                    </div>
+                    <button 
+                        type="submit" 
+                        class="btn-primary w-full md:w-auto min-h-[44px] flex items-center justify-center text-sm font-semibold"
+                        x-bind:disabled="isLoading"
+                    >
+                        <span x-show="!isLoading">Filter</span>
+                        <span x-show="isLoading">Filtering…</span>
+                    </button>
+                    @if(request('search') || request('status'))
+                        <a 
+                            href="{{ route('reseller.payments') }}" 
+                            class="btn-secondary w-full md:w-auto min-h-[44px] flex items-center justify-center text-sm font-semibold text-center"
+                        >
+                            Clear
+                        </a>
+                    @endif
+                </form>
+            </div>
 
-        <!-- Payments Table -->
-        <div class="bg-white rounded-xl shadow-xl overflow-hidden">
+            <!-- Payments Table -->
+            <div id="resellerPaymentsTable" class="bg-white rounded-xl shadow-xl overflow-hidden animate-fadeInUp">
             @if($payments->count() > 0)
-                <div class="overflow-x-auto">
-                    <table class="w-full">
+                <div class="rw-table-scroll overflow-x-auto">
+                    <table class="min-w-full whitespace-nowrap">
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="text-left py-4 px-6 font-semibold text-gray-700">User</th>
@@ -55,43 +87,43 @@
                                 <th class="text-left py-4 px-6 font-semibold text-gray-700">TX Hash</th>
                                 <th class="text-left py-4 px-6 font-semibold text-gray-700">Status</th>
                                 <th class="text-left py-4 px-6 font-semibold text-gray-700">Date</th>
-                                <th class="text-left py-4 px-6 font-semibold text-gray-700">Actions</th>
+                                <th class="text-left py-3 px-4 sm:px-6 font-semibold text-gray-700">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($payments as $payment)
                                 <tr class="border-b hover:bg-gray-50">
-                                    <td class="py-4 px-6">
+                                    <td class="py-3 px-4 sm:px-6">
                                         <div class="font-semibold">{{ $payment->user->name }}</div>
-                                        <div class="text-sm text-gray-600">{{ $payment->user->email }}</div>
+                                        <div class="text-xs sm:text-sm text-gray-600">{{ $payment->user->email }}</div>
                                     </td>
-                                    <td class="py-4 px-6 font-semibold">{{ number_format($payment->token_amount, 0) }} RWAMP</td>
-                                    <td class="py-4 px-6">{{ strtoupper($payment->network) }}</td>
-                                    <td class="py-4 px-6">
-                                        <code class="text-xs">{{ substr($payment->tx_hash, 0, 20) }}...</code>
+                                    <td class="py-3 px-4 sm:px-6 font-semibold">{{ number_format($payment->token_amount, 0) }} RWAMP</td>
+                                    <td class="py-3 px-4 sm:px-6">{{ strtoupper($payment->network) }}</td>
+                                    <td class="py-3 px-4 sm:px-6">
+                                        <code class="text-xs break-all">{{ $payment->tx_hash }}</code>
                                     </td>
-                                    <td class="py-4 px-6">
+                                    <td class="py-3 px-4 sm:px-6">
                                         <span class="px-3 py-1 rounded text-sm font-semibold 
                                             {{ $payment->status === 'approved' ? 'bg-green-100 text-green-800' : 
                                                ($payment->status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
                                             {{ ucfirst($payment->status) }}
                                         </span>
                                     </td>
-                                    <td class="py-4 px-6 text-sm text-gray-600">{{ $payment->created_at->format('M d, Y H:i') }}</td>
-                                    <td class="py-4 px-6">
-                                        <div class="flex gap-2">
-                                            <a href="{{ route('reseller.payments.view', $payment) }}" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">
+                                    <td class="py-3 px-4 sm:px-6 text-xs sm:text-sm text-gray-600">{{ $payment->created_at->format('M d, Y H:i') }}</td>
+                                    <td class="py-3 px-4 sm:px-6">
+                                        <div class="flex flex-wrap gap-2">
+                                            <a href="{{ route('reseller.payments.view', $payment) }}" class="btn-primary btn-small">
                                                 View
                                             </a>
                                             @if($payment->status === 'pending')
-                                                <button onclick="approvePayment({{ $payment->id }})" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
+                                                <button type="button" onclick="approvePayment({{ $payment->id }})" class="btn-small bg-green-600 hover:bg-green-700 text-white rounded-lg px-3 py-2">
                                                     Approve
                                                 </button>
-                                                <button onclick="openRejectModal({{ $payment->id }})" class="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700">
+                                                <button type="button" onclick="openRejectModal({{ $payment->id }})" class="btn-small bg-red-600 hover:bg-red-700 text-white rounded-lg px-3 py-2">
                                                     Reject
                                                 </button>
                                             @endif
-                                            <button onclick="sharePaymentDetails({{ $payment->id }})" class="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700">
+                                            <button type="button" onclick="sharePaymentDetails({{ $payment->id }})" class="btn-secondary btn-small">
                                                 Share
                                             </button>
                                         </div>
@@ -101,15 +133,33 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="p-6 border-t">
+                <div class="p-4 sm:p-6 border-t">
                     {{ $payments->links() }}
                 </div>
             @else
-                <div class="text-center py-12 text-gray-500">
-                    <p class="text-lg">No payments found.</p>
+                <div class="text-center py-10 sm:py-12 text-gray-500">
+                    <p class="text-base sm:text-lg">No payments found.</p>
                 </div>
             @endif
-        </div>
+            </div>
+
+            <!-- Toast -->
+            <div
+                x-show="toast.open"
+                x-transition
+                class="fixed bottom-4 right-4 z-50 max-w-sm w-full px-4"
+                role="alert"
+                aria-live="assertive"
+            >
+                <div
+                    class="rounded-lg shadow-lg px-4 py-3 text-sm"
+                    :class="toast.type === 'error'
+                        ? 'bg-red-600 text-white'
+                        : 'bg-gray-900 text-white'"
+                >
+                    <span x-text="toast.message"></span>
+                </div>
+            </div>
     </div>
 </div>
 
@@ -132,6 +182,57 @@
 </div>
 
 <script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('resellerPaymentsFilters', () => ({
+        isLoading: false,
+        toast: { open: false, message: '', type: 'info' },
+
+        showToast(message, type = 'info') {
+            this.toast.message = message;
+            this.toast.type = type;
+            this.toast.open = true;
+            setTimeout(() => { this.toast.open = false }, 3000);
+        },
+
+        async submit(event) {
+            this.isLoading = true;
+            try {
+                const form = event.target;
+                const params = new URLSearchParams(new FormData(form)).toString();
+                const url = form.action + (params ? ('?' + params) : '');
+
+                const response = await fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+
+                if (!response.ok) throw new Error('Server error: ' + response.status);
+
+                const html = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const incoming = doc.querySelector('#resellerPaymentsTable');
+                const current = document.querySelector('#resellerPaymentsTable');
+
+                if (incoming && current) {
+                    current.innerHTML = incoming.innerHTML;
+                    current.classList.remove('animate-fadeInUp');
+                    void current.offsetWidth;
+                    current.classList.add('animate-fadeInUp');
+                }
+
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState({}, '', url);
+                }
+            } catch (e) {
+                console.error(e);
+                this.showToast('Failed to load payments. Please try again.', 'error');
+            } finally {
+                this.isLoading = false;
+            }
+        }
+    }));
+});
+
 async function approvePayment(paymentId) {
     if (!confirm('Are you sure you want to approve this payment?')) return;
 
