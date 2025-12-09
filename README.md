@@ -1,11 +1,33 @@
-# RWAMP
+<!-- RWAMP - The Currency of Real Estate Investments -->
+<!-- Production README - Last Updated: January 27, 2025 -->
 
 <p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=40&duration=3000&pause=1000&color=FF6B6B&center=true&vCenter=true&width=600&lines=RWAMP;The+Currency+of+Real+Estate+Investments" alt="RWAMP Typing Animation" />
+  <img src="https://rwamp.net/assets/logo-3d.png" alt="RWAMP 3D Logo" width="200" height="200" />
 </p>
 
 <p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=18&duration=2000&pause=500&color=4ECDC4&center=true&vCenter=true&width=800&lines=Real+Estate+Tokenization+Platform+by+Mark+Properties;Dubai+%E2%80%A2+Pakistan+%E2%80%A2+Saudi+Arabia" alt="Description Animation" />
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient:FF6B6B,06D6A0&height=120&section=header&text=RWAMP&fontSize=60&fontColor=fff&animation=twinkling&fontAlignY=35" alt="Animated Header" />
+</p>
+
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=42&duration=2500&pause=1000&color=FF6B6B&center=true&vCenter=true&width=600&lines=RWAMP" alt="RWAMP Typing Animation" />
+</p>
+
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=22&duration=3500&pause=500&color=06D6A0&center=true&vCenter=true&width=800&lines=The+Currency+of+Real+Estate+Investments" alt="Tagline Animation" />
+</p>
+
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=16&duration=4000&pause=800&color=118AB2&center=true&vCenter=true&width=900&lines=✅+KYC-Approved+%7C+🔐+2FA+%2B+ULID+Secured+%7C+🏗️+Live+in+Dubai%2C+PK%2C+KSA+%7C+🤝+Backed+by+Mark+Properties" alt="Trust Bar Animation" />
+</p>
+
+---
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Status-Live%20Production-06D6A0?style=for-the-badge&logo=check-circle&logoColor=white" alt="Live Status" />
+  <img src="https://img.shields.io/badge/KYC-Approved-FF6B6B?style=for-the-badge&logo=shield-check&logoColor=white" alt="KYC Approved" />
+  <img src="https://img.shields.io/badge/Backed+By-Mark+Properties-118AB2?style=for-the-badge&logo=building&logoColor=white" alt="Mark Properties" />
+  <img src="https://img.shields.io/badge/Markets-Dubai%20%7C%20PK%20%7C%20KSA-FF6B6B?style=for-the-badge" alt="Markets" />
 </p>
 
 <p align="center">
@@ -13,155 +35,146 @@
   <img src="https://img.shields.io/badge/PHP-8.2+-777BB4?style=for-the-badge&logo=php&logoColor=white" alt="PHP" />
   <img src="https://img.shields.io/badge/WalletConnect-v2-3B99FC?style=for-the-badge&logo=walletconnect&logoColor=white" alt="WalletConnect" />
   <img src="https://img.shields.io/badge/Fortify-2FA-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Fortify 2FA" />
-  <img src="https://img.shields.io/badge/ULID-Obfuscation-4ECDC4?style=for-the-badge" alt="ULID" />
+  <img src="https://img.shields.io/badge/ULID-Obfuscation-06D6A0?style=for-the-badge" alt="ULID" />
+  <img src="https://img.shields.io/badge/TailwindCSS-3.3+-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="TailwindCSS" />
 </p>
+
+---
+
+## 🎯 What is RWAMP?
+
+**RWAMP** is a production-ready real estate tokenization platform that enables secure, transparent investment in real estate assets across **Dubai, Pakistan, and Saudi Arabia**. Built on Laravel 10 with Web3 integration, RWAMP combines traditional real estate investment with blockchain technology.
+
+**Key Differentiators:**
+- 🏗️ **Live Production System** — Fully operational with real transactions
+- 🔐 **Enterprise Security** — 2FA, ULID obfuscation, CSRF protection
+- 🌍 **Multi-Market Presence** — Active operations in three countries
+- 🤝 **Reseller Network** — Commission-based partner program
+- 💎 **KYC-Compliant** — Full regulatory compliance
+
+---
+
+## ✨ Live Features (Production-Ready)
+
+| Feature | Status | Description | Documentation |
+|---------|--------|-------------|---------------|
+| 🎮 **Trading Game System** | ✅ Live | Real-time price engine, PIN-protected sessions, buy/sell simulation | [`docs/features/GAME_FEATURE_IMPLEMENTATION.md`](docs/features/GAME_FEATURE_IMPLEMENTATION.md) |
+| 🔐 **ULID URL Obfuscation** | ✅ Live | 5 admin route groups secured with non-sequential identifiers | [`docs/ulid-url-obfuscation.md`](docs/ulid-url-obfuscation.md) |
+| 🔗 **WalletConnect v2** | ✅ Live | Mobile wallet support (MetaMask, Trust Wallet) with deep linking | [`docs/walletconnect-troubleshooting.md`](docs/walletconnect-troubleshooting.md) |
+| 📊 **Weighted-Average Pricing** | ✅ Live | Accurate portfolio valuation with profit/loss calculations | [`docs/features/`](docs/features/) |
+| 💬 **WhatsApp-Style Chat** | ✅ Live | Real-time messaging, media sharing, groups (Pusher-powered) | [`docs/features/CHAT_SYSTEM_IMPLEMENTATION.md`](docs/features/CHAT_SYSTEM_IMPLEMENTATION.md) |
+| 🤝 **Reseller Program** | ✅ Live | 10% commission, KYC-approved, custom pricing | [`docs/features/RESELLER_SYSTEM_IMPLEMENTATION.md`](docs/features/RESELLER_SYSTEM_IMPLEMENTATION.md) |
+| 💳 **Crypto Payments** | ✅ Live | USDT (TRC20/ERC20/BEP20), Bitcoin, automated monitoring | [`docs/crypto-setup.md`](docs/crypto-setup.md) |
+| 🆔 **KYC Verification** | ✅ Live | Document upload, admin approval workflow | [`docs/security.md`](docs/security.md) |
+| 🔒 **2FA Authentication** | ✅ Live | TOTP-based 2FA for admin users (Laravel Fortify) | [`docs/admin-2fa.md`](docs/admin-2fa.md) |
+
+---
+
+## 🏗️ System Architecture
+
+```mermaid
+graph TD
+    A[🌐 Frontend Layer] --> B[Blade Templates]
+    A --> C[TailwindCSS + Alpine.js]
+    A --> D[Chart.js]
+    
+    B --> E[⚙️ Backend Layer]
+    C --> E
+    D --> E
+    
+    E --> F[Laravel 10 Framework]
+    F --> G[Fortify 2FA]
+    F --> H[Eloquent ORM]
+    F --> I[Service Layer]
+    
+    G --> J[🔐 Security Layer]
+    H --> J
+    I --> J
+    
+    J --> K[ULID Obfuscation]
+    J --> L[CSRF Protection]
+    J --> M[Rate Limiting]
+    
+    F --> N[🌍 Web3 Layer]
+    N --> O[WalletConnect v2]
+    N --> P[Multi-network Support]
+    P --> Q[USDT TRC20/ERC20/BEP20]
+    P --> R[Bitcoin Network]
+    
+    F --> S[💬 Real-time Layer]
+    S --> T[Pusher Broadcasting]
+    T --> U[Chat System]
+    T --> V[Game Price Updates]
+    
+    F --> W[💾 Database Layer]
+    W --> X[MySQL/MariaDB]
+    X --> Y[40+ Migrations]
+    X --> Z[Game Sessions]
+    X --> AA[Chat Messages]
+    
+    style A fill:#FF6B6B,stroke:#fff,stroke-width:2px,color:#fff
+    style E fill:#06D6A0,stroke:#fff,stroke-width:2px,color:#fff
+    style J fill:#118AB2,stroke:#fff,stroke-width:2px,color:#fff
+    style N fill:#3B99FC,stroke:#fff,stroke-width:2px,color:#fff
+    style S fill:#FF6B6B,stroke:#fff,stroke-width:2px,color:#fff
+    style W fill:#06D6A0,stroke:#fff,stroke-width:2px,color:#fff
+```
+
+---
+
+## 🤝 Reseller Program Spotlight
+
+<!-- RESELLER SPOTLIGHT -->
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Status-Live-4ECDC4?style=for-the-badge" alt="Status" />
-  <img src="https://img.shields.io/badge/KYC-Approved-FF6B6B?style=for-the-badge" alt="KYC" />
-  <img src="https://img.shields.io/badge/Backed+By-Mark+Properties-95E1D3?style=for-the-badge" alt="Mark Properties" />
-  <img src="https://img.shields.io/badge/License-Proprietary-red?style=for-the-badge" alt="License" />
+
+### 🎖️ Approved Reseller Status
+
+| **Reseller ULID** | **KYC Status** | **Commission Rate** | **Markup** | **Status** |
+|-------------------|----------------|---------------------|------------|------------|
+| `01KBYBTN5T9WEASCFAES1N57HA` | ✅ Verified | 10% on approved payments | 5% on buy requests | 🟢 Active |
+
+**Benefits:**
+- 💰 **10% Commission** on all approved crypto payments from referred users
+- 📈 **5% Markup** on buy-from-reseller requests
+- 🎯 **Custom Pricing** — Set your own coin prices
+- 👥 **User Management** — Manage your referred users
+- 📊 **Analytics Dashboard** — Track earnings and performance
+- ✅ **KYC Verified** — Professional reseller status
+
+**Apply Now:** [Become a Reseller](https://rwamp.io/become-partner) | **Login:** [Reseller Dashboard](https://rwamp.io/dashboard/reseller)
+
 </p>
 
 ---
 
-## 🎯 Trust Signals
+## 🗺️ Development Roadmap
 
-**RWAMP** is a production-ready real estate tokenization platform backed by **Mark Properties**, operating in Dubai, Pakistan, and Saudi Arabia. The platform enables secure, transparent investment in real estate assets through blockchain technology.
-
-- ✅ **KYC-Compliant**: Full Know Your Customer verification system
-- ✅ **Live Production**: Fully operational with real transactions
-- ✅ **Security-First**: 2FA, ULID obfuscation, CSRF protection, rate limiting
-- ✅ **Multi-Market**: Active operations in Dubai, Pakistan, Saudi Arabia
-- ✅ **Reseller Program**: Live commission system with ULID: `01KBYBTN5T9WEASCFAES1N57HA`
-
----
-
-## 🚀 Key Features (Live & Production-Ready)
-
-### 🎮 Trading Game System
-**Real-time price engine with PIN-protected trading sessions**
-
-- Dynamic price calculations using Binance BTC/USD + USD/PKR rates
-- Game sessions with 4-digit PIN protection and 3-attempt lockout
-- Buy/sell simulation with spread, fees, and spread revenue
-- Real-time price history charts (Chart.js)
-- Automatic price history pruning for performance
-- Game state recovery for stuck sessions
-
-📖 **Documentation**: [`docs/features/GAME_FEATURE_IMPLEMENTATION.md`](docs/features/GAME_FEATURE_IMPLEMENTATION.md)
-
-### 🔐 ULID-Based URL Obfuscation
-**Enhanced security through non-sequential identifiers**
-
-- Replaces numeric IDs in 5 admin route groups (`/a/p/`, `/a/u/`, `/a/ap/`, `/a/w/`, `/a/g/`)
-- Prevents enumeration attacks on sensitive resources
-- Shorter, user-friendly URLs (e.g., `/a/u/01KBYBTN5T9WEASCFAES1N57HA`)
-- Backward compatibility with numeric ID redirects
-- Automatic ULID generation via `HasUlid` trait
-
-📖 **Documentation**: [`docs/ulid-url-obfuscation.md`](docs/ulid-url-obfuscation.md)
-
-### 🔗 WalletConnect v2 Integration
-**Mobile wallet support with deep link handling**
-
-- MetaMask, Trust Wallet, and WalletConnect-compatible wallets
-- Mobile deep link support for seamless payment returns
-- Connection status polling API
-- Real-time wallet connection tracking
-- QR code generation for all supported networks
-
-📖 **Documentation**: [`docs/walletconnect-troubleshooting.md`](docs/walletconnect-troubleshooting.md)
-
-### 📊 Weighted-Average Portfolio Pricing
-**Accurate profit/loss calculations**
-
-- Weighted average purchase price tracking per user
-- Real-time portfolio valuation
-- Accurate profit/loss calculations
-- JavaScript helper module for client-side price updates
-- Enhanced `PriceHelper` service with rate caching
-
-### 💬 WhatsApp-Style Chat System
-**Real-time messaging with Pusher integration**
-
-- Private and group chat support
-- Media file sharing (images, documents)
-- Voice message support
-- Message reactions and read receipts
-- Chat pinning, muting, and archiving
-- Real-time updates via Pusher broadcasting
-
-📖 **Documentation**: [`docs/features/CHAT_SYSTEM_IMPLEMENTATION.md`](docs/features/CHAT_SYSTEM_IMPLEMENTATION.md)
-
-### 🤝 Live Reseller Program
-**Commission-based reseller system with KYC approval**
-
-- 10% default commission on approved payments
-- 5% markup on buy-from-reseller requests
-- Referral code system (RSL{id} format)
-- Reseller dashboard with user management
-- Payment approval workflow
-- Custom coin price setting per reseller
-
-**Status**: ✅ Approved Reseller ULID: `01KBYBTN5T9WEASCFAES1N57HA` | KYC: ✅ Verified
-
-📖 **Documentation**: [`docs/features/RESELLER_SYSTEM_IMPLEMENTATION.md`](docs/features/RESELLER_SYSTEM_IMPLEMENTATION.md)
+```mermaid
+gantt
+    title RWAMP Development Roadmap
+    dateFormat  YYYY-MM-DD
+    section Core Infrastructure
+    Authentication & 2FA           :done, auth, 2024-01-01, 2024-03-01
+    Crypto Payment System          :done, crypto, 2024-02-01, 2024-04-01
+    Reseller Program               :done, reseller, 2024-03-01, 2024-05-01
+    KYC Verification               :done, kyc, 2024-04-01, 2024-06-01
+    section Advanced Features
+    Trading Game System            :done, game, 2024-11-01, 2025-01-27
+    ULID URL Obfuscation           :done, ulid, 2024-12-01, 2025-01-27
+    WalletConnect v2               :done, wallet, 2024-12-01, 2025-01-27
+    Chat System                    :done, chat, 2024-12-01, 2025-01-27
+    Weighted-Average Pricing       :done, pricing, 2025-01-01, 2025-01-27
+    section Future Enhancements
+    Mobile Application             :active, mobile, 2025-02-01, 2025-06-01
+    Advanced Analytics             :future, analytics, 2025-03-01, 2025-05-01
+    Multi-language Support         :future, i18n, 2025-04-01, 2025-07-01
+    API v2                         :future, api2, 2025-05-01, 2025-08-01
+```
 
 ---
 
-## 🛠️ Technology Stack
-
-### Backend
-- **Laravel 10.x** - PHP framework
-- **PHP 8.2+** - Modern PHP features
-- **MySQL/MariaDB** - Database
-- **Laravel Fortify** - Authentication & 2FA
-- **Laravel Sanctum** - API authentication
-- **Guzzle HTTP** - API client for blockchain monitoring
-- **Endroid QR Code** - QR code generation
-
-### Frontend
-- **Blade Templates** - Server-side rendering
-- **TailwindCSS 3.3+** - Utility-first CSS
-- **Alpine.js 3.13+** - Lightweight reactivity
-- **Vite 4.0+** - Build tool
-- **Chart.js 4.5.1** - Price history charts
-
-### Web3 & Crypto
-- **WalletConnect v2** - Mobile wallet connections
-- **Multi-network support**: USDT (TRC20/ERC20/BEP20), Bitcoin
-- **Blockchain APIs**: Etherscan, TronGrid, Alchemy, Blockstream
-
-### Security
-- **2FA (TOTP)** - Laravel Fortify
-- **ULID Obfuscation** - Non-sequential identifiers
-- **CSRF Protection** - Laravel built-in
-- **Rate Limiting** - Login (5/min), Forms (3-6/hour)
-- **Honeypot Fields** - Bot protection
-- **Security Headers** - CSP, X-Frame-Options, Referrer-Policy
-- **reCAPTCHA v3** - Form validation
-
----
-
-## 👥 User Roles & Access
-
-| Role | Dashboard | Key Features | Access Level |
-|------|-----------|--------------|--------------|
-| **Investor** | `/dashboard/investor` | Purchase tokens, view balance, transaction history, KYC submission, withdrawal requests | Standard user access |
-| **Reseller** | `/dashboard/reseller` | All investor features + sell tokens, manage users, approve payments, commission tracking, custom pricing | Enhanced access with commission |
-| **Admin** | `/dashboard/admin` | Full system access, user management, KYC approval, payment approval, price management, analytics | Full access (2FA required) |
-
-### Security Requirements
-
-- **Admin**: 2FA mandatory via Laravel Fortify TOTP
-- **Reseller**: KYC approval required
-- **Investor**: KYC optional (currently disabled for purchase flow)
-- **All Users**: Email verification required
-
----
-
-## 🚀 Quick Start (Local Development)
+## 🚀 Quick Start
 
 ### Prerequisites
 
@@ -171,24 +184,24 @@
 - MySQL 5.7+ or MariaDB
 - Git
 
-### Installation Steps
+### Installation
 
 ```bash
-# 1. Clone the repository
+# Clone the repository
 git clone https://github.com/markprop/RWAMP.git
 cd RWAMP
 
-# 2. Install PHP dependencies
+# Install PHP dependencies
 composer install
 
-# 3. Install Node.js dependencies
+# Install Node.js dependencies
 npm install
 
-# 4. Environment setup
+# Environment setup
 cp .env.example .env
 php artisan key:generate
 
-# 5. Configure database in .env
+# Configure database in .env
 # DB_CONNECTION=mysql
 # DB_HOST=127.0.0.1
 # DB_PORT=3306
@@ -196,30 +209,23 @@ php artisan key:generate
 # DB_USERNAME=your_username
 # DB_PASSWORD=your_password
 
-# 6. Run migrations
+# Run migrations
 php artisan migrate
 
-# 7. Seed database (optional - creates admin user)
+# Seed database (optional - creates admin user)
 php artisan db:seed
 
-# 8. Build assets
+# Build assets
 npm run build
 
-# 9. Start development server
+# Start development server
 php artisan serve
 
-# 10. In another terminal, start Vite dev server (for hot reload)
+# In another terminal, start Vite dev server (for hot reload)
 npm run dev
 ```
 
 Visit `http://localhost:8000` to access the application.
-
-### Default Admin Credentials (After Seeding)
-
-- **Email**: `admin@rwamp.com`
-- **Password**: Check `database/seeders/AdminUserSeeder.php`
-
-**⚠️ Important**: Change default credentials immediately in production!
 
 ---
 
@@ -232,14 +238,14 @@ Visit `http://localhost:8000` to access the application.
 - **Password Reset**: Secure token-based reset flow
 - **Role-Based Access Control**: Middleware-protected routes
 
-### URL Security
+### URL Security (ULID Obfuscation)
 
-- **ULID Obfuscation**: 5 admin route groups use ULID instead of numeric IDs
-  - `/a/p/{ulid}` - Crypto payments
-  - `/a/u/{ulid}` - User management
-  - `/a/ap/{ulid}` - Reseller applications
-  - `/a/w/{ulid}` - Withdrawal requests
-  - `/a/g/settings` - Game settings
+- **5 Admin Route Groups** use ULID instead of numeric IDs:
+  - `/a/p/{ulid}` — Crypto payments
+  - `/a/u/{ulid}` — User management
+  - `/a/ap/{ulid}` — Reseller applications
+  - `/a/w/{ulid}` — Withdrawal requests
+  - `/a/g/settings` — Game settings
 
 ### Protection Mechanisms
 
@@ -259,39 +265,45 @@ Visit `http://localhost:8000` to access the application.
 
 ---
 
-## 💳 Crypto Payment System
+## 👥 User Roles & Access
+
+| Role | Dashboard | Key Features | Security Requirements |
+|------|-----------|--------------|----------------------|
+| **Investor** | `/dashboard/investor` | Purchase tokens, view balance, transaction history, KYC submission, withdrawal requests | Email verification |
+| **Reseller** | `/dashboard/reseller` | All investor features + sell tokens, manage users, approve payments, commission tracking, custom pricing | KYC approval required |
+| **Admin** | `/dashboard/admin` | Full system access, user management, KYC approval, payment approval, price management, analytics | 2FA mandatory |
+
+---
+
+## 💳 Crypto Payment Flow
+
+```mermaid
+graph LR
+    A[👤 User Initiates Purchase] --> B[📱 QR Code Generated]
+    B --> C[💸 User Sends Crypto]
+    C --> D[🔍 Blockchain Monitoring]
+    D --> E{Payment Detected?}
+    E -->|Yes| F[👨‍💼 Admin Approval]
+    E -->|No| D
+    F --> G{Approved?}
+    G -->|Yes| H[✅ Tokens Credited]
+    G -->|No| I[❌ Payment Rejected]
+    H --> J[📊 Transaction Logged]
+    H --> K[💰 Reseller Commission]
+    
+    style A fill:#FF6B6B,stroke:#fff,stroke-width:2px,color:#fff
+    style B fill:#06D6A0,stroke:#fff,stroke-width:2px,color:#fff
+    style C fill:#118AB2,stroke:#fff,stroke-width:2px,color:#fff
+    style F fill:#FF6B6B,stroke:#fff,stroke-width:2px,color:#fff
+    style H fill:#06D6A0,stroke:#fff,stroke-width:2px,color:#fff
+    style K fill:#118AB2,stroke:#fff,stroke-width:2px,color:#fff
+```
 
 ### Supported Networks
 
 - **USDT**: TRC20, ERC20, BEP20
 - **Bitcoin**: Native Bitcoin network
-- **WalletConnect v2**: All networks via mobile wallets
-
-### Payment Flow
-
-```mermaid
-graph TD
-    A[User Initiates Purchase] --> B[System Generates QR Code]
-    B --> C[User Sends Crypto Payment]
-    C --> D[System Monitors Blockchain]
-    D --> E{Payment Detected?}
-    E -->|Yes| F[Admin Approval Required]
-    E -->|No| D
-    F --> G{Admin Approves?}
-    G -->|Yes| H[Tokens Credited to Wallet]
-    G -->|No| I[Payment Rejected]
-    H --> J[Transaction Logged]
-```
-
-### Features
-
-- ✅ Automated blockchain transaction monitoring
-- ✅ QR code generation for all networks
-- ✅ WalletConnect integration for mobile payments
-- ✅ Multi-network support (TRC20/ERC20/BEP20/BTC)
-- ✅ Manual admin approval workflow
-- ✅ Transaction history tracking
-- ✅ Commission calculation for resellers
+- **WalletConnect v2**: All networks via mobile wallets (MetaMask, Trust Wallet)
 
 ---
 
@@ -333,111 +345,28 @@ See [`docs/README.md`](docs/README.md) for complete documentation index.
 
 ---
 
-## 🗺️ Roadmap
+## 🛠️ Technology Stack
 
-```mermaid
-gantt
-    title RWAMP Development Roadmap
-    dateFormat  YYYY-MM-DD
-    section Core Features
-    Authentication & 2FA           :done, auth, 2024-01-01, 2024-03-01
-    Crypto Payment System          :done, crypto, 2024-02-01, 2024-04-01
-    Reseller Program               :done, reseller, 2024-03-01, 2024-05-01
-    KYC Verification               :done, kyc, 2024-04-01, 2024-06-01
-    section Advanced Features
-    Trading Game System            :done, game, 2024-11-01, 2025-01-27
-    ULID URL Obfuscation           :done, ulid, 2024-12-01, 2025-01-27
-    WalletConnect v2               :done, wallet, 2024-12-01, 2025-01-27
-    Chat System                    :done, chat, 2024-12-01, 2025-01-27
-    section Future Enhancements
-    Mobile App                     :active, mobile, 2025-02-01, 2025-06-01
-    Advanced Analytics             :future, analytics, 2025-03-01, 2025-05-01
-    Multi-language Support         :future, i18n, 2025-04-01, 2025-07-01
-```
+### Backend
+- **Laravel 10.x** — PHP framework
+- **PHP 8.2+** — Modern PHP features
+- **MySQL/MariaDB** — Database
+- **Laravel Fortify** — Authentication & 2FA
+- **Laravel Sanctum** — API authentication
+- **Guzzle HTTP** — API client for blockchain monitoring
+- **Endroid QR Code** — QR code generation
 
----
+### Frontend
+- **Blade Templates** — Server-side rendering
+- **TailwindCSS 3.3+** — Utility-first CSS
+- **Alpine.js 3.13+** — Lightweight reactivity
+- **Vite 4.0+** — Build tool
+- **Chart.js 4.5.1** — Price history charts
 
-## 🤝 Reseller Program
-
-**Join the RWAMP Reseller Program and earn commissions on every approved transaction.**
-
-### Benefits
-
-- 💰 **10% Commission** on all approved crypto payments from your referred users
-- 📈 **5% Markup** on buy-from-reseller requests
-- 🎯 **Custom Pricing** - Set your own coin prices
-- 👥 **User Management** - Manage your referred users
-- 📊 **Analytics Dashboard** - Track your earnings and performance
-- ✅ **KYC Verified** - Professional reseller status
-
-### How to Apply
-
-1. Visit [`/become-partner`](https://rwamp.net/become-partner)
-2. Fill out the reseller application form
-3. Complete KYC verification
-4. Wait for admin approval
-5. Start earning commissions!
-
-**Already a Reseller?** [Login to Dashboard](https://rwamp.net/dashboard/reseller)
-
----
-
-## 🏗️ Project Structure
-
-```
-rwamp-laravel/
-├── app/
-│   ├── Actions/Fortify/          # Authentication actions
-│   ├── Console/Commands/          # Artisan commands
-│   ├── Http/
-│   │   ├── Controllers/          # Application controllers
-│   │   │   ├── Admin/           # Admin controllers
-│   │   │   ├── Investor/        # Investor controllers
-│   │   │   ├── Reseller/        # Reseller controllers
-│   │   │   └── GameController.php
-│   │   └── Middleware/          # Custom middleware
-│   ├── Models/                   # Eloquent models
-│   ├── Services/                 # Business logic services
-│   └── Concerns/                 # Traits (HasUlid, etc.)
-├── config/                       # Configuration files
-├── database/
-│   ├── migrations/               # Database migrations
-│   └── seeders/                  # Database seeders
-├── docs/                         # Professional documentation
-├── public/                       # Public assets
-├── resources/
-│   ├── css/                      # Stylesheets
-│   ├── js/                       # JavaScript files
-│   └── views/                    # Blade templates
-│       ├── auth/                 # Authentication views
-│       ├── components/           # Reusable components
-│       ├── dashboard/            # Role-specific dashboards
-│       ├── game/                # Game system views
-│       └── pages/               # Public pages
-├── routes/                       # Route definitions
-└── storage/                      # Storage files
-```
-
----
-
-## 🚀 Deployment
-
-### Hostinger Shared Hosting
-
-Complete deployment guide available: [`docs/deployment/HOSTINGER_DEPLOYMENT_GUIDE.md`](docs/deployment/HOSTINGER_DEPLOYMENT_GUIDE.md)
-
-### Quick Deployment Checklist
-
-- [ ] Build production assets: `npm run build`
-- [ ] Optimize Laravel: `php artisan optimize`
-- [ ] Set `APP_ENV=production` and `APP_DEBUG=false`
-- [ ] Configure production database
-- [ ] Setup SSL certificate
-- [ ] Configure mail settings
-- [ ] Run migrations: `php artisan migrate`
-- [ ] Create storage symlink: `php artisan storage:link`
-- [ ] Setup cron jobs for scheduled tasks
-- [ ] Configure queue workers (if using queues)
+### Web3 & Crypto
+- **WalletConnect v2** — Mobile wallet connections
+- **Multi-network support**: USDT (TRC20/ERC20/BEP20), Bitcoin
+- **Blockchain APIs**: Etherscan, TronGrid, Alchemy, Blockstream
 
 ---
 
@@ -485,49 +414,24 @@ php artisan wallet:generate       # Generate missing wallets
 
 ---
 
-## 📊 System Architecture
+## 🚀 Deployment
 
-```mermaid
-graph TB
-    subgraph "Frontend"
-        A[Blade Templates] --> B[TailwindCSS]
-        A --> C[Alpine.js]
-        A --> D[Chart.js]
-    end
-    
-    subgraph "Backend"
-        E[Laravel 10] --> F[Fortify 2FA]
-        E --> G[Eloquent ORM]
-        E --> H[Service Layer]
-    end
-    
-    subgraph "Security"
-        F --> I[ULID Obfuscation]
-        F --> J[CSRF Protection]
-        F --> K[Rate Limiting]
-    end
-    
-    subgraph "Web3"
-        L[WalletConnect v2] --> M[Multi-network Support]
-        M --> N[USDT TRC20/ERC20/BEP20]
-        M --> O[Bitcoin]
-    end
-    
-    subgraph "Database"
-        G --> P[MySQL/MariaDB]
-        P --> Q[40+ Migrations]
-    end
-    
-    subgraph "Real-time"
-        R[Pusher] --> S[Chat System]
-        R --> T[Game Price Updates]
-    end
-    
-    A --> E
-    E --> L
-    E --> P
-    E --> R
-```
+### Hostinger Shared Hosting
+
+Complete deployment guide available: [`docs/deployment/HOSTINGER_DEPLOYMENT_GUIDE.md`](docs/deployment/HOSTINGER_DEPLOYMENT_GUIDE.md)
+
+### Quick Deployment Checklist
+
+- [ ] Build production assets: `npm run build`
+- [ ] Optimize Laravel: `php artisan optimize`
+- [ ] Set `APP_ENV=production` and `APP_DEBUG=false`
+- [ ] Configure production database
+- [ ] Setup SSL certificate
+- [ ] Configure mail settings
+- [ ] Run migrations: `php artisan migrate`
+- [ ] Create storage symlink: `php artisan storage:link`
+- [ ] Setup cron jobs for scheduled tasks
+- [ ] Configure queue workers (if using queues)
 
 ---
 
@@ -535,8 +439,9 @@ graph TB
 
 ### Contact Information
 
-- **Website**: [rwamp.net](https://rwamp.net)
-- **Email**: info@rwamp.net
+- **Website**: [rwamp.io](https://rwamp.io)
+- **Email**: info@rwamp.io
+- **Phone**: +92 370 1346038
 - **Support**: Available through dashboard chat system
 
 ### Documentation
@@ -560,6 +465,14 @@ This project is **proprietary software** owned by **RWAMP** and backed by **Mark
 [![Star History Chart](https://api.star-history.com/svg?repos=markprop/RWAMP&type=Date)](https://star-history.com/#markprop/RWAMP&Date)
 
 ---
+
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient:FF6B6B,06D6A0&height=100&section=footer&text=Building+the+Future+of+Real+Estate+Tokenization&fontSize=24&fontColor=fff&animation=twinkling&fontAlignY=30" alt="Animated Footer" />
+</p>
+
+<p align="center">
+  <img src="https://rwamp.net/assets/logo-3d.png" alt="RWAMP 3D Logo" width="100" height="100" />
+</p>
 
 <p align="center">
   <strong>Made with ❤️ by the RWAMP Team</strong>
