@@ -2,17 +2,17 @@
 <!-- Production README - Last Updated: January 27, 2025 -->
 
 <p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=rect&color=gradient:FF6B6B,06D6A0&height=250&section=header&text=✨&fontSize=120&fontColor=fff&animation=twinkling&fontAlignY=50" alt="3D Frame Top" />
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient:FF6B6B,06D6A0,118AB2&height=280&section=header&text=✨&fontSize=140&fontColor=fff&animation=twinkling&fontAlignY=50" alt="3D Glow Frame" />
 </p>
 
 <p align="center">
   <a href="https://rwamp.io">
-    <img src="https://raw.githubusercontent.com/markprop/RWAMP/main/public/images/logo.png" alt="RWAMP 3D Logo" width="220" height="220" />
+    <img src="https://raw.githubusercontent.com/markprop/RWAMP/main/public/images/logo.png" alt="RWAMP 3D Logo" width="240" height="240" />
   </a>
 </p>
 
 <p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=rect&color=gradient:06D6A0,118AB2&height=250&section=header&text=✨&fontSize=120&fontColor=fff&animation=twinkling&fontAlignY=50" alt="3D Frame Bottom" />
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient:118AB2,06D6A0,FF6B6B&height=280&section=header&text=✨&fontSize=140&fontColor=fff&animation=twinkling&fontAlignY=50" alt="3D Shadow Frame" />
 </p>
 
 <p align="center">
