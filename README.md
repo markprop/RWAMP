@@ -2,7 +2,17 @@
 <!-- Production README - Last Updated: January 27, 2025 -->
 
 <p align="center">
-  <img src="https://rwamp.net/assets/logo-3d.png" alt="RWAMP 3D Logo" width="200" height="200" />
+  <img src="https://capsule-render.vercel.app/api?type=rect&color=gradient:FF6B6B,06D6A0&height=250&section=header&text=✨&fontSize=120&fontColor=fff&animation=twinkling&fontAlignY=50" alt="3D Frame Top" />
+</p>
+
+<p align="center">
+  <a href="https://rwamp.io">
+    <img src="https://raw.githubusercontent.com/markprop/RWAMP/main/public/images/logo.png" alt="RWAMP 3D Logo" width="220" height="220" />
+  </a>
+</p>
+
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=rect&color=gradient:06D6A0,118AB2&height=250&section=header&text=✨&fontSize=120&fontColor=fff&animation=twinkling&fontAlignY=50" alt="3D Frame Bottom" />
 </p>
 
 <p align="center">
@@ -440,7 +450,7 @@ Complete deployment guide available: [`docs/deployment/HOSTINGER_DEPLOYMENT_GUID
 ### Contact Information
 
 - **Website**: [rwamp.io](https://rwamp.io)
-- **Email**: info@rwamp.io
+- **Email**: info@rwamp.net
 - **Phone**: +92 370 1346038
 - **Support**: Available through dashboard chat system
 
@@ -471,7 +481,9 @@ This project is **proprietary software** owned by **RWAMP** and backed by **Mark
 </p>
 
 <p align="center">
-  <img src="https://rwamp.net/assets/logo-3d.png" alt="RWAMP 3D Logo" width="100" height="100" />
+  <a href="https://rwamp.io">
+    <img src="https://raw.githubusercontent.com/markprop/RWAMP/main/public/images/logo.png" alt="RWAMP Logo" width="100" height="100" />
+  </a>
 </p>
 
 <p align="center">
