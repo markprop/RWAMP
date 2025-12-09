@@ -1,0 +1,18 @@
+refactor: enhance admin controllers with ULID support and improved functionality
+
+This commit updates admin controllers to use ULID-based routing and improves overall functionality.
+
+Admin Controller Updates:
+- AdminCryptoPaymentController: ULID routing, improved payment management, better error handling
+- AdminResellerApplicationController: ULID support, enhanced application workflow
+- AdminSellController: Improved sell functionality, better user search, OTP integration
+- AdminUserController: ULID routing, enhanced user management, wallet assignment
+- AdminController: Improved dashboard statistics and data presentation
+
+Improvements:
+- Consistent ULID usage for all admin routes
+- Better error handling and validation
+- Enhanced user experience with improved feedback
+- More efficient database queries
+- Better security with proper authorization checks
+

@@ -1,0 +1,10 @@
+chore: add PowerShell scripts for Git operations
+
+This commit adds PowerShell scripts to automate Git commit and push operations.
+
+Scripts:
+- git-commit-and-push.ps1: Automated commit and push script
+- push-to-github.ps1: GitHub push automation script
+
+These scripts help streamline the development workflow and make it easier to push changes to GitHub.
+

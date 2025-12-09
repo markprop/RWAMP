@@ -1,0 +1,18 @@
+feat: add game maintenance commands and scheduled tasks
+
+This commit adds Artisan commands for game system maintenance and updates the scheduler to run automated tasks.
+
+New Commands:
+- PruneGamePriceHistory: Removes old price history records to maintain database performance
+- ResetStuckGameStates: Resets game sessions that are stuck in invalid states
+- SyncMissingUsers: Synchronizes user data and ensures consistency
+
+Scheduled Tasks:
+- Game price history pruning (daily)
+- Stuck game state recovery (hourly)
+- Crypto payment monitoring (every 5 minutes)
+- Exchange rate updates (hourly)
+- Missing wallet generation (daily)
+
+These commands help maintain system health and automate routine maintenance tasks.
+

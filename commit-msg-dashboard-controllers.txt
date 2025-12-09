@@ -1,0 +1,16 @@
+refactor: enhance dashboard controllers with improved statistics and UX
+
+This commit improves dashboard functionality for investors, resellers, and public pages.
+
+Dashboard Improvements:
+- InvestorDashboardController: Enhanced portfolio display, better token balance calculations, improved transaction history
+- ResellerDashboardController: Better statistics, improved user management view, enhanced payment tracking
+- PageController: Improved public pages, better SEO, enhanced content presentation
+
+Features:
+- Weighted average price calculations for accurate portfolio values
+- Better data visualization
+- Improved loading states and error handling
+- Enhanced user experience with better feedback
+- More comprehensive statistics and analytics
+

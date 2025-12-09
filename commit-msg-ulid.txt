@@ -1,0 +1,24 @@
+feat: implement ULID-based URL obfuscation for sensitive admin routes
+
+This commit adds ULID (Universally Unique Lexicographically Sortable Identifier) support for obfuscating sensitive admin routes, replacing numeric IDs with shorter, non-sequential identifiers.
+
+Features:
+- HasUlid trait for automatic ULID generation on models
+- ULID columns added to crypto_payments, users, reseller_applications, withdraw_requests tables
+- BackfillUlids command to migrate existing records
+- SyncMissingUsers command for user synchronization
+- Shortened admin routes using ULID prefixes (e.g., /a/p/{ulid}, /a/u/{ulid})
+
+Benefits:
+- Prevents enumeration attacks on sensitive resources
+- Shorter, more user-friendly URLs
+- Maintains chronological ordering
+- Backward compatibility with numeric IDs via redirects
+
+Affected Routes:
+- Admin crypto payments: /a/p/{payment}/details
+- Admin users: /a/u/{user}/details
+- Admin applications: /a/ap/{application}/details
+- Admin withdrawals: /a/w/{withdrawal}
+- Admin game settings: /a/g/settings
+

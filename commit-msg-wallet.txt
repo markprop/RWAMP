@@ -1,0 +1,24 @@
+feat: add WalletConnect integration and crypto payment automation
+
+This commit implements WalletConnect support for mobile wallet connections and enhances the crypto payment system with automated monitoring and wallet management.
+
+Features:
+- WalletConnectController for handling wallet connection flows
+- Deep link support for mobile wallet returns
+- Wallet connection status polling API
+- GenerateMissingWallets command for bulk wallet address generation
+- MonitorCryptoPayments command for automated blockchain transaction monitoring
+- UpdateExchangeRate command for fetching current exchange rates
+
+WalletConnect Integration:
+- Support for MetaMask, Trust Wallet, and other WalletConnect-compatible wallets
+- Mobile deep link handling
+- Connection status tracking
+- Seamless payment flow integration
+
+Automation:
+- Automated blockchain transaction monitoring
+- Automatic payment verification
+- Exchange rate updates
+- Wallet address generation for new users
+

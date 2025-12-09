@@ -1,0 +1,15 @@
+feat: enhance price management system with weighted average calculations
+
+This commit improves the price management system to calculate portfolio values using weighted average purchase prices and adds JavaScript helper for real-time price updates.
+
+Features:
+- Weighted average purchase price calculation for accurate portfolio valuation
+- Real-time price helper JavaScript module
+- Enhanced crypto configuration with additional settings
+- PriceHelper improvements for better rate fetching and calculations
+
+Benefits:
+- More accurate token balance calculations
+- Better user experience with real-time price updates
+- Improved price tracking and history management
+

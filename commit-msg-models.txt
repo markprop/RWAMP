@@ -1,0 +1,17 @@
+refactor: enhance models with ULID support and improved relationships
+
+This commit updates core models to support ULID obfuscation and improves model relationships and methods.
+
+Model Updates:
+- User: Added ULID support, improved wallet generation, enhanced game methods
+- CryptoPayment: ULID support, better status tracking, improved relationships
+- Transaction: Enhanced transaction history, better status management
+- ResellerApplication: ULID support, improved application workflow
+- WithdrawRequest: ULID support, enhanced withdrawal status tracking
+
+Improvements:
+- Consistent ULID usage across all routed models
+- Better relationship definitions
+- Enhanced query scopes
+- Improved data validation and accessors
+

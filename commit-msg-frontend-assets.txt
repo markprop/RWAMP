@@ -1,0 +1,20 @@
+feat: update frontend assets and dependencies
+
+This commit updates frontend assets, CSS, and JavaScript dependencies.
+
+Frontend Updates:
+- app.css: Enhanced styling, better component styles, improved responsive design
+- intlTelInput.css: Added international telephone input styling
+- app.js: Enhanced JavaScript functionality, better Alpine.js components, improved interactivity
+- price-helper.js: New JavaScript module for real-time price updates
+
+Dependencies:
+- package.json: Updated dependencies for better compatibility
+- package-lock.json: Locked dependency versions
+
+Improvements:
+- Better frontend performance
+- Enhanced user interactions
+- Improved responsive design
+- Better code organization
+

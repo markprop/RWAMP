@@ -1,0 +1,16 @@
+refactor: enhance email templates with improved design and content
+
+This commit updates all email templates with better design and more informative content.
+
+Email Template Updates:
+- Verify OTP: Enhanced OTP email with better formatting
+- Reseller approved/rejected: Improved notification emails
+- Withdrawal emails: Enhanced withdrawal status notifications (approved, rejected, completed, updated, deleted)
+
+Improvements:
+- Better email design and formatting
+- More informative content
+- Improved readability
+- Better mobile email client support
+- Enhanced branding consistency
+

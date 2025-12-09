@@ -1,0 +1,15 @@
+chore: add additional assets and configuration files
+
+This commit adds supporting assets and configuration files.
+
+Assets:
+- Logo image for branding
+- Modal components for better UI interactions
+- Vendor views for third-party integrations
+
+Configuration:
+- cache.php: Cache configuration for better performance
+- logging.php: Enhanced logging configuration
+
+These files support the overall application functionality and improve user experience.
+

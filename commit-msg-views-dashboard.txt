@@ -1,0 +1,23 @@
+refactor: enhance dashboard views with improved UI and ULID support
+
+This commit updates all dashboard views with better UI/UX and ULID-based routing support.
+
+Dashboard View Updates:
+- Admin dashboard: Enhanced statistics display, ULID routing, better data visualization
+- Investor dashboard: Improved portfolio display, better token balance presentation
+- Reseller dashboard: Enhanced user management, better payment tracking, improved statistics
+- All dashboards: Better responsive design, improved loading states, enhanced error handling
+
+Component Updates:
+- Admin sidebar: Better navigation, improved active state handling
+- Investor sidebar: Enhanced navigation for investor-specific features
+- Reseller sidebar: Improved reseller-specific navigation
+- Price tag component: Better price display with formatting
+
+Improvements:
+- Consistent ULID usage in all admin routes
+- Better mobile responsiveness
+- Improved accessibility
+- Enhanced user feedback and error messages
+- Better data presentation and visualization
+

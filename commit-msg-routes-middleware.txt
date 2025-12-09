@@ -1,0 +1,20 @@
+refactor: update routes and middleware configuration
+
+This commit updates route definitions and middleware configuration to support new features.
+
+Route Updates:
+- Added game routes with proper middleware protection
+- Updated admin routes to use ULID-based routing
+- Enhanced API routes for WalletConnect and payment status
+- Improved route organization and grouping
+- Better backward compatibility routes
+
+Middleware Improvements:
+- SecurityHeaders: Enhanced security headers configuration
+- Updated middleware groups for better organization
+- Improved route protection with proper middleware stacking
+
+Broadcasting:
+- Updated channels configuration for real-time features
+- Better channel authorization
+

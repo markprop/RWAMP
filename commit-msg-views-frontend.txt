@@ -1,0 +1,27 @@
+refactor: improve frontend views with enhanced UX and modern design
+
+This commit enhances public-facing views, authentication pages, and reusable components.
+
+Authentication Views:
+- Login: Improved form validation, better error display, enhanced UX
+- Signup: Better registration flow, referral code integration, improved validation
+- Email verification: Enhanced OTP input, better user guidance
+- Profile: Improved profile management, better form handling
+- KYC: Enhanced document upload, better status display
+
+Public Pages:
+- Home: Improved hero section, better content presentation
+- About: Enhanced content layout
+- Contact: Better form design, improved validation
+- Purchase: Enhanced purchase flow, better payment options
+
+Components:
+- Navbar: Improved navigation, better mobile menu
+- Footer: Enhanced footer content
+- Hero section: Better call-to-action
+- Purchase modals: Enhanced payment flow, better user guidance
+- All components: Better responsive design, improved accessibility
+
+Layout:
+- App layout: Enhanced structure, better asset management, improved SEO
+

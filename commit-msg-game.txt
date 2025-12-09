@@ -1,0 +1,35 @@
+feat: implement comprehensive trading game system with real-time price engine
+
+This commit introduces a complete trading game system that allows KYC-approved users to simulate token trading with dynamic pricing.
+
+Features:
+- Real-time price engine with configurable volatility and update intervals
+- Game session management with PIN protection and state tracking
+- Buy/sell functionality with balance management
+- Price history tracking with automatic pruning
+- Game settings management for admins
+- Price charts using Chart.js
+- Game state validation and recovery mechanisms
+
+Technical Implementation:
+- GamePriceEngine service for price calculations
+- GameSession, GameTrade, GamePriceHistory, GameSetting models
+- EnsureNotInGame middleware for route protection
+- GameSettingsUpdated event for real-time updates
+- Database migrations for game tables
+- Game system settings seeder
+
+Routes:
+- /game - Game selection page
+- /game/trading - Main trading interface
+- /game/price - Real-time price API endpoint
+- /game/trade - Execute buy/sell trades
+- /game/history - View trading history
+- /a/g/settings - Admin game settings (ULID obfuscated)
+
+Security:
+- KYC approval required
+- Game PIN protection
+- Session state validation
+- Rate limiting on trade operations
+
