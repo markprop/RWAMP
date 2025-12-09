@@ -1,6 +1,8 @@
 <!-- RWAMP - The Currency of Real Estate Investments -->
 <!-- Production README - Last Updated: January 27, 2025 -->
 
+<a name="rwamp"></a>
+
 <p align="center">
   <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient:FF6B6B,06D6A0,118AB2&height=280&section=header&text=✨&fontSize=140&fontColor=fff&animation=twinkling&fontAlignY=50" alt="3D Glow Frame" />
 </p>
@@ -449,16 +451,22 @@ Complete deployment guide available: [`docs/deployment/HOSTINGER_DEPLOYMENT_GUID
 
 ### Contact Information
 
-- **Website**: [rwamp.io](https://rwamp.io)
-- **Email**: info@rwamp.net
-- **Phone**: +92 370 1346038
-- **Support**: Available through dashboard chat system
+| Method | Details | Action |
+|--------|---------|--------|
+| 🌐 **Website** | [rwamp.io](https://rwamp.io) | [Visit Website](https://rwamp.io) |
+| 📧 **Email** | info@rwamp.net | [Send Email](mailto:info@rwamp.net) |
+| 📱 **Phone** | +92 370 1346038 | [Call Now](tel:+923701346038) |
+| 💬 **Live Chat** | Dashboard chat system | Available 24/7 |
 
 ### Documentation
 
-- **Full Documentation**: [`docs/README.md`](docs/README.md)
-- **Troubleshooting**: [`docs/fixes/`](docs/fixes/)
-- **API Reference**: [`docs/api/API_DOCUMENTATION.md`](docs/api/API_DOCUMENTATION.md)
+| Resource | Description | Link |
+|----------|-------------|------|
+| 📚 **Full Documentation** | Complete project documentation | [`docs/README.md`](docs/README.md) |
+| 🔧 **Troubleshooting** | Common issues and fixes | [`docs/fixes/`](docs/fixes/) |
+| 🔌 **API Reference** | Complete API documentation | [`docs/api/API_DOCUMENTATION.md`](docs/api/API_DOCUMENTATION.md) |
+| 🚀 **Deployment Guide** | Production deployment instructions | [`docs/deployment/`](docs/deployment/) |
+| 🎮 **Features** | Feature implementation guides | [`docs/features/`](docs/features/) |
 
 ---
 
@@ -472,7 +480,23 @@ This project is **proprietary software** owned by **RWAMP** and backed by **Mark
 
 ## ⭐ Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=markprop/RWAMP&type=Date)](https://star-history.com/#markprop/RWAMP&Date)
+<p align="center">
+  <a href="https://star-history.com/#markprop/RWAMP&Date" target="_blank">
+    <img src="https://api.star-history.com/svg?repos=markprop/RWAMP&type=Date" alt="Star History Chart" width="800" height="300" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://star-history.com/#markprop/RWAMP&Date" target="_blank">
+    <img src="https://img.shields.io/github/stars/markprop/RWAMP?style=for-the-badge&logo=github&logoColor=white&label=Stars&color=FF6B6B" alt="GitHub Stars" />
+  </a>
+  <a href="https://github.com/markprop/RWAMP" target="_blank">
+    <img src="https://img.shields.io/github/forks/markprop/RWAMP?style=for-the-badge&logo=github&logoColor=white&label=Forks&color=06D6A0" alt="GitHub Forks" />
+  </a>
+  <a href="https://github.com/markprop/RWAMP" target="_blank">
+    <img src="https://img.shields.io/github/watchers/markprop/RWAMP?style=for-the-badge&logo=github&logoColor=white&label=Watchers&color=118AB2" alt="GitHub Watchers" />
+  </a>
+</p>
 
 ---
 
@@ -495,14 +519,20 @@ This project is **proprietary software** owned by **RWAMP** and backed by **Mark
 ## 🔙 Navigation
 
 <p align="center">
-  <a href="#rwamp">
+  <a href="#rwamp" style="text-decoration: none;">
     <img src="https://img.shields.io/badge/⬆%20Back%20to%20Top-FF6B6B?style=for-the-badge&logo=arrow-up&logoColor=white" alt="Back to Top" />
   </a>
-  <a href="docs/README.md">
+  &nbsp;&nbsp;
+  <a href="docs/README.md" style="text-decoration: none;">
     <img src="https://img.shields.io/badge/📚%20Documentation-06D6A0?style=for-the-badge&logo=book&logoColor=white" alt="Documentation" />
   </a>
-  <a href="https://rwamp.io">
+  &nbsp;&nbsp;
+  <a href="https://rwamp.io" target="_blank" style="text-decoration: none;">
     <img src="https://img.shields.io/badge/🌐%20Visit%20Website-118AB2?style=for-the-badge&logo=globe&logoColor=white" alt="Visit Website" />
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://github.com/markprop/RWAMP" target="_blank" style="text-decoration: none;">
+    <img src="https://img.shields.io/badge/⭐%20Star%20on%20GitHub-FF6B6B?style=for-the-badge&logo=github&logoColor=white" alt="Star on GitHub" />
   </a>
 </p>
 
