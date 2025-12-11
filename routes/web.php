@@ -29,6 +29,7 @@ use App\Http\Controllers\Reseller\ResellerDashboardController;
 use App\Http\Controllers\Reseller\ResellerUserController;
 use App\Http\Controllers\Reseller\ResellerPaymentController;
 use App\Http\Controllers\Reseller\ResellerTransactionController;
+use App\Http\Controllers\Reseller\ResellerBuyTransactionController;
 use App\Http\Controllers\Reseller\ResellerSellController;
 use App\Http\Controllers\Reseller\ResellerBuyRequestController;
 use App\Http\Controllers\KycController;
@@ -234,6 +235,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/dashboard/reseller/payments/{payment}/reject', [ResellerPaymentController::class, 'reject'])->name('reseller.payments.reject');
         Route::get('/dashboard/reseller/transactions', [ResellerTransactionController::class, 'index'])->name('reseller.transactions');
         Route::get('/dashboard/reseller/transactions/{transaction}', [ResellerTransactionController::class, 'show'])->name('reseller.transactions.view');
+        Route::get('/dashboard/reseller/buy-transactions', [ResellerBuyTransactionController::class, 'index'])->name('reseller.buy-transactions');
+        Route::get('/dashboard/reseller/buy-transactions/{payment}', [ResellerBuyTransactionController::class, 'show'])->name('reseller.buy-transactions.view');
         Route::get('/dashboard/reseller/sell', [ResellerSellController::class, 'index'])->name('reseller.sell');
         Route::put('/dashboard/reseller/coin-price', [ResellerSellController::class, 'updateCoinPrice'])->name('reseller.update-coin-price');
         Route::get('/dashboard/reseller/buy-requests', [ResellerBuyRequestController::class, 'index'])->name('reseller.buy-requests');
@@ -342,6 +345,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{user}/reject', [AdminKycController::class, 'reject'])->name('reject');
         Route::put('/{user}/update', [AdminKycController::class, 'update'])->name('update');
         Route::delete('/{user}/delete', [AdminKycController::class, 'destroy'])->name('delete');
+        // Use numeric ID for download route to support both ULID and numeric IDs
         Route::get('/{user}/download/{type}', [AdminKycController::class, 'downloadFile'])->name('download');
     });
     
