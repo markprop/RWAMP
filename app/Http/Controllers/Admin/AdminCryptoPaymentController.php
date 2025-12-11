@@ -152,6 +152,20 @@ class AdminCryptoPaymentController extends Controller
     public function reject(Request $request, CryptoPayment $payment)
     {
         $payment->update(['status' => 'rejected']);
+        
+        // Update transaction status to rejected if it exists
+        $transaction = Transaction::where('reference', $payment->tx_hash)
+            ->where('type', 'crypto_purchase')
+            ->where('user_id', $payment->user_id)
+            ->first();
+            
+        if ($transaction) {
+            $transaction->update([
+                'status' => 'rejected',
+                'payment_status' => 'rejected',
+            ]);
+        }
+        
         return back()->with('success', 'Payment rejected.');
     }
 
@@ -183,6 +197,12 @@ class AdminCryptoPaymentController extends Controller
                     ->where('status', 'completed')
                     ->first();
 
+                // Find existing transaction created when payment was submitted
+                $existingTransaction = Transaction::where('reference', $payment->tx_hash)
+                    ->where('type', 'crypto_purchase')
+                    ->where('user_id', $user->id)
+                    ->first();
+
                 if (!$existingTransaction) {
                     // Log wallet address and payment details before crediting
                     Log::info('Crypto payment updated to approved - crediting tokens', [
@@ -209,13 +229,29 @@ class AdminCryptoPaymentController extends Controller
                         'timestamp' => now()->toDateTimeString(),
                     ]);
 
+                    // Create transaction if it doesn't exist
                     Transaction::create([
                         'user_id' => $user->id,
                         'type' => 'crypto_purchase',
                         'amount' => (int) $validated['token_amount'],
                         'status' => 'completed',
                         'reference' => $payment->tx_hash,
+                        'payment_type' => strtolower($validated['network']),
+                        'payment_hash' => $payment->tx_hash,
+                        'payment_status' => 'verified',
                     ]);
+                } else {
+                    // Update existing transaction status to completed
+                    $wasPending = $existingTransaction->status === 'pending';
+                    $existingTransaction->update([
+                        'status' => 'completed',
+                        'payment_status' => 'verified',
+                    ]);
+                    
+                    // Credit tokens if transaction was previously pending
+                    if ($wasPending) {
+                        $user->addTokens((int) $validated['token_amount'], 'Crypto purchase approved');
+                    }
                 }
             }
         }
