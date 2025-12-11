@@ -8,7 +8,7 @@
     <!-- Main Content Area (shifted right for sidebar) -->
     <div class="md:ml-64 min-h-screen">
         <!-- Top Header Bar -->
-        <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+        <div class="bg-white shadow-sm border-b border-gray-200 sticky z-30" style="top: 28px;">
             <div class="px-4 sm:px-6 lg:px-8 py-5">
                 <div class="flex items-center justify-between">
                     <div>

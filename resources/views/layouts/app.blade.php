@@ -1,6 +1,38 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="font-montserrat font-roboto font-mono">
 <head>
+    {{-- Meta Pixel --}}
+    @if(config('app.env') === 'production' && config('analytics.meta_pixel_id'))
+    <script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '{{ config('analytics.meta_pixel_id') }}');
+    fbq('track', 'PageView');
+    </script>
+    <noscript>
+      <img height="1" width="1" style="display:none"
+        src="https://www.facebook.com/tr?id={{ config('analytics.meta_pixel_id') }}&ev=PageView&noscript=1"
+      />
+    </noscript>
+    @endif
+
+    {{-- Google Analytics 4 --}}
+    @if(config('app.env') === 'production' && config('analytics.google_analytics_id'))
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ config('analytics.google_analytics_id') }}"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', '{{ config('analytics.google_analytics_id') }}');
+    </script>
+    @endif
+
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -64,37 +96,6 @@
     }
     </script>
 
-    <!-- Google Analytics -->
-    @if(config('app.google_analytics_id'))
-    <script async src="https://www.googletagmanager.com/gtag/js?id={{ config('app.google_analytics_id') }}"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', '{{ config('app.google_analytics_id') }}');
-    </script>
-    @endif
-
-    <!-- Meta Pixel -->
-    @if(config('app.meta_pixel_id'))
-    <script>
-        !function(f,b,e,v,n,t,s)
-        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-        n.queue=[];t=b.createElement(e);t.async=!0;
-        t.src=v;s=b.getElementsByTagName(e)[0];
-        s.parentNode.insertBefore(t,s)}(window, document,'script',
-        'https://connect.facebook.net/en_US/fbevents.js');
-        fbq('init', '{{ config('app.meta_pixel_id') }}');
-        fbq('track', 'PageView');
-    </script>
-    <noscript>
-        <img height="1" width="1" style="display:none"
-            src="https://www.facebook.com/tr?id={{ config('app.meta_pixel_id') }}&ev=PageView&noscript=1"
-        />
-    </noscript>
-    @endif
 
     @stack('head')
 </head>
@@ -115,11 +116,33 @@
         </div>
     @endif
 
-    @if(!request()->routeIs('dashboard.investor') && !request()->routeIs('dashboard.admin') && !request()->routeIs('dashboard.reseller') && !request()->routeIs('dashboard.admin.*') && !request()->routeIs('dashboard.reseller.*'))
+    <!-- RWAMP Contract Address Banner -->
+    @include('components.contract-address-banner')
+
+    @php
+        // Check if current route is a dashboard page (has sidebar, no navbar)
+        $isDashboardPage = request()->routeIs('dashboard.investor') 
+            || request()->routeIs('dashboard.admin') 
+            || request()->routeIs('dashboard.reseller')
+            || request()->routeIs('dashboard.admin.*') 
+            || request()->routeIs('dashboard.reseller.*')
+            || request()->routeIs('dashboard.investor.*')
+            || request()->routeIs('user-history')
+            || request()->routeIs('user-withdrawals')
+            || request()->routeIs('buy.from.reseller')
+            || request()->routeIs('buy.from.reseller.*')
+            || request()->routeIs('reseller.*')
+            || request()->routeIs('admin.*')
+            || str_starts_with(request()->route()->getName() ?? '', 'dashboard.')
+            || str_starts_with(request()->route()->getName() ?? '', 'reseller.')
+            || str_starts_with(request()->route()->getName() ?? '', 'admin.');
+    @endphp
+    
+    @if(!$isDashboardPage)
         @include('components.navbar')
     @endif
     
-    <main class="{{ (request()->routeIs('dashboard.investor') || request()->routeIs('dashboard.admin') || request()->routeIs('dashboard.reseller') || request()->routeIs('dashboard.admin.*') || request()->routeIs('dashboard.reseller.*')) ? 'pt-0' : 'pt-16' }}">
+    <main class="{{ $isDashboardPage ? 'pt-7' : 'pt-28' }}" style="{{ $isDashboardPage ? 'padding-top: 28px;' : 'padding-top: calc(28px + 4rem);' }}">
         @yield('content')
     </main>
 

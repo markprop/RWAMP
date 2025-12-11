@@ -16,10 +16,11 @@
     }
 </style>
 <div x-data="{ mobileOpen: false }">
-    <aside class="fixed inset-y-0 left-0 w-64 bg-[#121212] text-white z-40 flex flex-col shadow-2xl transform -translate-x-full md:translate-x-0 transition-transform duration-300" 
+    <aside class="fixed left-0 w-64 bg-[#121212] text-white z-40 flex flex-col shadow-2xl transform -translate-x-full md:translate-x-0 transition-transform duration-300" 
+           style="top: 28px; bottom: 0;"
            :class='mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"'>
         <!-- Logo / Header Section -->
-        <div class="p-5 border-b border-gray-800 relative z-30 sidebar-header">
+        <div class="p-5 border-b border-gray-800 relative z-30 sidebar-header" style="padding-top: 1.5rem;">
             <a href="{{ route('home') }}" class="flex items-center space-x-3 group">
                 <div class="relative coin-ring">
                     <img src="{{ asset('images/logo.png') }}" alt="RWAMP" class="h-10 w-10 rounded-full object-cover rwamp-coin-logo">

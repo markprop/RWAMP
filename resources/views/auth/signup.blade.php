@@ -263,74 +263,79 @@
                                 <svg class="h-4 w-4 text-gray-400 cursor-pointer hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" @click.stop.prevent="showTooltip('password', $event)">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
-                                <div x-show="tooltip === 'password'" @click.away="tooltip = null" x-cloak x-transition class="absolute z-50 w-64 p-3 text-xs text-white bg-gray-900 rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2 mb-2" style="display: none;">
-                                    <p><strong>Password Requirements:</strong> Minimum 8 characters. Include both letters and numbers for better security. Avoid common words or personal information.</p>
-                                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
-                                        <div class="border-4 border-transparent border-t-gray-900"></div>
-                                    </div>
-                                </div>
                             </div>
                         </label>
                         <div class="relative">
-                            <input type="password" name="password" id="investor-password" class="form-input text-sm sm:text-base" required placeholder="Minimum 8 characters" x-on:input="validatePassword($event.target.value, 'investor')">
-                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <input 
+                                :type="showPassword.investor ? 'text' : 'password'"
+                                name="password" 
+                                id="investor-password" 
+                                class="form-input text-sm sm:text-base pr-20" 
+                                required 
+                                placeholder="Minimum 8 characters" 
+                                autocomplete="new-password"
+                                x-on:input="validatePassword($event.target.value, 'investor')"
+                                x-on:focus="showPasswordTooltip.investor = true"
+                                x-on:blur="showPasswordTooltip.investor = false"
+                                x-on:keydown="checkCapsLock($event, 'investor')"
+                                x-on:keyup="checkCapsLock($event, 'investor')"
+                                x-ref="investorPassword"
+                            >
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center gap-2">
+                                <!-- Caps Lock Indicator -->
+                                <span x-show="capsLockActive.investor" x-cloak class="text-xs text-amber-600 font-semibold" title="Caps Lock is ON">⇪</span>
+                                <!-- Num Lock Indicator -->
+                                <span x-show="numLockActive.investor" x-cloak class="text-xs text-blue-600 font-semibold" title="Num Lock is ON">🔢</span>
+                                <!-- Password Valid Indicator -->
                                 <span x-show="isPasswordValid('investor')" class="text-green-500">✓</span>
+                                <!-- Password Visibility Toggle (Always visible) -->
+                                <button 
+                                    type="button"
+                                    @click="showPassword.investor = !showPassword.investor"
+                                    class="text-gray-500 hover:text-gray-700 focus:outline-none transition-colors"
+                                    :title="showPassword.investor ? 'Hide password' : 'Show password'"
+                                    tabindex="-1"
+                                >
+                                    <!-- Eye Icon (Visible) -->
+                                    <svg x-show="showPassword.investor" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-cloak>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                    <!-- Eye Slash Icon (Hidden) -->
+                                    <svg x-show="!showPassword.investor" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.29 3.29m0 0L3 3m3.29 3.29L3 3m3.29 3.29l3.29 3.29m0 0L3 3m13.561 13.561A10.05 10.05 0 0121 12c0-4.478-2.943-8.268-7-9.543a9.97 9.97 0 00-3.029 1.563m13.561 13.561L21 21M3 3l18 18"></path>
+                                    </svg>
+                                </button>
                             </div>
                         </div>
-                        <div x-show="passwordCriteria.investor.hasValue" x-cloak class="mt-2">
-                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors" @click="tooltip = tooltip === 'password-criteria-investor' ? null : 'password-criteria-investor'">
-                                <span class="text-xs font-medium text-gray-700">Password Requirements</span>
-                                <svg class="w-4 h-4 text-gray-500 transition-transform" :class="tooltip === 'password-criteria-investor' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                </svg>
-                            </div>
-                            <div x-show="tooltip === 'password-criteria-investor'" x-cloak x-transition class="mt-1 p-2 bg-white rounded border border-gray-200 shadow-sm">
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
-                                    <div class="flex items-center gap-1.5">
-                                        <template x-if="passwordCriteria.investor.hasUpperCase">
-                                            <span class="text-green-500 font-bold">✓</span>
-                                        </template>
-                                        <template x-if="!passwordCriteria.investor.hasUpperCase">
-                                            <span class="text-red-500 font-bold">✗</span>
-                                        </template>
-                                        <span :class="passwordCriteria.investor.hasUpperCase ? 'text-green-600' : 'text-gray-600'">Uppercase (A-Z)</span>
-                                    </div>
-                                    <div class="flex items-center gap-1.5">
-                                        <template x-if="passwordCriteria.investor.hasLowerCase">
-                                            <span class="text-green-500 font-bold">✓</span>
-                                        </template>
-                                        <template x-if="!passwordCriteria.investor.hasLowerCase">
-                                            <span class="text-red-500 font-bold">✗</span>
-                                        </template>
-                                        <span :class="passwordCriteria.investor.hasLowerCase ? 'text-green-600' : 'text-gray-600'">Lowercase (a-z)</span>
-                                    </div>
-                                    <div class="flex items-center gap-1.5">
-                                        <template x-if="passwordCriteria.investor.hasNumber">
-                                            <span class="text-green-500 font-bold">✓</span>
-                                        </template>
-                                        <template x-if="!passwordCriteria.investor.hasNumber">
-                                            <span class="text-red-500 font-bold">✗</span>
-                                        </template>
-                                        <span :class="passwordCriteria.investor.hasNumber ? 'text-green-600' : 'text-gray-600'">Number (0-9)</span>
-                                    </div>
-                                    <div class="flex items-center gap-1.5">
-                                        <template x-if="passwordCriteria.investor.hasSpecialChar">
-                                            <span class="text-green-500 font-bold">✓</span>
-                                        </template>
-                                        <template x-if="!passwordCriteria.investor.hasSpecialChar">
-                                            <span class="text-red-500 font-bold">✗</span>
-                                        </template>
-                                        <span :class="passwordCriteria.investor.hasSpecialChar ? 'text-green-600' : 'text-gray-600'">Special (!@#...)</span>
-                                    </div>
-                                    <div class="flex items-center gap-1.5 sm:col-span-2">
-                                        <template x-if="passwordCriteria.investor.minLength">
-                                            <span class="text-green-500 font-bold">✓</span>
-                                        </template>
-                                        <template x-if="!passwordCriteria.investor.minLength">
-                                            <span class="text-red-500 font-bold">✗</span>
-                                        </template>
-                                        <span :class="passwordCriteria.investor.minLength ? 'text-green-600' : 'text-gray-600'">Minimum 8 characters</span>
-                                    </div>
+                        <!-- Password Requirements Tooltip (shown on focus) -->
+                        <div 
+                            x-show="showPasswordTooltip.investor" 
+                            x-cloak 
+                            x-transition
+                            class="mt-2 p-3 bg-white rounded-lg border border-gray-200 shadow-lg"
+                        >
+                            <p class="text-xs font-semibold text-gray-700 mb-2">Password Requirements:</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+                                <div class="flex items-center gap-1.5">
+                                    <span :class="passwordCriteria.investor.hasUpperCase ? 'text-green-500' : 'text-gray-400'" class="font-bold">✓</span>
+                                    <span :class="passwordCriteria.investor.hasUpperCase ? 'text-green-600 font-medium' : 'text-gray-600'">Uppercase (A-Z)</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span :class="passwordCriteria.investor.hasLowerCase ? 'text-green-500' : 'text-gray-400'" class="font-bold">✓</span>
+                                    <span :class="passwordCriteria.investor.hasLowerCase ? 'text-green-600 font-medium' : 'text-gray-600'">Lowercase (a-z)</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span :class="passwordCriteria.investor.hasNumber ? 'text-green-500' : 'text-gray-400'" class="font-bold">✓</span>
+                                    <span :class="passwordCriteria.investor.hasNumber ? 'text-green-600 font-medium' : 'text-gray-600'">Number (0-9)</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span :class="passwordCriteria.investor.hasSpecialChar ? 'text-green-500' : 'text-gray-400'" class="font-bold">✓</span>
+                                    <span :class="passwordCriteria.investor.hasSpecialChar ? 'text-green-600 font-medium' : 'text-gray-600'">Special (!@#...)</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 sm:col-span-2">
+                                    <span :class="passwordCriteria.investor.minLength ? 'text-green-500' : 'text-gray-400'" class="font-bold">✓</span>
+                                    <span :class="passwordCriteria.investor.minLength ? 'text-green-600 font-medium' : 'text-gray-600'">Minimum 8 characters</span>
                                 </div>
                             </div>
                         </div>
@@ -339,19 +344,44 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                             Confirm Password
                             <span class="text-red-500">*</span>
-                            <div class="relative">
-                                <svg class="h-4 w-4 text-gray-400 cursor-pointer hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" @click.stop.prevent="showTooltip('confirm-password', $event)">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                <div x-show="tooltip === 'confirm-password'" @click.away="tooltip = null" x-cloak x-transition class="absolute z-50 w-64 p-3 text-xs text-white bg-gray-900 rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2 mb-2" style="display: none;">
-                                    <p><strong>Confirm Password:</strong> Re-enter the exact same password you entered above. Both passwords must match exactly.</p>
-                                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
-                                        <div class="border-4 border-transparent border-t-gray-900"></div>
-                                    </div>
-                                </div>
-                            </div>
                         </label>
-                        <input type="password" name="password_confirmation" class="form-input text-sm sm:text-base" required placeholder="Re-enter your password">
+                        <div class="relative">
+                            <input 
+                                :type="showPassword.confirmInvestor ? 'text' : 'password'"
+                                name="password_confirmation" 
+                                id="investor-password-confirmation"
+                                class="form-input text-sm sm:text-base pr-20" 
+                                required 
+                                placeholder="Re-enter your password"
+                                autocomplete="new-password"
+                                x-on:keydown="checkCapsLock($event, 'confirmInvestor')"
+                                x-on:keyup="checkCapsLock($event, 'confirmInvestor')"
+                            >
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center gap-2">
+                                <!-- Caps Lock Indicator -->
+                                <span x-show="capsLockActive.confirmInvestor" x-cloak class="text-xs text-amber-600 font-semibold" title="Caps Lock is ON">⇪</span>
+                                <!-- Num Lock Indicator -->
+                                <span x-show="numLockActive.confirmInvestor" x-cloak class="text-xs text-blue-600 font-semibold" title="Num Lock is ON">🔢</span>
+                                <!-- Password Visibility Toggle (Always visible) -->
+                                <button 
+                                    type="button"
+                                    @click="showPassword.confirmInvestor = !showPassword.confirmInvestor"
+                                    class="text-gray-500 hover:text-gray-700 focus:outline-none transition-colors"
+                                    :title="showPassword.confirmInvestor ? 'Hide password' : 'Show password'"
+                                    tabindex="-1"
+                                >
+                                    <!-- Eye Icon (Visible) -->
+                                    <svg x-show="showPassword.confirmInvestor" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-cloak>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                    <!-- Eye Slash Icon (Hidden) -->
+                                    <svg x-show="!showPassword.confirmInvestor" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.29 3.29m0 0L3 3m3.29 3.29L3 3m3.29 3.29l3.29 3.29m0 0L3 3m13.561 13.561A10.05 10.05 0 0121 12c0-4.478-2.943-8.268-7-9.543a9.97 9.97 0 00-3.029 1.563m13.561 13.561L21 21M3 3l18 18"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
                         <p class="text-xs text-gray-500 mt-1">Must match the password above</p>
                     </div>
                     
@@ -545,74 +575,79 @@
                                 <svg class="h-4 w-4 text-gray-400 cursor-pointer hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" @click.stop.prevent="showTooltip('reseller-password', $event)">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
-                                <div x-show="tooltip === 'reseller-password'" @click.away="tooltip = null" x-cloak x-transition class="absolute z-50 w-64 p-3 text-xs text-white bg-gray-900 rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2 mb-2" style="display: none;">
-                                    <p><strong>Password Requirements:</strong> Minimum 8 characters. Include both letters and numbers for better security. Avoid common words or personal information.</p>
-                                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
-                                        <div class="border-4 border-transparent border-t-gray-900"></div>
-                                    </div>
-                                </div>
                             </div>
                         </label>
                         <div class="relative">
-                            <input type="password" name="password" id="reseller-password" class="form-input text-sm sm:text-base" required placeholder="Minimum 8 characters" x-on:input="validatePassword($event.target.value, 'reseller')">
-                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <input 
+                                :type="showPassword.reseller ? 'text' : 'password'"
+                                name="password" 
+                                id="reseller-password" 
+                                class="form-input text-sm sm:text-base pr-20" 
+                                required 
+                                placeholder="Minimum 8 characters" 
+                                autocomplete="new-password"
+                                x-on:input="validatePassword($event.target.value, 'reseller')"
+                                x-on:focus="showPasswordTooltip.reseller = true"
+                                x-on:blur="showPasswordTooltip.reseller = false"
+                                x-on:keydown="checkCapsLock($event, 'reseller')"
+                                x-on:keyup="checkCapsLock($event, 'reseller')"
+                                x-ref="resellerPassword"
+                            >
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center gap-2">
+                                <!-- Caps Lock Indicator -->
+                                <span x-show="capsLockActive.reseller" x-cloak class="text-xs text-amber-600 font-semibold" title="Caps Lock is ON">⇪</span>
+                                <!-- Num Lock Indicator -->
+                                <span x-show="numLockActive.reseller" x-cloak class="text-xs text-blue-600 font-semibold" title="Num Lock is ON">🔢</span>
+                                <!-- Password Valid Indicator -->
                                 <span x-show="isPasswordValid('reseller')" class="text-green-500">✓</span>
+                                <!-- Password Visibility Toggle (Always visible) -->
+                                <button 
+                                    type="button"
+                                    @click="showPassword.reseller = !showPassword.reseller"
+                                    class="text-gray-500 hover:text-gray-700 focus:outline-none transition-colors"
+                                    :title="showPassword.reseller ? 'Hide password' : 'Show password'"
+                                    tabindex="-1"
+                                >
+                                    <!-- Eye Icon (Visible) -->
+                                    <svg x-show="showPassword.reseller" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-cloak>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                    <!-- Eye Slash Icon (Hidden) -->
+                                    <svg x-show="!showPassword.reseller" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.29 3.29m0 0L3 3m3.29 3.29L3 3m3.29 3.29l3.29 3.29m0 0L3 3m13.561 13.561A10.05 10.05 0 0121 12c0-4.478-2.943-8.268-7-9.543a9.97 9.97 0 00-3.029 1.563m13.561 13.561L21 21M3 3l18 18"></path>
+                                    </svg>
+                                </button>
                             </div>
                         </div>
-                        <div x-show="passwordCriteria.reseller.hasValue" x-cloak class="mt-2">
-                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors" @click="tooltip = tooltip === 'password-criteria-reseller' ? null : 'password-criteria-reseller'">
-                                <span class="text-xs font-medium text-gray-700">Password Requirements</span>
-                                <svg class="w-4 h-4 text-gray-500 transition-transform" :class="tooltip === 'password-criteria-reseller' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                </svg>
-                            </div>
-                            <div x-show="tooltip === 'password-criteria-reseller'" x-cloak x-transition class="mt-1 p-2 bg-white rounded border border-gray-200 shadow-sm">
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
-                                    <div class="flex items-center gap-1.5">
-                                        <template x-if="passwordCriteria.reseller.hasUpperCase">
-                                            <span class="text-green-500 font-bold">✓</span>
-                                        </template>
-                                        <template x-if="!passwordCriteria.reseller.hasUpperCase">
-                                            <span class="text-red-500 font-bold">✗</span>
-                                        </template>
-                                        <span :class="passwordCriteria.reseller.hasUpperCase ? 'text-green-600' : 'text-gray-600'">Uppercase (A-Z)</span>
-                                    </div>
-                                    <div class="flex items-center gap-1.5">
-                                        <template x-if="passwordCriteria.reseller.hasLowerCase">
-                                            <span class="text-green-500 font-bold">✓</span>
-                                        </template>
-                                        <template x-if="!passwordCriteria.reseller.hasLowerCase">
-                                            <span class="text-red-500 font-bold">✗</span>
-                                        </template>
-                                        <span :class="passwordCriteria.reseller.hasLowerCase ? 'text-green-600' : 'text-gray-600'">Lowercase (a-z)</span>
-                                    </div>
-                                    <div class="flex items-center gap-1.5">
-                                        <template x-if="passwordCriteria.reseller.hasNumber">
-                                            <span class="text-green-500 font-bold">✓</span>
-                                        </template>
-                                        <template x-if="!passwordCriteria.reseller.hasNumber">
-                                            <span class="text-red-500 font-bold">✗</span>
-                                        </template>
-                                        <span :class="passwordCriteria.reseller.hasNumber ? 'text-green-600' : 'text-gray-600'">Number (0-9)</span>
-                                    </div>
-                                    <div class="flex items-center gap-1.5">
-                                        <template x-if="passwordCriteria.reseller.hasSpecialChar">
-                                            <span class="text-green-500 font-bold">✓</span>
-                                        </template>
-                                        <template x-if="!passwordCriteria.reseller.hasSpecialChar">
-                                            <span class="text-red-500 font-bold">✗</span>
-                                        </template>
-                                        <span :class="passwordCriteria.reseller.hasSpecialChar ? 'text-green-600' : 'text-gray-600'">Special (!@#...)</span>
-                                    </div>
-                                    <div class="flex items-center gap-1.5 sm:col-span-2">
-                                        <template x-if="passwordCriteria.reseller.minLength">
-                                            <span class="text-green-500 font-bold">✓</span>
-                                        </template>
-                                        <template x-if="!passwordCriteria.reseller.minLength">
-                                            <span class="text-red-500 font-bold">✗</span>
-                                        </template>
-                                        <span :class="passwordCriteria.reseller.minLength ? 'text-green-600' : 'text-gray-600'">Minimum 8 characters</span>
-                                    </div>
+                        <!-- Password Requirements Tooltip (shown on focus) -->
+                        <div 
+                            x-show="showPasswordTooltip.reseller" 
+                            x-cloak 
+                            x-transition
+                            class="mt-2 p-3 bg-white rounded-lg border border-gray-200 shadow-lg"
+                        >
+                            <p class="text-xs font-semibold text-gray-700 mb-2">Password Requirements:</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+                                <div class="flex items-center gap-1.5">
+                                    <span :class="passwordCriteria.reseller.hasUpperCase ? 'text-green-500' : 'text-gray-400'" class="font-bold">✓</span>
+                                    <span :class="passwordCriteria.reseller.hasUpperCase ? 'text-green-600 font-medium' : 'text-gray-600'">Uppercase (A-Z)</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span :class="passwordCriteria.reseller.hasLowerCase ? 'text-green-500' : 'text-gray-400'" class="font-bold">✓</span>
+                                    <span :class="passwordCriteria.reseller.hasLowerCase ? 'text-green-600 font-medium' : 'text-gray-600'">Lowercase (a-z)</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span :class="passwordCriteria.reseller.hasNumber ? 'text-green-500' : 'text-gray-400'" class="font-bold">✓</span>
+                                    <span :class="passwordCriteria.reseller.hasNumber ? 'text-green-600 font-medium' : 'text-gray-600'">Number (0-9)</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span :class="passwordCriteria.reseller.hasSpecialChar ? 'text-green-500' : 'text-gray-400'" class="font-bold">✓</span>
+                                    <span :class="passwordCriteria.reseller.hasSpecialChar ? 'text-green-600 font-medium' : 'text-gray-600'">Special (!@#...)</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 sm:col-span-2">
+                                    <span :class="passwordCriteria.reseller.minLength ? 'text-green-500' : 'text-gray-400'" class="font-bold">✓</span>
+                                    <span :class="passwordCriteria.reseller.minLength ? 'text-green-600 font-medium' : 'text-gray-600'">Minimum 8 characters</span>
                                 </div>
                             </div>
                         </div>
@@ -621,19 +656,44 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                             Confirm Password
                             <span class="text-red-500">*</span>
-                            <div class="relative">
-                                <svg class="h-4 w-4 text-gray-400 cursor-pointer hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" @click.stop.prevent="showTooltip('reseller-confirm-password', $event)">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                <div x-show="tooltip === 'reseller-confirm-password'" @click.away="tooltip = null" x-cloak x-transition class="absolute z-50 w-64 p-3 text-xs text-white bg-gray-900 rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2 mb-2" style="display: none;">
-                                    <p><strong>Confirm Password:</strong> Re-enter the exact same password you entered above. Both passwords must match exactly.</p>
-                                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
-                                        <div class="border-4 border-transparent border-t-gray-900"></div>
-                                    </div>
-                                </div>
-                            </div>
                         </label>
-                        <input type="password" name="password_confirmation" class="form-input text-sm sm:text-base" required placeholder="Re-enter your password">
+                        <div class="relative">
+                            <input 
+                                :type="showPassword.confirmReseller ? 'text' : 'password'"
+                                name="password_confirmation" 
+                                id="reseller-password-confirmation"
+                                class="form-input text-sm sm:text-base pr-20" 
+                                required 
+                                placeholder="Re-enter your password"
+                                autocomplete="new-password"
+                                x-on:keydown="checkCapsLock($event, 'confirmReseller')"
+                                x-on:keyup="checkCapsLock($event, 'confirmReseller')"
+                            >
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center gap-2">
+                                <!-- Caps Lock Indicator -->
+                                <span x-show="capsLockActive.confirmReseller" x-cloak class="text-xs text-amber-600 font-semibold" title="Caps Lock is ON">⇪</span>
+                                <!-- Num Lock Indicator -->
+                                <span x-show="numLockActive.confirmReseller" x-cloak class="text-xs text-blue-600 font-semibold" title="Num Lock is ON">🔢</span>
+                                <!-- Password Visibility Toggle (Always visible) -->
+                                <button 
+                                    type="button"
+                                    @click="showPassword.confirmReseller = !showPassword.confirmReseller"
+                                    class="text-gray-500 hover:text-gray-700 focus:outline-none transition-colors"
+                                    :title="showPassword.confirmReseller ? 'Hide password' : 'Show password'"
+                                    tabindex="-1"
+                                >
+                                    <!-- Eye Icon (Visible) -->
+                                    <svg x-show="showPassword.confirmReseller" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-cloak>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                    <!-- Eye Slash Icon (Hidden) -->
+                                    <svg x-show="!showPassword.confirmReseller" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.29 3.29m0 0L3 3m3.29 3.29L3 3m3.29 3.29l3.29 3.29m0 0L3 3m13.561 13.561A10.05 10.05 0 0121 12c0-4.478-2.943-8.268-7-9.543a9.97 9.97 0 00-3.029 1.563m13.561 13.561L21 21M3 3l18 18"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
                         <p class="text-xs text-gray-500 mt-1">Must match the password above exactly</p>
                     </div>
                     <div>

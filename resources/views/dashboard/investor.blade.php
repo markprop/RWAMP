@@ -117,7 +117,7 @@
     <!-- Main Content Area (shifted right for sidebar) -->
     <div class="md:ml-64 min-h-screen">
         <!-- Top Header Bar with User Info -->
-        <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+        <div class="bg-white shadow-sm border-b border-gray-200 sticky z-30" style="top: 28px;">
             <div class="px-4 sm:px-6 lg:px-8 py-5">
                 <div class="flex items-center justify-between">
                     <div>
@@ -254,7 +254,7 @@
                     <div class="border border-gray-200 rounded-lg rw-table-scroll overflow-x-auto">
                         <div class="max-h-96 overflow-y-auto">
                             <table class="min-w-[720px] whitespace-nowrap text-sm w-full">
-                                <thead class="bg-gray-50 sticky top-0 border-b border-gray-200">
+                                <thead class="bg-gray-50 sticky border-b border-gray-200" style="top: 28px;">
                                     <tr>
                                         <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">Date</th>
                                         <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">Seller</th>
@@ -306,7 +306,7 @@
                     <div class="border border-gray-200 rounded-lg rw-table-scroll">
                         <div class="max-h-96 overflow-y-auto">
                             <table class="min-w-full text-sm w-full">
-                                <thead class="bg-gray-50 sticky top-0 border-b border-gray-200">
+                                <thead class="bg-gray-50 sticky border-b border-gray-200" style="top: 28px;">
                                     <tr>
                                         <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">Date</th>
                                         <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">Tokens</th>
@@ -372,7 +372,7 @@
                     <div class="border border-gray-200 rounded-lg rw-table-scroll">
                         <div class="max-h-96 overflow-y-auto">
                             <table class="min-w-full text-sm w-full">
-                                <thead class="bg-gray-50 sticky top-0 border-b border-gray-200">
+                                <thead class="bg-gray-50 sticky border-b border-gray-200" style="top: 28px;">
                                     <tr>
                                         <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">Date</th>
                                         <th class="text-left px-4 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider">Type</th>

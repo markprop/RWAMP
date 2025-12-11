@@ -38,7 +38,7 @@
              @click="purchaseModalOpen = false"
                  class="fixed inset-0 transition-opacity bg-gray-900/70 backdrop-blur-sm"></div>
 
-        <!-- Modal panel -->
+            <!-- Modal panel - Enhanced with borders and responsiveness -->
         <div x-show="purchaseModalOpen"
              x-transition:enter="ease-out duration-300"
              x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
@@ -46,7 +46,7 @@
              x-transition:leave="ease-in duration-200"
              x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
              x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-             class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl border-2 border-red-300 ring-1 ring-red-500/20 ring-offset-2 ring-offset-white transform transition-all sm:my-8 sm:align-middle sm:max-w-5xl w-full max-w-full rw-modal__panel">
+             class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl border-2 border-primary/30 ring-2 ring-primary/20 ring-offset-2 ring-offset-white transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl w-full max-w-[95vw] mx-auto rw-modal__panel">
             
             <!-- Modal header -->
             <div class="bg-gradient-to-r from-black to-secondary text-white px-4 sm:px-6 py-3 sm:py-4 border-b border-red-400/30">
@@ -351,6 +351,7 @@ function purchaseFlow() {
             const pkrValue = quantity * (this.rates.tokenPkr || (this.rates.tokenUsd * this.rates.usdToPkr));
             const usdValue = quantity * this.rates.tokenUsd;
             const usdtValue = usdValue / (this.usdtUsd || 1);
+            const btcValue = usdValue / (this.rates.btcUsd || 60000);
             const pkrValueLive = pkrValue;
             
             this.usdAmount = new Intl.NumberFormat('en-US', {
@@ -360,7 +361,13 @@ function purchaseFlow() {
                 maximumFractionDigits: 4
             }).format(usdValue);
             
-            this.usdtAmount = 'USDT ' + this.formatNumberFixed(usdtValue, 2);
+            // Update amount display based on selected network
+            if (this.selectedNetwork === 'BTC') {
+                this.usdtAmount = 'BTC ' + this.formatNumberFixed(btcValue, 8);
+            } else {
+                this.usdtAmount = 'USDT ' + this.formatNumberFixed(usdtValue, 2);
+            }
+            
             this.pkrAmountLive = 'PKR ' + this.formatNumberFixed(pkrValueLive, 2);
             this.pkrAmount = pkrValueLive; // Store numeric value for price component
             this.calculatedUsdtAmount = usdtValue;
@@ -388,20 +395,30 @@ function purchaseFlow() {
         
         selectNetwork(network) {
             this.selectedNetwork = network;
+            this.calculateAmounts(); // Recalculate amounts when network changes
         },
 
         canConnectWallet() {
+            // BTC and TRC20 don't support WalletConnect - they require manual transfer
+            if (this.selectedNetwork === 'BTC' || this.selectedNetwork === 'TRC20') {
+                return false;
+            }
             const canConnect = this.selectedNetwork && this.walletConnectEnabled;
             return canConnect;
         },
 
         canPay() {
+            // BTC and TRC20 require manual transfer, not WalletConnect
+            if (this.selectedNetwork === 'BTC' || this.selectedNetwork === 'TRC20') {
+                return false;
+            }
             return (this.tokenQuantity >= this.minTokenQuantity) && this.selectedNetwork && this.walletConnectEnabled && this.isWalletConnected && !this.paymentsDisabled;
         },
 
         getConnectButtonTooltip() {
             if (this.isConnecting) return 'Connecting...';
-            if (!this.selectedNetwork) return 'Please select a payment network (ERC20, BEP20, or TRC20)';
+            if (!this.selectedNetwork) return 'Please select a payment method (ERC20, BEP20, TRC20, or BTC)';
+            if (this.selectedNetwork === 'BTC' || this.selectedNetwork === 'TRC20') return 'BTC and TRC20 require manual transfer. Use offline payment.';
             if (!this.walletConnectEnabled) return 'WalletConnect is disabled. Check WALLETCONNECT_ENABLED in .env';
             return 'Click to connect your crypto wallet';
         },
@@ -410,14 +427,23 @@ function purchaseFlow() {
             if (this.isProcessingPayment) return 'Processing payment...';
             if (!this.isWalletConnected) return 'Please connect your wallet first';
             if (this.tokenQuantity < this.minTokenQuantity) return 'Minimum purchase is ' + this.minTokenQuantity + ' tokens';
-            if (!this.selectedNetwork) return 'Please select a payment network';
+            if (!this.selectedNetwork) return 'Please select a payment method';
+            if (this.selectedNetwork === 'BTC' || this.selectedNetwork === 'TRC20') return 'BTC and TRC20 require manual transfer. Use offline payment option.';
             const amount = this.getUsdtAmountForPayment();
-            return `Click to send ${amount} USDT from your connected wallet`;
+            const currency = this.selectedNetwork === 'BTC' ? 'BTC' : 'USDT';
+            return `Click to send ${amount} ${currency} from your connected wallet`;
         },
 
         getUsdtAmountForPayment() {
             const tokenQty = parseFloat(this.tokenQuantity) || 0;
             const tokenPrice = this.rates.tokenUsd;
+            
+            if (this.selectedNetwork === 'BTC') {
+                const btcPrice = this.rates.btcUsd || 60000;
+                const btcAmount = (tokenQty * tokenPrice) / btcPrice;
+                return btcAmount.toFixed(8);
+            }
+            
             const usdtPrice = this.usdtUsd || 1;
             const usdtAmount = (tokenQty * tokenPrice) / usdtPrice;
             return usdtAmount.toFixed(2);
@@ -431,6 +457,14 @@ function purchaseFlow() {
                 'BTC': '{{ config("crypto.wallets.BTC", "") }}'
             };
             return wallets[this.selectedNetwork] || '';
+        },
+        
+        getBtcAmount() {
+            const tokenQty = parseFloat(this.tokenQuantity) || 0;
+            const tokenPrice = this.rates.tokenUsd;
+            const btcPrice = this.rates.btcUsd || 60000;
+            const btcAmount = (tokenQty * tokenPrice) / btcPrice;
+            return btcAmount.toFixed(8);
         },
 
         getContractAddress() {
@@ -1212,12 +1246,32 @@ function purchaseFlow() {
                 const responseData = await response.json();
                 
                 if (!response.ok) {
-                    throw new Error(responseData.message || 'Failed to save transaction hash');
+                    const errorMessage = responseData.message || responseData.error || 'Failed to save transaction hash';
+                    console.error('❌ Error submitting transaction hash:', {
+                        status: response.status,
+                        message: errorMessage,
+                        errors: responseData.errors,
+                        response: responseData
+                    });
+                    throw new Error(errorMessage);
                 }
+                
+                console.log('✅ Transaction hash saved successfully:', {
+                    payment_id: responseData.id,
+                    tx_hash: txHash,
+                    message: responseData.message
+                });
                 
                 return { success: true, data: responseData };
             } catch (error) {
-                console.error('❌ Error submitting transaction hash:', error)
+                console.error('❌ Error submitting transaction hash:', {
+                    error: error.message,
+                    tx_hash: txHash,
+                    network: this.selectedNetwork,
+                    token_amount: tokenQty
+                });
+                // Show user-friendly error message
+                this.showToast(error.message || 'Failed to save transaction hash. Please contact support.', 'error');
                 return { success: false, error: error.message };
             }
         },

@@ -117,10 +117,17 @@ class RegisterController extends Controller
     }
 
     /**
-     * Register a new investor user
+     * Register a new investor user or reseller application
      */
     public function store(Request $request)
     {
+        $role = $request->input('role', 'investor');
+        
+        // Handle reseller applications differently
+        if ($role === 'reseller') {
+            return $this->registerResellerApplication($request);
+        }
+        
         // Check if we should require reCAPTCHA (skip on localhost)
         $requireRecaptcha = config('services.recaptcha.secret_key') && 
             !in_array($request->getHost(), ['localhost', '127.0.0.1']) &&
@@ -227,6 +234,109 @@ class RegisterController extends Controller
         // Redirect to email verification page
         return redirect()->route('verify-email', ['email' => $normalizedEmail])
             ->with('success', 'Registration successful! Please check your email for the verification code.');
+    }
+
+    /**
+     * Register a reseller application
+     */
+    private function registerResellerApplication(Request $request)
+    {
+        try {
+            // Check if we should require reCAPTCHA (skip on localhost)
+            $requireRecaptcha = config('services.recaptcha.secret_key') && 
+                !in_array($request->getHost(), ['localhost', '127.0.0.1']) &&
+                !str_contains(config('app.url', ''), 'localhost') &&
+                !str_contains(config('app.url', ''), '127.0.0.1') &&
+                config('app.env') !== 'local';
+
+            $validated = $request->validate([
+                'name' => ['required', 'string', 'max:255'],
+                'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email', 'unique:reseller_applications,email'],
+                'phone' => ['required', 'string', 'max:30'],
+                'password' => ['required', 'confirmed', Password::min(8)],
+                'company_name' => ['nullable', 'string', 'max:255'],
+                'investment_capacity' => ['required', 'string', 'max:50'],
+                'experience' => ['nullable', 'string', 'max:2000'],
+                'g-recaptcha-response' => $requireRecaptcha ? ['required', 'recaptcha'] : ['nullable'],
+            ], [
+                'g-recaptcha-response.required' => 'Please complete the reCAPTCHA verification.',
+                'g-recaptcha-response.recaptcha' => 'reCAPTCHA verification failed. Please try again.',
+            ]);
+
+            $normalizedEmail = \Illuminate\Support\Str::lower(trim($validated['email']));
+
+            // Create reseller application (not a user account)
+            try {
+                $application = ResellerApplication::create([
+                    'name' => $validated['name'],
+                    'email' => $normalizedEmail,
+                    'phone' => $validated['phone'],
+                    'password' => Hash::make($validated['password']), // Store hashed password
+                    'company' => $validated['company_name'] ?? null,
+                    'investment_capacity' => $validated['investment_capacity'],
+                    'experience' => $validated['experience'] ?? null,
+                    'status' => 'pending',
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                ]);
+
+                Log::info("Reseller application created successfully", [
+                    'application_id' => $application->id,
+                    'email' => $normalizedEmail,
+                ]);
+            } catch (\Illuminate\Database\QueryException $e) {
+                Log::error("Database error creating reseller application: " . $e->getMessage(), [
+                    'error_code' => $e->getCode(),
+                    'sql_state' => $e->errorInfo[0] ?? null,
+                    'email' => $normalizedEmail,
+                ]);
+                
+                // Check if it's a table missing error
+                if (str_contains($e->getMessage(), "doesn't exist") || str_contains($e->getMessage(), "Unknown table")) {
+                    return back()->withErrors([
+                        'email' => 'Database configuration error. Please contact support. Error: Table missing.',
+                    ])->withInput();
+                }
+                
+                throw $e; // Re-throw if it's a different database error
+            }
+
+            // Send notification emails (non-blocking)
+            try {
+                $emailService = new EmailService();
+                $emailService->sendResellerNotification($application);
+                Log::info("Reseller application notification email sent", [
+                    'application_id' => $application->id,
+                ]);
+            } catch (\Exception $e) {
+                Log::error("Failed to send reseller application notification: " . $e->getMessage(), [
+                    'application_id' => $application->id ?? null,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                // Continue even if email fails - application is already saved
+            }
+
+            // Show success message and redirect back
+            return redirect()->route('register')
+                ->with('success', 'Your reseller application has been submitted successfully! Our admin team will review your application and notify you via email once a decision has been made. Please check your email for updates.');
+                
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Re-throw validation exceptions to show form errors
+            throw $e;
+        } catch (\Exception $e) {
+            Log::error("Unexpected error in registerResellerApplication: " . $e->getMessage(), [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->except(['password', 'password_confirmation']),
+            ]);
+            
+            return back()->withErrors([
+                'email' => 'An unexpected error occurred. Please try again later or contact support if the problem persists.',
+            ])->withInput();
+        }
     }
 
     /**

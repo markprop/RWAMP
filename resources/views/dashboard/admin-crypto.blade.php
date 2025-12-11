@@ -8,7 +8,7 @@
     <!-- Main Content Area (shifted right for sidebar) -->
     <div class="md:ml-64 min-h-screen">
         <!-- Top Header Bar -->
-        <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+        <div class="bg-white shadow-sm border-b border-gray-200 sticky z-30" style="top: 28px;">
             <div class="px-4 sm:px-6 lg:px-8 py-5">
                 <div class="flex items-center justify-between">
                     <div>
@@ -216,7 +216,7 @@
          @click.self="viewDetailsModalOpen = false"
          @keydown.escape.window="viewDetailsModalOpen = false">
         <div class="rw-modal__panel max-w-4xl">
-            <div class="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+            <div class="sticky bg-white" style="top: 28px;" border-b px-6 py-4 flex items-center justify-between">
                 <h3 class="text-xl font-montserrat font-bold">Payment Details</h3>
                 <button @click="viewDetailsModalOpen = false" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
             </div>
@@ -275,7 +275,7 @@
          @click.self="editModalOpen = false"
          @keydown.escape.window="editModalOpen = false">
         <div class="rw-modal__panel max-w-2xl">
-            <div class="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+            <div class="sticky bg-white" style="top: 28px;" border-b px-6 py-4 flex items-center justify-between">
                 <h3 class="text-xl font-montserrat font-bold">Edit Payment</h3>
                 <button @click="editModalOpen = false" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
             </div>

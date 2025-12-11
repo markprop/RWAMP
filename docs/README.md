@@ -116,7 +116,7 @@ When adding new documentation:
 ## 🔗 External Resources
 
 - **Website**: [rwamp.io](https://rwamp.io)
-- **Support**: info@rwamp.io
+- **Email**: info@rwamp.net
 - **Phone**: +92 370 1346038
 - **GitHub**: [markprop/RWAMP](https://github.com/markprop/RWAMP)
 
@@ -126,8 +126,17 @@ When adding new documentation:
   <strong>📚 Comprehensive Documentation for RWAMP Platform</strong>
 </p>
 
+---
+
+## 🔙 Navigation
+
 <p align="center">
-  <a href="../README.md">← Back to Main README</a>
+  <a href="../README.md">
+    <img src="https://img.shields.io/badge/⬅️%20Back%20to%20Main%20README-FF6B6B?style=for-the-badge&logo=arrow-left&logoColor=white" alt="Back to Main README" />
+  </a>
+  <a href="https://rwamp.io">
+    <img src="https://img.shields.io/badge/🌐%20Visit%20Website-06D6A0?style=for-the-badge&logo=globe&logoColor=white" alt="Visit Website" />
+  </a>
 </p>
 
 ---

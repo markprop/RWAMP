@@ -15,7 +15,14 @@
                 @csrf
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                    <input name="email" type="email" value="{{ old('email') }}" class="form-input" required autocomplete="email" />
+                    <input 
+                        name="email" 
+                        type="email" 
+                        value="{{ old('email') }}" 
+                        class="form-input" 
+                        required 
+                        autocomplete="email" 
+                    />
                 </div>
                 <button type="submit" class="w-full btn-primary">Send Reset Link</button>
             </form>
@@ -24,4 +31,5 @@
     </div>
     </div>
 @endsection
+
 

@@ -682,38 +682,71 @@ Alpine.data('newsletterForm', () => ({
 }));
 
 // Signup tabs component
-Alpine.data('signupTabs', () => ({
-    tab: 'investor',
-    tooltip: null,
-    emailStatus: { investor: null, reseller: null },
-    emailMessage: { investor: '', reseller: '' },
-    emailValidated: { investor: false, reseller: false },
-    phoneStatus: { investor: null, reseller: null },
-    phoneMessage: { investor: '', reseller: '' },
-    phoneValidated: { investor: false, reseller: false },
-    passwordCriteria: { 
-        investor: { 
-            hasUpperCase: false, 
-            hasLowerCase: false, 
-            hasNumber: false, 
-            hasSpecialChar: false, 
-            minLength: false,
-            hasValue: false
+Alpine.data('signupTabs', function() {
+    return {
+        tab: 'investor',
+        tooltip: null,
+        emailStatus: { investor: null, reseller: null },
+        emailMessage: { investor: '', reseller: '' },
+        emailValidated: { investor: false, reseller: false },
+        phoneStatus: { investor: null, reseller: null },
+        phoneMessage: { investor: '', reseller: '' },
+        phoneValidated: { investor: false, reseller: false },
+        passwordCriteria: { 
+            investor: { 
+                hasUpperCase: false, 
+                hasLowerCase: false, 
+                hasNumber: false, 
+                hasSpecialChar: false, 
+                minLength: false,
+                hasValue: false
+            },
+            reseller: { 
+                hasUpperCase: false, 
+                hasLowerCase: false, 
+                hasNumber: false, 
+                hasSpecialChar: false, 
+                minLength: false,
+                hasValue: false
+            }
         },
-        reseller: { 
-            hasUpperCase: false, 
-            hasLowerCase: false, 
-            hasNumber: false, 
-            hasSpecialChar: false, 
-            minLength: false,
-            hasValue: false
-        }
-    },
-    nameStatus: { investor: null, reseller: null },
-    nameMessage: { investor: '', reseller: '' },
-    nameValidated: { investor: false, reseller: false },
-    validationTimeout: { email: { investor: null, reseller: null }, phone: { investor: null, reseller: null } },
-    init() {
+        // Password visibility states
+        showPassword: {
+            investor: false,
+            reseller: false,
+            confirmInvestor: false,
+            confirmReseller: false
+        },
+        // Password toggle visibility (only show when typing)
+        showPasswordToggle: {
+            investor: false,
+            reseller: false,
+            confirmInvestor: false,
+            confirmReseller: false
+        },
+        // Password tooltip visibility (show on focus)
+        showPasswordTooltip: {
+            investor: false,
+            reseller: false
+        },
+        // Caps Lock and Num Lock states
+        capsLockActive: {
+            investor: false,
+            reseller: false,
+            confirmInvestor: false,
+            confirmReseller: false
+        },
+        numLockActive: {
+            investor: false,
+            reseller: false,
+            confirmInvestor: false,
+            confirmReseller: false
+        },
+        nameStatus: { investor: null, reseller: null },
+        nameMessage: { investor: '', reseller: '' },
+        nameValidated: { investor: false, reseller: false },
+        validationTimeout: { email: { investor: null, reseller: null }, phone: { investor: null, reseller: null } },
+    init: function() {
         // Ensure tooltip is null on init
         this.tooltip = null;
         // Reset validation states
@@ -741,24 +774,84 @@ Alpine.data('signupTabs', () => ({
                 hasValue: false
             }
         };
+        // Initialize password visibility states
+        this.showPassword = {
+            investor: false,
+            reseller: false,
+            confirmInvestor: false,
+            confirmReseller: false
+        };
+        this.showPasswordToggle = {
+            investor: false,
+            reseller: false,
+            confirmInvestor: false,
+            confirmReseller: false
+        };
+        this.showPasswordTooltip = {
+            investor: false,
+            reseller: false
+        };
+        this.capsLockActive = {
+            investor: false,
+            reseller: false,
+            confirmInvestor: false,
+            confirmReseller: false
+        };
+        this.numLockActive = {
+            investor: false,
+            reseller: false,
+            confirmInvestor: false,
+            confirmReseller: false
+        };
         this.nameStatus = { investor: null, reseller: null };
         this.nameMessage = { investor: '', reseller: '' };
         this.nameValidated = { investor: false, reseller: false };
         
         // Auto-validate if referral code is pre-filled from URL
-        this.$nextTick(() => {
+        var self = this;
+        this.$nextTick(function() {
             const referralInput = document.getElementById('referralCode');
             if (referralInput && referralInput.value) {
-                this.validateReferralCode(referralInput.value);
+                self.validateReferralCode(referralInput.value);
             }
         });
     },
-    tabClass(name) {
+    // Check Caps Lock and Num Lock status
+    checkCapsLock: function(event, field) {
+        // Check Caps Lock
+        if (event.getModifierState && typeof event.getModifierState === 'function') {
+            this.capsLockActive[field] = event.getModifierState('CapsLock');
+        } else {
+            // Fallback for older browsers
+            const key = event.key || event.keyCode;
+            const shift = event.shiftKey;
+            if (key && key.length === 1) {
+                if (key >= 'A' && key <= 'Z' && !shift) {
+                    this.capsLockActive[field] = true;
+                } else if (key >= 'a' && key <= 'z' && shift) {
+                    this.capsLockActive[field] = true;
+                } else {
+                    this.capsLockActive[field] = false;
+                }
+            }
+        }
+        
+        // Check Num Lock (approximate detection)
+        // Note: Num Lock state cannot be directly detected via JavaScript in all browsers
+        // This is an approximation based on numeric key presses
+        const key = event.key || event.keyCode;
+        if (key && (key >= '0' && key <= '9' || (event.keyCode >= 96 && event.keyCode <= 105))) {
+            // If numeric keys are pressed, assume Num Lock might be on
+            // This is a best-effort detection
+            this.numLockActive[field] = true;
+        }
+    },
+    tabClass: function(name) {
         return this.tab === name 
             ? 'border-primary text-primary bg-primary/5' 
             : 'border-gray-200 text-gray-700 hover:border-gray-300';
     },
-    showTooltip(tooltipName, event) {
+    showTooltip: function(tooltipName, event) {
         // Prevent event propagation
         if (event) {
             event.stopPropagation();
@@ -771,7 +864,7 @@ Alpine.data('signupTabs', () => ({
             this.tooltip = tooltipName;
         }
     },
-    async validateEmail(email, type) {
+    validateEmail: async function(email, type) {
         // Clear previous timeout
         if (this.validationTimeout.email[type]) {
             clearTimeout(this.validationTimeout.email[type]);
@@ -820,7 +913,7 @@ Alpine.data('signupTabs', () => ({
             }
         }, 500);
     },
-    async validatePhone(phone, type) {
+    validatePhone: async function(phone, type) {
         // Clear previous timeout
         if (this.validationTimeout.phone[type]) {
             clearTimeout(this.validationTimeout.phone[type]);
@@ -869,7 +962,7 @@ Alpine.data('signupTabs', () => ({
             }
         }, 500);
     },
-    validateName(name, type) {
+    validateName: function(name, type) {
         if (!name || name.trim() === '') {
             this.nameStatus[type] = null;
             this.nameMessage[type] = '';
@@ -924,7 +1017,7 @@ Alpine.data('signupTabs', () => ({
         this.nameMessage[type] = 'Name format is valid';
         this.nameValidated[type] = true;
     },
-    validatePassword(password, type) {
+    validatePassword: function(password, type) {
         if (!password || password === '') {
             // Reset all criteria
             this.passwordCriteria[type] = {
@@ -948,7 +1041,7 @@ Alpine.data('signupTabs', () => ({
             hasValue: true
         };
     },
-    isPasswordValid(type) {
+    isPasswordValid: function(type) {
         const criteria = this.passwordCriteria[type];
         return criteria.hasUpperCase && 
                criteria.hasLowerCase && 
@@ -956,7 +1049,7 @@ Alpine.data('signupTabs', () => ({
                criteria.hasSpecialChar && 
                criteria.minLength;
     },
-    async validateReferralCode(code) {
+    validateReferralCode: async function(code) {
         const statusEl = document.getElementById('referralCodeStatus');
         const messageEl = document.getElementById('referralCodeMessage');
         const inputEl = document.getElementById('referralCode');
@@ -1019,7 +1112,8 @@ Alpine.data('signupTabs', () => ({
             inputEl.classList.remove('border-green-500', 'border-red-500');
         }
     }
-}));
+    };
+});
 
 // KYC Form component
 Alpine.data('kycForm', (initialIdType = '') => ({
@@ -1102,24 +1196,195 @@ Alpine.data('loginForm', function() {
         selectedRole: '',
         isAdmin: false,
         email: '',
-        init() {
+        showPassword: false,
+        showPasswordToggle: false,
+        capsLockActive: false,
+        numLockActive: false,
+        showEmailSuggestions: false,
+        savedEmails: [],
+        init: function() {
             this.tooltip = null;
             this.selectedRole = '';
             this.isAdmin = false;
+            this.showPassword = false;
+            this.showPasswordToggle = false;
+            this.capsLockActive = false;
+            this.numLockActive = false;
+            this.showEmailSuggestions = false;
+            this.savedEmails = [];
             
-            // Get initial email value from input field
+            // Get initial email value from input field (but don't auto-fill)
             const emailInput = document.querySelector('input[name="email"]');
             this.email = emailInput ? emailInput.value : '';
+            
+            // Load saved emails from browser (for suggestions only, not auto-fill)
+            // Load immediately and also after a delay to ensure it works
+            var self = this;
+            self.loadSavedEmails();
+            setTimeout(function() {
+                self.loadSavedEmails();
+            }, 500);
             
             // Check initial email for admin
             this.checkAdminEmail(this.email);
             
             // Watch for email changes to detect admin
-            this.$watch('email', (value) => {
-                this.checkAdminEmail(value);
+            this.$watch('email', function(value) {
+                self.checkAdminEmail(value);
             });
         },
-        checkAdminEmail(value) {
+        loadSavedEmails: function() {
+            // Load remembered email from localStorage (only if user checked "Remember Me" previously)
+            try {
+                if (typeof localStorage !== 'undefined') {
+                    // Check all possible keys for backward compatibility
+                    const rememberedEmail = localStorage.getItem('rwamp_remembered_user_email') || 
+                                           localStorage.getItem('rwamp_remembered_user') || 
+                                           localStorage.getItem('rwamp_remembered_email');
+                    if (rememberedEmail && rememberedEmail.trim()) {
+                        // Only show the user's own remembered email (not all users' data)
+                        this.savedEmails = [rememberedEmail.trim()];
+                        // Update datalist options immediately
+                        this.updateDatalistOptions();
+                    } else {
+                        // Clear saved emails if no remembered email
+                        this.savedEmails = [];
+                        this.updateDatalistOptions();
+                    }
+                } else {
+                    console.error('localStorage is not available');
+                }
+            } catch (e) {
+                // Ignore localStorage errors
+                console.error('Error loading saved emails:', e);
+            }
+        },
+        updateDatalistOptions: function() {
+            // Update datalist with saved emails using direct DOM manipulation
+            var self = this;
+            
+            function updateNow() {
+                var datalist = document.getElementById('email-suggestions');
+                var emailInput = document.getElementById('email-input') || document.querySelector('input[name="email"]');
+                
+                if (datalist && emailInput) {
+                    // Clear existing options
+                    datalist.innerHTML = '';
+                    // Add options for saved emails
+                    if (self.savedEmails && self.savedEmails.length > 0) {
+                        self.savedEmails.forEach(function(email) {
+                            if (email && email.trim()) {
+                                var option = document.createElement('option');
+                                option.value = email.trim();
+                                datalist.appendChild(option);
+                            }
+                        });
+                        // Ensure the input is connected to the datalist
+                        emailInput.setAttribute('list', 'email-suggestions');
+                        // Force browser to recognize the datalist by toggling the attribute
+                        var currentList = emailInput.getAttribute('list');
+                        emailInput.removeAttribute('list');
+                        // Use requestAnimationFrame to ensure browser processes the change
+                        requestAnimationFrame(function() {
+                            emailInput.setAttribute('list', 'email-suggestions');
+                            // Trigger input event to refresh browser's datalist cache
+                            emailInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        });
+                    } else {
+                        // Clear the list attribute if no emails
+                        emailInput.removeAttribute('list');
+                        datalist.innerHTML = '';
+                    }
+                }
+            }
+            
+            // Try immediately
+            updateNow();
+            // Also try after a short delay to ensure DOM is ready
+            setTimeout(updateNow, 50);
+        },
+        handleEmailInput: function(value) {
+            this.email = value;
+            // Save to sessionStorage for forgot password page (optional, user can select from saved)
+            try {
+                if (typeof sessionStorage !== 'undefined' && value) {
+                    sessionStorage.setItem('loginEmail', value);
+                }
+            } catch (e) {
+                // Ignore sessionStorage errors (e.g., in private browsing)
+            }
+        },
+        handleEmailFocus: function() {
+            // Show suggestions and update datalist when email field is focused
+            this.showEmailSuggestions = true;
+            // Always reload and update datalist when field is focused
+            var self = this;
+            self.loadSavedEmails();
+            // Small delay to ensure dropdown appears
+            setTimeout(function() {
+                if (self.savedEmails.length > 0) {
+                    self.showEmailSuggestions = true;
+                }
+            }, 50);
+        },
+        toggleEmailDropdown: function() {
+            // Toggle the custom dropdown
+            if (this.savedEmails.length > 0) {
+                this.showEmailSuggestions = !this.showEmailSuggestions;
+            }
+        },
+        selectEmail: function(email) {
+            // Select email from dropdown
+            var self = this;
+            self.email = email;
+            self.showEmailSuggestions = false;
+            // Update the input field value directly
+            var emailInput = document.getElementById('email-input');
+            if (emailInput) {
+                emailInput.value = email;
+                // Trigger input event to update x-model
+                emailInput.dispatchEvent(new Event('input', { bubbles: true }));
+                // Focus back on input
+                setTimeout(function() {
+                    emailInput.focus();
+                }, 10);
+            }
+        },
+        updateEmailSuggestions: function() {
+            // Ensure saved emails are loaded when field is focused
+            if (this.savedEmails.length === 0) {
+                this.loadSavedEmails();
+            } else {
+                // Update datalist options
+                this.updateDatalistOptions();
+            }
+        },
+        checkCapsLock: function(event) {
+            // Check Caps Lock
+            if (event.getModifierState && typeof event.getModifierState === 'function') {
+                this.capsLockActive = event.getModifierState('CapsLock');
+            } else {
+                // Fallback for older browsers
+                const key = event.key || event.keyCode;
+                const shift = event.shiftKey;
+                if (key && key.length === 1) {
+                    if (key >= 'A' && key <= 'Z' && !shift) {
+                        this.capsLockActive = true;
+                    } else if (key >= 'a' && key <= 'z' && shift) {
+                        this.capsLockActive = true;
+                    } else {
+                        this.capsLockActive = false;
+                    }
+                }
+            }
+            
+            // Check Num Lock (approximate detection)
+            const key = event.key || event.keyCode;
+            if (key && (key >= '0' && key <= '9' || (event.keyCode >= 96 && event.keyCode <= 105))) {
+                this.numLockActive = true;
+            }
+        },
+        checkAdminEmail: function(value) {
             if (value) {
                 const emailLower = value.toLowerCase().trim();
                 // Check if email contains "admin" or matches common admin patterns
@@ -1137,10 +1402,10 @@ Alpine.data('loginForm', function() {
                 this.isAdmin = false;
             }
         },
-        selectRole(role) {
+        selectRole: function(role) {
             this.selectedRole = role;
         },
-        validateRole(event) {
+        validateRole: function(event) {
             // Admin can login without role selection, but investor/reseller must select
             // This validation is also done on the backend
             if (!this.isAdmin && !this.selectedRole) {
@@ -1159,7 +1424,7 @@ Alpine.data('loginForm', function() {
             }
             return true;
         },
-        showTooltip(tooltipName, event) {
+        showTooltip: function(tooltipName, event) {
             // Prevent event propagation
             if (event) {
                 event.stopPropagation();
@@ -1171,6 +1436,66 @@ Alpine.data('loginForm', function() {
             } else {
                 this.tooltip = tooltipName;
             }
+        },
+        hideEmailSuggestions: function() {
+            var self = this;
+            setTimeout(function() {
+                self.showEmailSuggestions = false;
+            }, 200);
+        },
+        hidePasswordToggle: function() {
+            var self = this;
+            setTimeout(function() {
+                self.showPasswordToggle = false;
+            }, 200);
+        },
+        handleFormSubmit: function(event) {
+            // Validate role first
+            if (!this.validateRole(event)) {
+                return false;
+            }
+            
+            // Check if "Remember Me" is checked
+            var self = this;
+            var rememberCheckbox = event.target.querySelector('input[name="remember"]');
+            var rememberChecked = rememberCheckbox && rememberCheckbox.checked;
+            
+            // Store email in localStorage if "Remember Me" is checked
+            if (rememberChecked && this.email) {
+                try {
+                    if (typeof localStorage !== 'undefined') {
+                        // Only store the user's own email (not all users' data)
+                        // Use rwamp_remembered_user_email as the primary key (matches what's in localStorage)
+                        localStorage.setItem('rwamp_remembered_user_email', this.email);
+                        // Also keep other keys for backward compatibility
+                        localStorage.setItem('rwamp_remembered_user', this.email);
+                        localStorage.setItem('rwamp_remembered_email', this.email);
+                        // Update saved emails list
+                        this.savedEmails = [this.email];
+                        // Update datalist
+                        this.updateDatalistOptions();
+                    }
+                } catch (e) {
+                    // Ignore localStorage errors
+                }
+            } else {
+                // If "Remember Me" is not checked, remove stored email
+                try {
+                    if (typeof localStorage !== 'undefined') {
+                        localStorage.removeItem('rwamp_remembered_user_email');
+                        localStorage.removeItem('rwamp_remembered_user');
+                        localStorage.removeItem('rwamp_remembered_email');
+                        this.savedEmails = [];
+                        // Clear datalist
+                        this.updateDatalistOptions();
+                    }
+                } catch (e) {
+                    // Ignore localStorage errors
+                }
+            }
+            
+            // Allow form to submit normally
+            return true;
         }
     };
 });

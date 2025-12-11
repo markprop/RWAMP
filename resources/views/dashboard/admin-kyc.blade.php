@@ -8,7 +8,7 @@
     <!-- Main Content Area (shifted right for sidebar) -->
     <div class="md:ml-64 min-h-screen">
         <!-- Top Header Bar -->
-        <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+        <div class="bg-white shadow-sm border-b border-gray-200 sticky z-30" style="top: 28px;">
             <div class="px-4 sm:px-6 lg:px-8 py-5">
                 <div class="flex items-center justify-between">
                     <div>
@@ -265,7 +265,7 @@
          @click.self="closeEditModal()"
          @keydown.escape.window="closeEditModal()">
         <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div class="sticky top-0 bg-gradient-to-r from-black to-secondary text-white px-6 py-4 rounded-t-xl flex items-center justify-between">
+            <div class="sticky bg-gradient" style="top: 28px;"-to-r from-black to-secondary text-white px-6 py-4 rounded-t-xl flex items-center justify-between">
                 <h3 class="text-xl font-montserrat font-bold">Edit KYC Submission</h3>
                 <button @click="closeEditModal()" class="text-white hover:text-gray-300 transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -110,7 +110,7 @@
                 <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">{{ $errors->first() }}</div>
             @endif
 
-            <form method="POST" action="{{ route('login.post') }}" class="space-y-4" novalidate x-data="loginForm" @submit="validateRole($event)">
+            <form method="POST" action="{{ route('login.post') }}" class="space-y-4" novalidate x-data="loginForm" @submit="handleFormSubmit($event)">
                 @csrf
                 <!-- Role Selection (Required for Investor/Reseller, Hidden for Admin) -->
                 <div class="flex gap-2 justify-center" x-show="!isAdmin">
@@ -138,7 +138,52 @@
                             </div>
                         </div>
                     </label>
-                    <input name="email" type="email" value="{{ old('email') }}" x-model="email" @input="email = $event.target.value" class="form-input text-sm sm:text-base" required autocomplete="email" />
+                    <div class="relative">
+                        <input 
+                            name="email" 
+                            type="email" 
+                            value="{{ old('email') }}" 
+                            x-model="email" 
+                            @input="handleEmailInput($event.target.value)"
+                            @focus="handleEmailFocus()"
+                            @blur="hideEmailSuggestions()"
+                            class="form-input text-sm sm:text-base pr-8" 
+                            required 
+                            autocomplete="off"
+                            id="email-input"
+                        />
+                        <!-- Custom dropdown arrow button -->
+                        <button 
+                            type="button"
+                            @click="toggleEmailDropdown()"
+                            @mousedown.prevent
+                            class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none p-1 z-10"
+                            x-show="savedEmails.length > 0"
+                            tabindex="-1"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <!-- Custom email suggestions dropdown -->
+                        <div 
+                            x-show="showEmailSuggestions && savedEmails.length > 0"
+                            x-cloak
+                            @click.away="showEmailSuggestions = false"
+                            class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-auto"
+                            style="display: none;"
+                        >
+                            <template x-for="email in savedEmails" :key="email">
+                                <button
+                                    type="button"
+                                    @mousedown.prevent
+                                    @click="selectEmail(email)"
+                                    class="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none text-sm"
+                                    x-text="email"
+                                ></button>
+                            </template>
+                        </div>
+                    </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
@@ -156,7 +201,44 @@
                             </div>
                         </div>
                     </label>
-                    <input name="password" type="password" class="form-input text-sm sm:text-base" required autocomplete="current-password" />
+                    <div class="relative">
+                        <input 
+                            name="password" 
+                            :type="showPassword ? 'text' : 'password'" 
+                            class="form-input text-sm sm:text-base pr-20" 
+                            required 
+                            autocomplete="off"
+                            @focus="showPasswordToggle = true"
+                            @blur="hidePasswordToggle()"
+                            @keydown="checkCapsLock($event)"
+                            @keyup="checkCapsLock($event)"
+                        />
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center gap-2">
+                            <!-- Caps Lock Indicator -->
+                            <span x-show="capsLockActive" x-cloak class="text-xs text-amber-600 font-semibold" title="Caps Lock is ON">⇪</span>
+                            <!-- Num Lock Indicator -->
+                            <span x-show="numLockActive" x-cloak class="text-xs text-blue-600 font-semibold" title="Num Lock is ON">🔢</span>
+                            <!-- Password Visibility Toggle (only show when focused) -->
+                            <button 
+                                type="button"
+                                x-show="showPasswordToggle"
+                                @click="showPassword = !showPassword"
+                                class="text-gray-500 hover:text-gray-700 focus:outline-none transition-colors"
+                                :title="showPassword ? 'Hide password' : 'Show password'"
+                                tabindex="-1"
+                            >
+                                <!-- Eye Icon (Visible) -->
+                                <svg x-show="showPassword" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-cloak>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                <!-- Eye Slash Icon (Hidden) -->
+                                <svg x-show="!showPassword" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.29 3.29m0 0L3 3m3.29 3.29L3 3m3.29 3.29l3.29 3.29m0 0L3 3m13.561 13.561A10.05 10.05 0 0121 12c0-4.478-2.943-8.268-7-9.543a9.97 9.97 0 00-3.029 1.563m13.561 13.561L21 21M3 3l18 18"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
                     <label class="inline-flex items-center gap-2 text-xs sm:text-sm text-gray-700">

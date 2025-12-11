@@ -16,10 +16,11 @@
     }
 </style>
 <div x-data="{ mobileOpen: false }">
-    <aside class="fixed inset-y-0 left-0 w-64 bg-[#121212] text-white z-40 flex flex-col shadow-2xl transform -translate-x-full md:translate-x-0 transition-transform duration-300" 
+    <aside class="fixed left-0 w-64 bg-[#121212] text-white z-40 flex flex-col shadow-2xl transform -translate-x-full md:translate-x-0 transition-transform duration-300" 
+           style="top: 28px; bottom: 0;"
            :class='mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"'>
         <!-- Logo / Header Section -->
-        <div class="p-5 border-b border-gray-800 relative z-30 sidebar-header">
+        <div class="p-5 border-b border-gray-800 relative z-30 sidebar-header" style="padding-top: 1.5rem;">
             <a href="{{ route('home') }}" class="flex items-center space-x-3 group">
                 <div class="relative coin-ring">
                     <img src="{{ asset('images/logo.png') }}" alt="RWAMP" class="h-10 w-10 rounded-full object-cover rwamp-coin-logo">
@@ -65,6 +66,15 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
                     </svg>
                     <span class="font-medium text-sm">Transactions</span>
+                </a>
+
+                <!-- Buy Transactions -->
+                <a href="{{ route('reseller.buy-transactions') }}" 
+                   class="flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 btn-small {{ request()->routeIs('reseller.buy-transactions*') ? 'bg-primary text-white shadow-lg' : 'text-gray-300 hover:bg-gray-800 hover:text-white' }}">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="font-medium text-sm">Buy Transactions</span>
                 </a>
 
                 <!-- Buy Coins -->

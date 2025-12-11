@@ -1,4 +1,4 @@
-<nav class="bg-white/90 backdrop-blur-md shadow-lg fixed w-full top-0 z-50">
+<nav class="bg-white/90 backdrop-blur-md shadow-lg fixed w-full z-50" style="top: 28px; margin-top: 0;">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
             <!-- Logo -->
