@@ -135,6 +135,17 @@ document.addEventListener('alpine:init', () => {
                     }
                 }
 
+                // Update sort buttons section to reflect new sort state
+                const incomingSortSection = doc.querySelector('[data-sort-buttons]');
+                const currentSortSection = document.querySelector('[data-sort-buttons]');
+                if (incomingSortSection && currentSortSection && currentSortSection.innerHTML !== undefined) {
+                    try {
+                        currentSortSection.innerHTML = incomingSortSection.innerHTML;
+                    } catch (err) {
+                        console.error('Error updating sort buttons:', err);
+                    }
+                }
+
                 if (window.history && window.history.replaceState) {
                     try {
                         window.history.replaceState({}, '', url);
@@ -182,6 +193,55 @@ document.addEventListener('alpine:init', () => {
                 console.error('Error clearing filters:', err);
                 this.showToast('Error clearing filters. Please try again.', 'error');
             }
+        },
+        // Handle sort button clicks (AJAX, no page reload)
+        async applySort(sortField) {
+            const form = document.querySelector('[data-admin-users-filters]');
+            if (!form) {
+                console.error('Filter form not found');
+                return;
+            }
+
+            // Get current sort and direction from URL params or form
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentSort = urlParams.get('sort') || '{{ request('sort', 'created_at') }}';
+            const currentDir = urlParams.get('dir') || '{{ request('dir', 'desc') }}';
+            
+            // Determine new direction: if clicking same field, toggle; otherwise default to desc
+            let newDir = 'desc';
+            if (sortField === currentSort) {
+                newDir = currentDir === 'asc' ? 'desc' : 'asc';
+            }
+
+            // Update or create hidden inputs for sort and dir
+            let sortInput = form.querySelector('input[name="sort"]');
+            let dirInput = form.querySelector('input[name="dir"]');
+            
+            if (!sortInput) {
+                sortInput = document.createElement('input');
+                sortInput.type = 'hidden';
+                sortInput.name = 'sort';
+                form.appendChild(sortInput);
+            }
+            
+            if (!dirInput) {
+                dirInput = document.createElement('input');
+                dirInput.type = 'hidden';
+                dirInput.name = 'dir';
+                form.appendChild(dirInput);
+            }
+            
+            sortInput.value = sortField;
+            dirInput.value = newDir;
+
+            // Remove page parameter to go to first page when sorting
+            const pageInput = form.querySelector('input[name="page"]');
+            if (pageInput) {
+                pageInput.value = '1';
+            }
+
+            // Submit filters via AJAX
+            await this.submitFilters(form);
         },
         async loadPage(url) {
             // Load a specific page via AJAX
@@ -868,7 +928,7 @@ function calculateCreateUserTotal() {
     <!-- Main Content Area (shifted right for sidebar) -->
     <div class="md:ml-64 min-h-screen">
         <!-- Top Header Bar -->
-        <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+        <div class="bg-white shadow-sm border-b border-gray-200 sticky z-30" style="top: 28px;">
             <div class="px-4 sm:px-6 lg:px-8 py-5">
                 <div class="flex items-center justify-between">
                     <div>
@@ -974,31 +1034,52 @@ function calculateCreateUserTotal() {
             </div>
             
             <!-- Sort Options -->
-            <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-200">
+            <div data-sort-buttons class="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-200">
                 <label class="text-xs font-medium text-gray-700 whitespace-nowrap">Sort by:</label>
                 @php
-                    $qs = request()->except(['sort', 'dir', 'page']);
+                    $currentSort = request('sort', 'created_at');
+                    $currentDir = request('dir', 'desc');
                 @endphp
-                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'created_at', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" 
-                   class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors {{ request('sort') === 'created_at' ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300' }}">
+                <button type="button" 
+                        @click="applySort('created_at')"
+                        class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer {{ $currentSort === 'created_at' ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300' }}">
                     Date
-                </a>
-                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'name', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" 
-                   class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors {{ request('sort') === 'name' ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300' }}">
+                    @if($currentSort === 'created_at')
+                        <span class="ml-1">{{ $currentDir === 'asc' ? '↑' : '↓' }}</span>
+                    @endif
+                </button>
+                <button type="button" 
+                        @click="applySort('name')"
+                        class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer {{ $currentSort === 'name' ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300' }}">
                     Name
-                </a>
-                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'email', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" 
-                   class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors {{ request('sort') === 'email' ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300' }}">
+                    @if($currentSort === 'name')
+                        <span class="ml-1">{{ $currentDir === 'asc' ? '↑' : '↓' }}</span>
+                    @endif
+                </button>
+                <button type="button" 
+                        @click="applySort('email')"
+                        class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer {{ $currentSort === 'email' ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300' }}">
                     Email
-                </a>
-                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'role', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" 
-                   class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors {{ request('sort') === 'role' ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300' }}">
+                    @if($currentSort === 'email')
+                        <span class="ml-1">{{ $currentDir === 'asc' ? '↑' : '↓' }}</span>
+                    @endif
+                </button>
+                <button type="button" 
+                        @click="applySort('role')"
+                        class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer {{ $currentSort === 'role' ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300' }}">
                     Role
-                </a>
-                <a href="{{ request()->fullUrlWithQuery(array_merge($qs, ['sort' => 'token_balance', 'dir' => request('dir') === 'asc' ? 'desc' : 'asc'])) }}" 
-                   class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors {{ request('sort') === 'token_balance' ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300' }}">
+                    @if($currentSort === 'role')
+                        <span class="ml-1">{{ $currentDir === 'asc' ? '↑' : '↓' }}</span>
+                    @endif
+                </button>
+                <button type="button" 
+                        @click="applySort('token_balance')"
+                        class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer {{ $currentSort === 'token_balance' ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300' }}">
                     Balance
-                </a>
+                    @if($currentSort === 'token_balance')
+                        <span class="ml-1">{{ $currentDir === 'asc' ? '↑' : '↓' }}</span>
+                    @endif
+                </button>
             </div>
         </form>
 
