@@ -113,11 +113,16 @@ class ResellerSellController extends Controller
      */
     public function store(Request $request)
     {
+        // Custom validation for OTP to handle spaces
+        $request->merge([
+            'otp' => preg_replace('/\s+/', '', (string) $request->input('otp', ''))
+        ]);
+        
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
             'amount' => 'required|numeric|min:1',
             'price_per_coin' => 'nullable|numeric|min:0.01',
-            'otp' => 'required|string|size:6',
+            'otp' => 'required|string|size:6|regex:/^[0-9]{6}$/',
             'email' => 'required|email',
             'payment_received' => 'required|in:yes,no',
             'payment_type' => 'required_if:payment_received,yes|in:usdt,bank,cash',
@@ -136,43 +141,54 @@ class ResellerSellController extends Controller
             ], 400);
         }
 
-        // Verify OTP with comprehensive logging
+        // Verify email matches reseller's email
         $normalizedEmail = \Illuminate\Support\Str::lower(trim($validated['email']));
+        if ($normalizedEmail !== \Illuminate\Support\Str::lower(trim($reseller->email))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Email does not match your account.'
+            ], 422);
+        }
+
+        // Verify OTP with comprehensive logging
         $cacheKey = "otp:{$normalizedEmail}";
         $cachedOtpRaw = Cache::get($cacheKey);
         
-        // Fallback: Check session if cache is empty (for debugging)
-        if ($cachedOtpRaw === null && config('app.debug')) {
+        // Clean and normalize submitted OTP (already cleaned in validation, but ensure it's correct)
+        $rawOtp = (string) $validated['otp'];
+        $otp = preg_replace('/\s+/', '', $rawOtp); // Remove all spaces (in case validation didn't catch it)
+        $otp = preg_replace('/[^0-9]/', '', $otp); // Remove any non-numeric characters
+        $otp = str_pad($otp, 6, '0', STR_PAD_LEFT); // Pad to 6 digits
+        
+        // Check session fallback if cache is empty (works in both debug and production)
+        if ($cachedOtpRaw === null) {
             $debugData = session()->get("otp_debug_{$normalizedEmail}");
             if ($debugData && isset($debugData['otp'])) {
-                \Log::warning("Reseller Sell - OTP not found in cache, using session fallback", [
-                    'cache_key' => $cacheKey,
-                    'session_otp' => $debugData['otp'],
-                    'session_timestamp' => $debugData['timestamp'] ?? null,
-                ]);
-                // Use session OTP as fallback (only in debug mode)
                 $cachedOtpRaw = $debugData['otp'];
+                Log::info("Reseller Sell OTP retrieved from session fallback", [
+                    'email' => $normalizedEmail,
+                    'cache_key' => $cacheKey,
+                ]);
             }
         }
-        
-        // Clean and normalize submitted OTP
-        $rawOtp = (string) $validated['otp'];
-        $otp = preg_replace('/\s+/', '', $rawOtp); // Remove spaces
-        $otp = str_pad($otp, 6, '0', STR_PAD_LEFT); // Pad to 6 digits
         
         // Normalize cached OTP
         $cachedOtp = $cachedOtpRaw ? str_pad((string) $cachedOtpRaw, 6, '0', STR_PAD_LEFT) : null;
 
         // Log OTP verification attempt
-        \Log::info("Reseller Sell - OTP Verification", [
+        Log::info("Reseller Sell - OTP Verification", [
             'email' => $normalizedEmail,
+            'reseller_email' => $reseller->email,
             'submitted_otp' => $otp,
+            'submitted_otp_raw' => $rawOtp,
             'submitted_otp_length' => strlen($otp),
             'cached_otp' => $cachedOtp,
             'cached_otp_length' => $cachedOtp ? strlen($cachedOtp) : 0,
             'cached_otp_raw' => $cachedOtpRaw,
             'cache_key' => $cacheKey,
             'cache_exists' => $cachedOtpRaw !== null,
+            'cache_driver' => config('cache.default'),
+            'session_has_otp' => session()->has("otp_debug_{$normalizedEmail}"),
             'comparison' => [
                 'strict_match' => $cachedOtp === $otp,
                 'loose_match' => $cachedOtp == $otp,
@@ -180,27 +196,29 @@ class ResellerSellController extends Controller
         ]);
 
         if (!$cachedOtp || $cachedOtp !== $otp) {
-            $debugInfo = config('app.debug') ? [
-                'debug' => [
+            Log::warning("Reseller Sell OTP Verification Failed", [
+                'email' => $normalizedEmail,
+                'reseller_email' => $reseller->email,
+                'submitted_otp' => $otp,
+                'submitted_otp_raw' => $rawOtp,
+                'cached_otp' => $cachedOtp,
+                'cached_otp_raw' => $cachedOtpRaw,
+                'cache_key' => $cacheKey,
+                'cache_exists' => $cachedOtpRaw !== null,
+                'cache_driver' => config('cache.default'),
+                'session_has_otp' => session()->has("otp_debug_{$normalizedEmail}"),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or expired OTP. Please check the code and try again, or request a new OTP.',
+                'debug' => config('app.debug') ? [
                     'submitted_otp' => $otp,
-                    'submitted_otp_length' => strlen($otp),
                     'cached_otp' => $cachedOtp,
-                    'cached_otp_length' => $cachedOtp ? strlen($cachedOtp) : 0,
-                    'cached_otp_raw' => $cachedOtpRaw,
                     'cache_key' => $cacheKey,
                     'cache_exists' => $cachedOtpRaw !== null,
-                    'email' => $normalizedEmail,
-                    'comparison' => [
-                        'strict_match' => $cachedOtp === $otp,
-                        'loose_match' => $cachedOtp == $otp,
-                    ],
-                ]
-            ] : [];
-            
-            return response()->json(array_merge([
-                'success' => false,
-                'message' => 'Invalid or expired OTP.'
-            ], $debugInfo), 422);
+                ] : null
+            ], 422);
         }
 
         // Verify reseller has sufficient balance

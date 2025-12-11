@@ -199,6 +199,71 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPassword
 	}
 
 	/**
+	 * Calculate token balance from transaction history
+	 * This ensures balance consistency by summing all transaction amounts
+	 */
+	public function calculateBalanceFromTransactions(): float
+	{
+		$balance = 0.0;
+		
+		// Sum all completed transactions for this user
+		$transactions = $this->transactions()
+			->where('status', 'completed')
+			->get();
+		
+		foreach ($transactions as $transaction) {
+			// Add the transaction amount to balance
+			// Positive amounts = credits, negative amounts = debits
+			$balance += (float) $transaction->amount;
+		}
+		
+		return max(0, $balance); // Balance cannot be negative
+	}
+
+	/**
+	 * Reconcile balance with transaction history
+	 * Returns array with calculated balance and discrepancy
+	 */
+	public function reconcileBalance(): array
+	{
+		$calculatedBalance = $this->calculateBalanceFromTransactions();
+		$storedBalance = (float) ($this->token_balance ?? 0);
+		$discrepancy = $calculatedBalance - $storedBalance;
+		
+		return [
+			'calculated_balance' => $calculatedBalance,
+			'stored_balance' => $storedBalance,
+			'discrepancy' => $discrepancy,
+			'is_consistent' => abs($discrepancy) < 0.01, // Allow small floating point differences
+		];
+	}
+
+	/**
+	 * Fix balance by recalculating from transactions
+	 * Use with caution - logs the fix for audit purposes
+	 */
+	public function fixBalanceFromTransactions(): bool
+	{
+		$oldBalance = (float) ($this->token_balance ?? 0);
+		$calculatedBalance = $this->calculateBalanceFromTransactions();
+		
+		if (abs($oldBalance - $calculatedBalance) >= 0.01) {
+			\Log::warning('Balance reconciliation fix applied', [
+				'user_id' => $this->id,
+				'user_email' => $this->email,
+				'old_balance' => $oldBalance,
+				'calculated_balance' => $calculatedBalance,
+				'discrepancy' => $calculatedBalance - $oldBalance,
+			]);
+			
+			$this->token_balance = $calculatedBalance;
+			return $this->save();
+		}
+		
+		return true;
+	}
+
+	/**
 	 * Override twoFactorQrCodeSvg to handle decryption errors gracefully
 	 */
 	public function twoFactorQrCodeSvg()

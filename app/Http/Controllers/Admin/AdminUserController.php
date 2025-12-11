@@ -173,6 +173,31 @@ class AdminUserController extends Controller
             $query->latest()->limit(50);
         }]);
         
+        // Check for balance inconsistencies
+        $reconciliation = $user->reconcileBalance();
+        $balanceWarning = null;
+        
+        if (!$reconciliation['is_consistent']) {
+            $balanceWarning = sprintf(
+                'Balance inconsistency detected: Stored balance (%.2f) does not match calculated balance from transactions (%.2f). Discrepancy: %.2f RWAMP tokens.',
+                $reconciliation['stored_balance'],
+                $reconciliation['calculated_balance'],
+                $reconciliation['discrepancy']
+            );
+            
+            Log::warning('Balance inconsistency in user details view', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'reconciliation' => $reconciliation,
+            ]);
+            
+            // Auto-fix if discrepancy is significant
+            if (abs($reconciliation['discrepancy']) >= 0.01) {
+                $user->fixBalanceFromTransactions();
+                $user->refresh();
+            }
+        }
+        
         return response()->json([
             'user' => [
                 'id' => $user->id,
@@ -203,6 +228,8 @@ class AdminUserController extends Controller
                     'created_at' => $transaction->created_at?->format('Y-m-d H:i:s'),
                 ];
             }),
+            'balance_warning' => $balanceWarning,
+            'balance_reconciliation' => $reconciliation,
         ]);
     }
 
@@ -220,20 +247,40 @@ class AdminUserController extends Controller
             'price_per_coin' => 'nullable|numeric|min:0',
         ]);
 
-        $oldTokenBalance = $user->token_balance ?? 0;
-        $newTokenBalance = $validated['token_balance'] ?? $oldTokenBalance;
+        // Refresh user to get latest balance
+        $user->refresh();
+        $oldTokenBalance = (float) ($user->token_balance ?? 0);
+        $newTokenBalance = isset($validated['token_balance']) ? (float) $validated['token_balance'] : $oldTokenBalance;
         $balanceDifference = $newTokenBalance - $oldTokenBalance;
+
+        // CRITICAL: Check for balance inconsistencies before making changes
+        $reconciliation = $user->reconcileBalance();
+        if (!$reconciliation['is_consistent']) {
+            Log::error('Balance inconsistency detected before admin update', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'stored_balance' => $reconciliation['stored_balance'],
+                'calculated_balance' => $reconciliation['calculated_balance'],
+                'discrepancy' => $reconciliation['discrepancy'],
+                'admin_id' => Auth::id(),
+            ]);
+            
+            // Auto-fix the balance before proceeding
+            $user->fixBalanceFromTransactions();
+            $user->refresh();
+            $oldTokenBalance = (float) ($user->token_balance ?? 0);
+            $balanceDifference = $newTokenBalance - $oldTokenBalance;
+        }
 
         try {
             DB::beginTransaction();
 
-            // Update user information
+            // Update user information (excluding token_balance - we'll update it via increment/decrement)
             $user->update([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'phone' => $validated['phone'] ?? null,
                 'role' => $validated['role'],
-                'token_balance' => $newTokenBalance,
             ]);
 
             // Handle coin quantity changes with transaction history
@@ -258,7 +305,15 @@ class AdminUserController extends Controller
                     $coinsSold = abs($balanceDifference);
                     $totalPrice = $coinsSold * $pricePerCoin;
 
-                    // Transaction for user (debit - coins sold)
+                    // Validate user has sufficient balance
+                    if ($oldTokenBalance < $coinsSold) {
+                        DB::rollBack();
+                        return back()->withErrors([
+                            'token_balance' => 'User has insufficient balance. Current balance: ' . number_format($oldTokenBalance, 2) . ' RWAMP tokens.'
+                        ])->withInput();
+                    }
+
+                    // Create transaction records FIRST
                     Transaction::create([
                         'user_id' => $user->id,
                         'sender_id' => $user->id,
@@ -273,7 +328,6 @@ class AdminUserController extends Controller
                         'payment_status' => 'verified',
                     ]);
 
-                    // Transaction for admin (credit - coins received)
                     Transaction::create([
                         'user_id' => $admin->id,
                         'sender_id' => $user->id,
@@ -288,11 +342,14 @@ class AdminUserController extends Controller
                         'payment_status' => 'verified',
                     ]);
 
+                    // THEN update balance using decrement (not direct assignment)
+                    $user->decrement('token_balance', $coinsSold);
+
                     Log::info('Admin updated user coins (reduced)', [
                         'admin_id' => $admin->id,
                         'user_id' => $user->id,
                         'old_balance' => $oldTokenBalance,
-                        'new_balance' => $newTokenBalance,
+                        'new_balance' => $oldTokenBalance - $coinsSold,
                         'coins_sold' => $coinsSold,
                         'price_per_coin' => $pricePerCoin,
                         'total_price' => $totalPrice,
@@ -303,7 +360,7 @@ class AdminUserController extends Controller
                     $coinsAdded = $balanceDifference;
                     $totalPrice = $coinsAdded * $pricePerCoin;
 
-                    // Transaction for user (credit - coins received)
+                    // Create transaction records FIRST
                     Transaction::create([
                         'user_id' => $user->id,
                         'sender_id' => $admin->id,
@@ -318,7 +375,6 @@ class AdminUserController extends Controller
                         'payment_status' => 'verified',
                     ]);
 
-                    // Transaction for admin (debit tracking)
                     Transaction::create([
                         'user_id' => $admin->id,
                         'sender_id' => $admin->id,
@@ -333,16 +389,36 @@ class AdminUserController extends Controller
                         'payment_status' => 'verified',
                     ]);
 
+                    // THEN update balance using increment (not direct assignment)
+                    $user->increment('token_balance', $coinsAdded);
+
                     Log::info('Admin updated user coins (increased)', [
                         'admin_id' => $admin->id,
                         'user_id' => $user->id,
                         'old_balance' => $oldTokenBalance,
-                        'new_balance' => $newTokenBalance,
+                        'new_balance' => $oldTokenBalance + $coinsAdded,
                         'coins_added' => $coinsAdded,
                         'price_per_coin' => $pricePerCoin,
                         'total_price' => $totalPrice,
                     ]);
                 }
+            }
+
+            // Final balance consistency check
+            $user->refresh();
+            $finalReconciliation = $user->reconcileBalance();
+            if (!$finalReconciliation['is_consistent']) {
+                Log::error('Balance inconsistency detected after admin update', [
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'stored_balance' => $finalReconciliation['stored_balance'],
+                    'calculated_balance' => $finalReconciliation['calculated_balance'],
+                    'discrepancy' => $finalReconciliation['discrepancy'],
+                    'admin_id' => Auth::id(),
+                ]);
+                
+                // Auto-fix the balance
+                $user->fixBalanceFromTransactions();
             }
 
             DB::commit();

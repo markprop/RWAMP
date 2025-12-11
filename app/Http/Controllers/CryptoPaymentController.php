@@ -196,17 +196,34 @@ class CryptoPaymentController extends Controller
 
     public function submitTxHash(Request $request)
     {
-        // KYC check disabled - all users can submit payments
-        // KYC code kept intact but not enforced
-        $user = $request->user();
+        try {
+            // KYC check disabled - all users can submit payments
+            // KYC code kept intact but not enforced
+            $user = $request->user();
 
-        $request->validate([
-            'tx_hash' => 'required|string',
-            'network' => 'required|string|in:TRC20,ERC20,BTC,BEP20,BNB',
-            'token_amount' => 'required|numeric|min:1000',
-            'usd_amount' => 'required|string',
-            'pkr_amount' => 'required|string',
-        ]);
+            \Log::info('Submit TX Hash Request Received', [
+                'user_id' => $user->id,
+                'user_role' => $user->role,
+                'request_data' => $request->except(['_token']),
+            ]);
+
+            $request->validate([
+                'tx_hash' => 'required|string|max:255',
+                'network' => 'required|string|in:TRC20,ERC20,BTC,BEP20,BNB',
+                'token_amount' => 'required|numeric|min:500',
+                'usd_amount' => 'required|string',
+                'pkr_amount' => 'required|string',
+            ], [
+                'tx_hash.required' => 'Transaction hash is required.',
+                'tx_hash.string' => 'Transaction hash must be a valid string.',
+                'network.required' => 'Network is required.',
+                'network.in' => 'Invalid network selected.',
+                'token_amount.required' => 'Token amount is required.',
+                'token_amount.numeric' => 'Token amount must be a number.',
+                'token_amount.min' => 'Minimum purchase is 500 tokens.',
+                'usd_amount.required' => 'USD amount is required.',
+                'pkr_amount.required' => 'PKR amount is required.',
+            ]);
 
         // derive purchase coin price in PKR per token
         $pkrAmount = (float) $request->input('pkr_amount');
@@ -238,8 +255,30 @@ class CryptoPaymentController extends Controller
             'status' => 'pending',
         ]);
         
-        \Log::info('Transaction hash saved', [
+        // Create Transaction record immediately for transaction history tracking
+        // This allows users/resellers to see their buy transactions even before admin approval
+        $user = $request->user();
+        $tokenAmount = (float) $request->input('token_amount');
+        $pkrAmount = (float) $request->input('pkr_amount');
+        $usdAmount = (float) str_replace(',', '', $request->input('usd_amount'));
+        $pricePerCoin = $tokenAmount > 0 ? ($pkrAmount / $tokenAmount) : 0;
+        
+        \App\Models\Transaction::create([
+            'user_id' => $user->id,
+            'type' => 'crypto_purchase',
+            'amount' => $tokenAmount,
+            'price_per_coin' => $pricePerCoin,
+            'total_price' => $pkrAmount,
+            'status' => 'pending', // Will be updated to 'completed' when admin approves
+            'reference' => $request->input('tx_hash'),
+            'payment_type' => strtolower($request->input('network')),
+            'payment_hash' => $request->input('tx_hash'),
+            'payment_status' => 'pending', // Waiting for admin approval
+        ]);
+        
+        \Log::info('Transaction hash saved and transaction record created', [
             'user_id' => $request->user()->id,
+            'user_role' => $user->role,
             'payment_id' => $payment->id,
             'tx_hash' => $payment->tx_hash,
             'network' => $payment->network,
@@ -268,7 +307,37 @@ class CryptoPaymentController extends Controller
             // silent fail to avoid UX impact
         }
 
-        return response()->json(['success' => true, 'id' => $payment->id]);
+            return response()->json([
+                'success' => true, 
+                'id' => $payment->id,
+                'message' => 'Transaction hash saved successfully. Your payment is pending admin approval.'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation error in submitTxHash', [
+                'user_id' => $request->user()->id ?? null,
+                'errors' => $e->errors(),
+                'request_data' => $request->except(['_token']),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed: ' . implode(', ', array_map(function($errors) {
+                    return implode(', ', $errors);
+                }, $e->errors())),
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Error in submitTxHash', [
+                'user_id' => $request->user()->id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->except(['_token']),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to save transaction hash. Please try again or contact support.',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
     }
 
     public function userHistory(Request $request)

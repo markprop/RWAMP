@@ -2126,11 +2126,7 @@ class AdminController extends Controller
         try {
             \DB::beginTransaction();
 
-            // Add tokens to recipient
-            $recipient->token_balance = ($recipient->token_balance ?? 0) + $coinQuantity;
-            $recipient->save();
-
-            // Create transaction record for recipient (credit)
+            // Create transaction record for recipient (credit) FIRST
             Transaction::create([
                 'user_id' => $recipient->id,
                 'sender_id' => $admin->id,
@@ -2165,6 +2161,9 @@ class AdminController extends Controller
                 'payment_receipt' => $paymentReceiptPath,
                 'payment_status' => $paymentStatus,
             ]);
+
+            // THEN update balance using increment (not direct assignment)
+            $recipient->increment('token_balance', $coinQuantity);
 
             // Clear OTP from cache
             Cache::forget($cacheKey);
