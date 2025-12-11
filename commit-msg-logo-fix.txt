@@ -1,0 +1,11 @@
+fix: update logo to use GitHub raw URL with 3D frame effect
+
+Replace external logo URL with GitHub raw URL and add capsule-render frames to create 3D visual effect.
+
+Changes:
+- Use raw.githubusercontent.com URL for logo (main branch)
+- Add layered capsule-render frames above and below logo
+- Gradient frames create depth and 3D appearance
+- Logo is clickable and links to rwamp.io
+- Maintains GitHub markdown compatibility
+
