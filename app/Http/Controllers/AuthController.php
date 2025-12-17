@@ -237,9 +237,9 @@ class AuthController extends Controller
 			return response()->json(['valid' => false, 'message' => 'Phone number is required']);
 		}
 
-		// Validate E.164 format: must start with + and contain only digits after +
-		// E.164 format: +[country code][number], total length 8-20 characters
-		// Pattern: + followed by 7-19 digits
+		// Validate E.164‑style format: must start with + and contain only digits after +
+		// Format: +[country code][number], total length 9‑21 characters
+		// Pattern: + followed by 8‑20 digits (first digit 1‑9)
 		if (!preg_match('/^\+[1-9]\d{7,19}$/', $phone)) {
 			return response()->json([
 				'valid' => false,
@@ -247,11 +247,11 @@ class AuthController extends Controller
 			]);
 		}
 
-		// Check length (E.164: 8-20 characters total including +)
-		if (strlen($phone) < 8 || strlen($phone) > 20) {
+		// Check length to match the regex (9‑21 characters total including +)
+		if (strlen($phone) < 9 || strlen($phone) > 21) {
 			return response()->json([
 				'valid' => false,
-				'message' => 'Phone number must be between 8 and 20 characters'
+				'message' => 'Phone number must be between 9 and 21 characters'
 			]);
 		}
 
