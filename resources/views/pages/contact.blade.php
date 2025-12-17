@@ -129,11 +129,17 @@
                 @if (config('services.recaptcha.site_key'))
                 <script src="https://www.google.com/recaptcha/api.js?render={{ config('services.recaptcha.site_key') }}"></script>
                 <script>
-                document.addEventListener('submit', function(e){
-                    if(e.target && e.target.action && e.target.action.includes('{{ route('contact.store') }}')){
+                document.addEventListener('submit', function(e) {
+                    if (e.target && e.target.action && e.target.action.includes('{{ route('contact.store') }}')) {
+                        // If reCAPTCHA library failed to load (e.g. blocked by extensions or CSP),
+                        // fall back to a normal submit so the server can still handle the request.
+                        if (typeof grecaptcha === 'undefined' || !window.grecaptcha) {
+                            return; // allow the normal form submission to proceed
+                        }
+
                         e.preventDefault();
-                        grecaptcha.ready(function(){
-                            grecaptcha.execute('{{ config('services.recaptcha.site_key') }}', {action: 'contact'}).then(function(token){
+                        grecaptcha.ready(function () {
+                            grecaptcha.execute('{{ config('services.recaptcha.site_key') }}', { action: 'contact' }).then(function (token) {
                                 document.getElementById('recaptcha_contact').value = token;
                                 e.target.submit();
                             });
