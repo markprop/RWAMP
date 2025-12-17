@@ -153,7 +153,17 @@
                         <div class="mb-3">
                             <span class="rw-badge bg-red-100 text-red-800">❌ Rejected</span>
                         </div>
-                        <p class="text-sm text-gray-600 mb-3">Your KYC submission was rejected. Please review the requirements and resubmit.</p>
+                        <p class="text-sm text-gray-600 mb-3">
+                            Your KYC submission was rejected. Please review the reason below and resubmit after fixing the issues.
+                        </p>
+                        @if(!empty($user->kyc_rejection_reason))
+                            <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                                <p class="text-xs font-semibold text-red-900 mb-1">Rejection Reason from Admin:</p>
+                                <p class="text-xs text-red-800 whitespace-pre-line">
+                                    {{ $user->kyc_rejection_reason }}
+                                </p>
+                            </div>
+                        @endif
                         <a href="{{ route('kyc.show') }}" class="btn-primary text-sm px-4 py-2">Resubmit KYC</a>
                     @else
                         <div class="mb-3">
@@ -275,6 +285,108 @@
                     <a href="{{ route('user.withdrawals') }}" class="btn-primary text-sm">View My Withdrawals</a>
                 </div>
 
+                <!-- KYC details / updates section just below Withdrawal Requests -->
+                <div class="bg-white rounded-xl shadow-xl p-6 md:p-8 card-hover animate-fadeInUp">
+                    <h2 class="text-xl font-montserrat font-bold mb-4">My KYC Details</h2>
+
+                    @if($user->kyc_status === 'not_started' || empty($user->kyc_submitted_at))
+                        <p class="text-sm text-gray-600 mb-3">
+                            You haven’t submitted a KYC request yet. Complete your KYC to enable withdrawals and full access.
+                        </p>
+                        <a href="{{ route('kyc.show') }}" class="btn-primary text-sm px-4 py-2">Start KYC</a>
+                    @else
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-sm">
+                                <tbody class="text-gray-800">
+                                    <tr>
+                                        <th class="text-left py-2 pr-4 text-gray-600">Status</th>
+                                        <td class="py-2">
+                                            @if($user->kyc_status === 'approved')
+                                                <span class="rw-badge bg-green-100 text-green-800">Approved</span>
+                                            @elseif($user->kyc_status === 'pending')
+                                                <span class="rw-badge bg-yellow-100 text-yellow-800">Pending</span>
+                                            @else
+                                                <span class="rw-badge bg-red-100 text-red-800">Rejected</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-left py-2 pr-4 text-gray-600">ID Type</th>
+                                        <td class="py-2">{{ strtoupper($user->kyc_id_type ?? '—') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-left py-2 pr-4 text-gray-600">ID Number</th>
+                                        <td class="py-2 font-mono text-xs">{{ $user->kyc_id_number ?? '—' }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-left py-2 pr-4 text-gray-600">Full Name (on ID)</th>
+                                        <td class="py-2">{{ $user->kyc_full_name ?? '—' }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-left py-2 pr-4 text-gray-600">Submitted At</th>
+                                        <td class="py-2">
+                                            {{ optional($user->kyc_submitted_at)->format('Y-m-d H:i') ?? '—' }}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-left py-2 pr-4 text-gray-600">Approved At</th>
+                                        <td class="py-2">
+                                            {{ optional($user->kyc_approved_at)->format('Y-m-d H:i') ?? '—' }}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-left py-2 pr-4 text-gray-600 align-top">Documents</th>
+                                        <td class="py-2">
+                                            <div class="flex flex-wrap gap-2">
+                                                @if($user->kyc_id_front_path)
+                                                    <button
+                                                        type="button"
+                                                        onclick="openKycImageModal('ID Front', '{{ route('kyc.profile.download', ['type' => 'front']) }}')"
+                                                        class="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
+                                                    >
+                                                        📄 ID Front
+                                                    </button>
+                                                @endif
+                                                @if($user->kyc_id_back_path)
+                                                    <button
+                                                        type="button"
+                                                        onclick="openKycImageModal('ID Back', '{{ route('kyc.profile.download', ['type' => 'back']) }}')"
+                                                        class="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
+                                                    >
+                                                        📄 ID Back
+                                                    </button>
+                                                @endif
+                                                @if($user->kyc_selfie_path)
+                                                    <button
+                                                        type="button"
+                                                        onclick="openKycImageModal('Selfie', '{{ route('kyc.profile.download', ['type' => 'selfie']) }}')"
+                                                        class="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
+                                                    >
+                                                        📷 Selfie
+                                                    </button>
+                                                @endif
+                                                @if(!$user->kyc_id_front_path && !$user->kyc_id_back_path && !$user->kyc_selfie_path)
+                                                    <span class="text-gray-500 text-xs">No documents available.</span>
+                                                @endif
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @if($user->kyc_status === 'rejected' && !empty($user->kyc_rejection_reason))
+                                        <tr>
+                                            <th class="text-left py-2 pr-4 text-gray-600 align-top">Rejection Reason</th>
+                                            <td class="py-2">
+                                                <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-800 whitespace-pre-line">
+                                                    {{ $user->kyc_rejection_reason }}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endif
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+
                 <div class="bg-white rounded-xl shadow-xl p-6 md:p-8 card-hover animate-fadeInUp">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-xl font-montserrat font-bold">Transaction History</h2>
@@ -318,6 +430,29 @@
                     <button type="submit" class="btn-secondary">Logout</button>
                 </form>
             </div>
+        </div>
+    </div>
+<!-- KYC Image Preview Modal -->
+<div id="kyc-image-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="flex items-center justify-between px-4 py-3 border-b">
+            <h3 id="kyc-image-modal-title" class="text-lg font-montserrat font-bold text-gray-900">KYC Document</h3>
+            <button
+                type="button"
+                onclick="closeKycImageModal()"
+                class="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            >
+                &times;
+            </button>
+        </div>
+        <div class="flex-1 bg-gray-50 flex items-center justify-center p-4 overflow-auto">
+            <img
+                id="kyc-image-modal-img"
+                src=""
+                alt="KYC Document"
+                class="max-h-full max-w-full rounded-lg shadow-md border bg-white"
+                onerror="this.alt='Unable to load image'; this.classList.add('p-4');"
+            >
         </div>
     </div>
 </div>
@@ -786,13 +921,46 @@ function openWithdrawModal() {
     }
 }
 
-// Close KYC modal when clicking outside
+function openKycImageModal(title, src) {
+    const modal = document.getElementById('kyc-image-modal');
+    const img = document.getElementById('kyc-image-modal-img');
+    const titleEl = document.getElementById('kyc-image-modal-title');
+
+    if (!modal || !img || !titleEl) return;
+
+    titleEl.textContent = title || 'KYC Document';
+    img.src = src;
+    modal.classList.remove('hidden');
+}
+
+function closeKycImageModal() {
+    const modal = document.getElementById('kyc-image-modal');
+    const img = document.getElementById('kyc-image-modal-img');
+
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+    if (img) {
+        img.src = '';
+    }
+}
+
+// Close KYC and KYC-image modals when clicking outside
 document.addEventListener('DOMContentLoaded', function() {
     const kycModal = document.getElementById('kyc-required-modal');
     if (kycModal) {
         kycModal.addEventListener('click', function(e) {
             if (e.target === kycModal) {
                 closeKycRequiredModal();
+            }
+        });
+    }
+
+    const kycImageModal = document.getElementById('kyc-image-modal');
+    if (kycImageModal) {
+        kycImageModal.addEventListener('click', function(e) {
+            if (e.target === kycImageModal) {
+                closeKycImageModal();
             }
         });
     }

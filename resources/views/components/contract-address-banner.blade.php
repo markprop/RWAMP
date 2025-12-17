@@ -11,13 +11,28 @@
                 return {
                     copied: false,
                     copyError: false,
+                    showWarning: false,
                     address: address,
+                    showWarningDialog: function() {
+                        this.showWarning = true;
+                        // Prevent body scroll when modal is open
+                        document.body.style.overflow = 'hidden';
+                        document.body.classList.add('modal-open');
+                    },
+                    closeWarningDialog: function() {
+                        this.showWarning = false;
+                        // Restore body scroll
+                        document.body.style.overflow = '';
+                        document.body.classList.remove('modal-open');
+                    },
                     copyToClipboard: function() {
                         var self = this;
                         if (navigator.clipboard && navigator.clipboard.writeText) {
                             navigator.clipboard.writeText(self.address).then(function() {
                                 self.copied = true;
                                 self.copyError = false;
+                                // Show warning dialog after copying
+                                self.showWarningDialog();
                                 setTimeout(function() {
                                     self.copied = false;
                                 }, 3000);
@@ -45,6 +60,8 @@
                             if (successful) {
                                 self.copied = true;
                                 self.copyError = false;
+                                // Show warning dialog after copying
+                                self.showWarningDialog();
                                 setTimeout(function() {
                                     self.copied = false;
                                 }, 3000);
@@ -61,6 +78,9 @@
                                 self.copyError = false;
                             }, 3000);
                         }
+                    },
+                    handleAddressClick: function() {
+                        this.showWarningDialog();
                     }
                 };
             });
@@ -106,10 +126,14 @@
                 </div>
                 
                 <!-- Contract Address Container -->
-                <div class="flex items-center gap-0.5 sm:gap-1 px-1 sm:px-1.5 py-0.25 sm:py-0.5 rounded bg-black/60 backdrop-blur-sm border border-yellow-300/90 hover:border-yellow-200 hover:bg-black/75 transition-all duration-200 group shadow-lg flex-1 min-w-0 max-w-full overflow-hidden">
+                <div 
+                    @click="handleAddressClick()"
+                    class="flex items-center gap-0.5 sm:gap-1 px-1 sm:px-1.5 py-0.25 sm:py-0.5 rounded bg-black/60 backdrop-blur-sm border border-yellow-300/90 hover:border-yellow-200 hover:bg-black/75 transition-all duration-200 group shadow-lg flex-1 min-w-0 max-w-full overflow-hidden cursor-pointer"
+                    title="Click to view warning"
+                >
                     <!-- Contract Address - Truncated on mobile with better visibility -->
                     <code 
-                        class="contract-address-text text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-mono font-bold text-yellow-50 select-all tracking-wide highlight-text leading-tight whitespace-nowrap overflow-hidden text-ellipsis block min-w-0 w-full" 
+                        class="contract-address-text text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-mono font-bold text-yellow-50 select-all tracking-wide highlight-text leading-tight whitespace-nowrap overflow-hidden text-ellipsis block min-w-0 w-full pointer-events-none" 
                         id="contract-address"
                         title="{{ $contractAddress }}"
                         style="text-shadow: 0 0 6px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,1), 0 0 12px rgba(255,255,255,0.3);"
@@ -205,6 +229,89 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
         </svg>
         <span>Failed to copy. Please try again.</span>
+    </div>
+    
+    <!-- Warning Dialog Modal -->
+    <div 
+        x-show="showWarning"
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        @click.away="closeWarningDialog()"
+        @keydown.escape.window="closeWarningDialog()"
+        class="fixed inset-0 z-[100] flex items-center justify-center p-4"
+        x-cloak
+        style="background-color: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px);"
+    >
+        <div 
+            @click.stop
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 scale-95 translate-y-4"
+            x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+            x-transition:leave-end="opacity-0 scale-95 translate-y-4"
+            class="warning-dialog bg-gradient-to-br from-red-600 via-red-700 to-red-800 rounded-xl shadow-2xl border-2 border-yellow-300/90 max-w-lg w-full mx-4 overflow-hidden"
+            style="box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 20px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.1);"
+        >
+            <!-- Dialog Header -->
+            <div class="bg-gradient-to-r from-red-700 to-red-800 px-4 sm:px-6 py-3 sm:py-4 border-b border-yellow-300/50 flex items-center gap-3">
+                <div class="flex-shrink-0">
+                    <svg class="w-6 h-6 sm:w-8 sm:h-8 text-yellow-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" style="filter: drop-shadow(0 0 4px rgba(0,0,0,0.8));">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg sm:text-xl font-bold text-yellow-100 uppercase tracking-wide flex-1" style="text-shadow: 0 0 6px rgba(0,0,0,0.9), 0 2px 4px rgba(0,0,0,1);">
+                    Important Warning
+                </h3>
+                <button 
+                    @click="closeWarningDialog()"
+                    class="flex-shrink-0 p-1.5 rounded-lg hover:bg-red-600/50 active:bg-red-600/70 transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:ring-offset-2 focus:ring-offset-red-700"
+                    aria-label="Close warning dialog"
+                >
+                    <svg class="w-5 h-5 sm:w-6 sm:h-6 text-yellow-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Dialog Body -->
+            <div class="px-4 sm:px-6 py-4 sm:py-6">
+                <div class="space-y-3 sm:space-y-4">
+                    <p class="text-sm sm:text-base text-yellow-50 leading-relaxed font-semibold" style="text-shadow: 0 0 4px rgba(0,0,0,0.8), 0 1px 2px rgba(0,0,0,0.9);">
+                        <span class="text-yellow-200 font-bold">⚠️ DO NOT TRANSFER PAYMENT</span> to this address.
+                    </p>
+                    
+                    <p class="text-xs sm:text-sm text-yellow-100 leading-relaxed" style="text-shadow: 0 0 3px rgba(0,0,0,0.8);">
+                        This is a <span class="font-bold text-yellow-200">CONTRACT ADDRESS</span>, not a payment address. Sending funds directly to this contract address may result in permanent loss of your funds.
+                    </p>
+                    
+                    <div class="bg-black/40 rounded-lg p-3 sm:p-4 border border-yellow-300/50 mt-4">
+                        <p class="text-xs sm:text-sm text-yellow-50 leading-relaxed font-medium" style="text-shadow: 0 0 3px rgba(0,0,0,0.8);">
+                            <span class="text-yellow-200 font-bold">✓ To make a payment:</span> Use the <span class="font-bold text-yellow-200">Purchase Page</span> on your dashboard through <span class="font-bold text-yellow-200">Wallet Connect</span>.
+                        </p>
+                    </div>
+                    
+                    <p class="text-xs sm:text-sm text-red-200 leading-relaxed font-semibold mt-4 pt-3 border-t border-yellow-300/30" style="text-shadow: 0 0 3px rgba(0,0,0,0.8);">
+                        ⚠️ We are <span class="text-red-100 font-bold">NOT RESPONSIBLE</span> if you send funds to this contract address.
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Dialog Footer -->
+            <div class="bg-gradient-to-r from-red-700/50 to-red-800/50 px-4 sm:px-6 py-3 sm:py-4 border-t border-yellow-300/50 flex justify-end">
+                <button 
+                    @click="closeWarningDialog()"
+                    class="warning-dialog-btn px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg shadow-lg transition-all duration-200 text-xs sm:text-sm uppercase tracking-wide focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:ring-offset-2 focus:ring-offset-red-700 active:scale-95 font-extrabold"
+                    style="background: linear-gradient(135deg, #fde047 0%, #facc15 50%, #eab308 100%); color: #000000; box-shadow: 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.5), 0 0 0 1px rgba(0,0,0,0.1); border: 1px solid rgba(234, 179, 8, 0.3);"
+                >
+                    I Understand
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -677,6 +784,95 @@ nav[style*="top: 36px"] {
     .rwamp-contract-banner {
         display: none !important;
     }
+}
+
+/* Warning Dialog Styles */
+.warning-dialog {
+    max-width: 90% !important;
+    width: 100% !important;
+}
+
+@media (min-width: 640px) {
+    .warning-dialog {
+        max-width: 32rem !important;
+    }
+}
+
+@media (min-width: 768px) {
+    .warning-dialog {
+        max-width: 36rem !important;
+    }
+}
+
+/* Warning Dialog Button - Ensure text visibility with bright yellow background */
+.warning-dialog-btn {
+    background: linear-gradient(135deg, #fde047 0%, #facc15 50%, #eab308 100%) !important;
+    color: #000000 !important;
+    font-weight: 900 !important;
+    text-shadow: none !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    border: 1px solid rgba(234, 179, 8, 0.3) !important;
+}
+
+.warning-dialog-btn:hover {
+    transform: translateY(-1px);
+    background: linear-gradient(135deg, #fef08a 0%, #fde047 50%, #facc15 100%) !important;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.5), 0 0 0 1px rgba(0,0,0,0.1) !important;
+    color: #000000 !important;
+    border-color: rgba(234, 179, 8, 0.5) !important;
+}
+
+.warning-dialog-btn:active {
+    transform: translateY(0);
+    background: linear-gradient(135deg, #facc15 0%, #eab308 50%, #ca8a04 100%) !important;
+    color: #000000 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 2px rgba(0,0,0,0.2) !important;
+}
+
+.warning-dialog-btn:focus {
+    color: #000000 !important;
+}
+
+/* Ensure contract address container is clickable */
+.rwamp-contract-banner .group {
+    cursor: pointer !important;
+}
+
+.contract-address-text {
+    user-select: text !important;
+    pointer-events: none !important;
+}
+
+/* Mobile-specific warning dialog adjustments */
+@media (max-width: 480px) {
+    .warning-dialog {
+        max-width: 95% !important;
+        margin: 0.5rem !important;
+    }
+    
+    .warning-dialog h3 {
+        font-size: 0.875rem !important;
+    }
+    
+    .warning-dialog p {
+        font-size: 0.75rem !important;
+    }
+    
+    .warning-dialog-btn {
+        font-size: 0.625rem !important;
+        padding: 0.5rem 1rem !important;
+    }
+}
+
+/* Ensure modal backdrop is properly styled */
+[ x-show="showWarning"] {
+    z-index: 100 !important;
+}
+
+/* Prevent body scroll when modal is open */
+body.modal-open {
+    overflow: hidden !important;
 }
 </style>
 

@@ -58,14 +58,14 @@
                             href="{{ route('open.purchase') }}"
                             class="btn-primary w-full sm:w-auto transition-all duration-300 hover:scale-105 text-center"
                         >
-                            Join the Presale
+                            Buy $RWAMP Now!
                         </a>
                     @else
                         <a
                             href="{{ route('login', ['intended' => 'purchase']) }}"
                             class="btn-primary w-full sm:w-auto transition-all duration-300 hover:scale-105 text-center"
                         >
-                            Join the Presale
+                            Buy $RWAMP Now!
                         </a>
                     @endauth
                     

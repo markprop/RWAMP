@@ -57,4 +57,33 @@ class NewsletterController extends Controller
         }
         return back()->with('success', 'Thank you for subscribing! You will receive exclusive updates about RWAMP.');
     }
+
+    /**
+     * Check if a newsletter email or WhatsApp number already exists (AJAX).
+     */
+    public function check(Request $request): JsonResponse
+    {
+        $email = strtolower(trim($request->query('email', '')));
+        $whatsapp = trim($request->query('whatsapp', ''));
+
+        $emailExists = false;
+        $whatsappExists = false;
+
+        if ($email !== '') {
+            $emailExists = \App\Models\NewsletterSubscription::where('email', $email)->exists();
+        }
+
+        if ($whatsapp !== '') {
+            $whatsappExists = \App\Models\NewsletterSubscription::where('whatsapp', $whatsapp)->exists();
+        }
+
+        return response()->json([
+            'valid' => !($emailExists || $whatsappExists),
+            'email_exists' => $emailExists,
+            'whatsapp_exists' => $whatsappExists,
+            'message' => $emailExists || $whatsappExists
+                ? 'This email or WhatsApp number is already subscribed.'
+                : 'Email and WhatsApp number are available.',
+        ]);
+    }
 }

@@ -2364,12 +2364,12 @@ function calculateCreateUserTotal() {
                                 <label class="block text-sm font-semibold text-gray-700 mb-2">
                                     Phone Number
                                 </label>
-                                <input 
-                                    name="phone" 
-                                    type="tel"
-                                    value="{{ old('phone') }}"
-                                    class="rw-input w-full" 
-                                    placeholder="+1234567890" 
+                                <x-phone-input
+                                    name="phone"
+                                    :value="old('phone')"
+                                    :required="false"
+                                    placeholder="Enter phone number"
+                                    input-class="rw-input w-full"
                                 />
                                 <p class="text-xs text-gray-500 mt-1.5">Contact number (optional)</p>
                                 @error('phone')

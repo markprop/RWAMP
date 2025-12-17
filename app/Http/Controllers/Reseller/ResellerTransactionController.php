@@ -54,6 +54,9 @@ class ResellerTransactionController extends Controller
             abort(403, 'Unauthorized');
         }
 
+        // Eager load related users so we can show clean sender/receiver info
+        $transaction->loadMissing(['sender', 'recipient']);
+
         return view('dashboard.reseller-transaction-view', compact('transaction'));
     }
 }

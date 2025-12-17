@@ -68,7 +68,7 @@ class AdminUserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
-            'phone' => 'nullable|string|max:20',
+            'phone' => 'nullable|string|min:8|max:20',
             'role' => 'required|in:user,investor,reseller,admin',
             'password' => 'nullable|string|min:8',
             'coin_quantity' => 'nullable|numeric|min:0',
@@ -241,7 +241,7 @@ class AdminUserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => "required|email|max:255|unique:users,email,{$user->id}",
-            'phone' => 'nullable|string|max:30',
+            'phone' => 'nullable|string|min:8|max:20',
             'role' => 'required|in:investor,reseller,admin,user',
             'token_balance' => 'nullable|numeric|min:0',
             'price_per_coin' => 'nullable|numeric|min:0',

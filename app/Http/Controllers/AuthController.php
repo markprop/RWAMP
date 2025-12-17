@@ -237,32 +237,27 @@ class AuthController extends Controller
 			return response()->json(['valid' => false, 'message' => 'Phone number is required']);
 		}
 
-		// Normalize phone: remove all spaces and non-digit characters except +
-		$normalized = preg_replace('/[^\d+]/', '', $phone);
-		
-		// Validate phone format: should start with + and contain digits
-		// Format: +[country code][number] - allows flexible spacing in input
-		// After normalization, should be: +[1-4 digits][4-14 digits]
-		// General pattern: +[1-9][0-9]{0,3}[0-9]{4,14} (country code 1-4 digits, number 4-14 digits)
-		$phonePattern = '/^\+[1-9]\d{0,3}\d{4,14}$/';
-		
-		// Also check Pakistan-specific format: +92 followed by 10 digits
-		$pakistanPattern = '/^\+92\d{10}$/';
-		
-		if (!preg_match($phonePattern, $normalized) && !preg_match($pakistanPattern, $normalized)) {
+		// Validate E.164 format: must start with + and contain only digits after +
+		// E.164 format: +[country code][number], total length 8-20 characters
+		// Pattern: + followed by 7-19 digits
+		if (!preg_match('/^\+[1-9]\d{7,19}$/', $phone)) {
 			return response()->json([
 				'valid' => false,
-				'message' => 'Please enter a valid phone number. Format: +[Country Code] [Number] (e.g., +92 300 1234567)'
+				'message' => 'Please enter a valid phone number in international format (e.g., +923001234567)'
 			]);
 		}
 
-		// Check if phone already exists (check both original and normalized formats)
-		$existsInUsers = User::where('phone', $phone)
-			->orWhere('phone', $normalized)
-			->exists();
-		$existsInApplications = \App\Models\ResellerApplication::where('phone', $phone)
-			->orWhere('phone', $normalized)
-			->exists();
+		// Check length (E.164: 8-20 characters total including +)
+		if (strlen($phone) < 8 || strlen($phone) > 20) {
+			return response()->json([
+				'valid' => false,
+				'message' => 'Phone number must be between 8 and 20 characters'
+			]);
+		}
+
+		// Check if phone already exists
+		$existsInUsers = User::where('phone', $phone)->exists();
+		$existsInApplications = \App\Models\ResellerApplication::where('phone', $phone)->exists();
 
 		if ($existsInUsers || $existsInApplications) {
 			return response()->json([
@@ -299,7 +294,7 @@ class AuthController extends Controller
 		$validated = $request->validate([
 			'name' => ['required', 'string', 'max:255'],
 			'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-			'phone' => ['required', 'string', 'max:30'],
+			'phone' => ['required', 'string', 'min:8', 'max:20'],
 			'role' => ['nullable', 'in:investor,reseller,admin'],
 			'password' => ['required', 'confirmed', Password::min(8)],
 			'referral_code' => ['nullable', 'string', 'max:20'],
@@ -411,7 +406,7 @@ class AuthController extends Controller
 			$validated = $request->validate([
 				'name' => ['required', 'string', 'max:255'],
 				'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email', 'unique:reseller_applications,email'],
-				'phone' => ['required', 'string', 'max:30'],
+				'phone' => ['required', 'string', 'min:8', 'max:20'],
 				'password' => ['required', 'confirmed', Password::min(8)],
 				'company_name' => ['nullable', 'string', 'max:255'],
 				'investment_capacity' => ['required', 'string', 'max:50'],

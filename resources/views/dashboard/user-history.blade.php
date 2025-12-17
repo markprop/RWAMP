@@ -28,7 +28,12 @@
                     <h3 class="font-montserrat font-bold text-xl">Payment Submissions</h3>
                     <p class="text-gray-600 text-sm">Submission price is stored to preserve your exact buy rate.</p>
                 </div>
-                <span class="rw-badge">{{ $payments->total() }} total</span>
+                <div class="flex items-center gap-2">
+                    <span class="rw-badge">{{ $payments->total() }} total</span>
+                    <a href="{{ route('payments.submit') }}" class="btn-secondary btn-small">
+                        Submit Offline Payment Receipt
+                    </a>
+                </div>
             </div>
 
             <!-- Payment Filters -->
@@ -175,6 +180,76 @@
                 </table>
             </div>
             <div class="mt-4">{{ $payments->links() }}</div>
+        </div>
+
+        <!-- Bank Transfer Receipts (manual submissions) -->
+        <div class="bg-white rounded-xl shadow-xl p-6 card-hover">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="font-montserrat font-bold text-xl">Bank Transfer Receipts</h3>
+                    <p class="text-gray-600 text-sm">Offline payments submitted with receipts.</p>
+                </div>
+                <span class="rw-badge">{{ $bankSubmissions->total() }} total</span>
+            </div>
+
+            <div class="rw-table-scroll overflow-x-auto">
+                <table class="min-w-[720px] whitespace-nowrap text-sm w-full">
+                    <thead>
+                        <tr class="text-left text-gray-600 border-b">
+                            <th class="py-3 pr-6">Date</th>
+                            <th class="py-3 pr-6">Tokens</th>
+                            <th class="py-3 pr-6">Amount</th>
+                            <th class="py-3 pr-6">Reseller</th>
+                            <th class="py-3 pr-6">Coin Price (Rs)</th>
+                            <th class="py-3 pr-6">Status</th>
+                            <th class="py-3 pr-6">Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($bankSubmissions as $s)
+                            <tr class="border-b">
+                                <td class="py-3 pr-6">{{ $s->created_at->format('Y-m-d H:i') }}</td>
+                                <td class="py-3 pr-6">{{ number_format($s->token_amount) }} RWAMP</td>
+                                <td class="py-3 pr-6">{{ $s->currency }} {{ number_format($s->fiat_amount, 2) }}</td>
+                                <td class="py-3 pr-6">
+                                    @if($s->recipient_type === 'reseller' && $s->recipient)
+                                        {{ $s->recipient->name }}
+                                    @else
+                                        Admin
+                                    @endif
+                                </td>
+                                <td class="py-3 pr-6">
+                                    @php
+                                        $pricePerCoin = $s->token_amount ? ($s->fiat_amount / $s->token_amount) : 0;
+                                    @endphp
+                                    PKR {{ number_format($pricePerCoin, 2) }}
+                                </td>
+                                <td class="py-3 pr-6">
+                                    @php
+                                        $statusLower = strtolower($s->status);
+                                        $cls = $statusLower === 'approved'
+                                            ? 'bg-green-100 text-green-800'
+                                            : ($statusLower === 'rejected'
+                                                ? 'bg-red-100 text-red-800'
+                                                : 'bg-yellow-100 text-yellow-800');
+                                    @endphp
+                                    <span class="rw-badge {{ $cls }}">{{ ucfirst($s->status) }}</span>
+                                </td>
+                                <td class="py-3 pr-6 text-xs text-gray-600">
+                                    {{ $s->admin_notes ?: '—' }}
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7" class="py-6 text-center text-gray-500 text-sm">
+                                    No bank receipts submitted yet.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4">{{ $bankSubmissions->links() }}</div>
         </div>
 
         <!-- Token Transactions -->

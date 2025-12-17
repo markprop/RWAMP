@@ -151,7 +151,17 @@ class AdminController extends Controller
             // Generate password reset token using Laravel's Password broker token repository
             $tokenRepository = \Illuminate\Support\Facades\Password::getRepository();
             $resetToken = $tokenRepository->create($user);
-            $resetUrl = route('password.reset', ['token' => $resetToken, 'email' => $user->email]);
+            
+            // Ensure email is properly URL-encoded in the reset URL
+            $resetUrl = url('/reset-password/' . $resetToken . '?email=' . urlencode($user->email));
+            
+            // Log token creation for debugging
+            \Log::info('Password reset token generated for reseller approval', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'token_created' => now()->toDateTimeString(),
+                'reset_url' => $resetUrl,
+            ]);
         } catch (\Throwable $e) {
             \Log::error('Failed to generate password reset token: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
@@ -834,7 +844,7 @@ class AdminController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
-            'phone' => 'nullable|string|max:20',
+            'phone' => 'nullable|string|min:8|max:20',
             'role' => 'required|in:user,investor,reseller,admin',
             'password' => 'nullable|string|min:8',
             'coin_quantity' => 'nullable|numeric|min:0',
@@ -1037,7 +1047,7 @@ class AdminController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => "required|email|max:255|unique:users,email,{$user->id}",
-            'phone' => 'nullable|string|max:30',
+            'phone' => 'nullable|string|min:8|max:20',
             'role' => 'required|in:investor,reseller,admin,user',
         ]);
 
@@ -1247,7 +1257,7 @@ class AdminController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
-            'phone' => 'nullable|string|max:20',
+            'phone' => 'nullable|string|min:8|max:20',
             'company' => 'nullable|string|max:255',
             'investment_capacity' => 'required|in:1-10k,10-50k,50-100k,100k+',
             'message' => 'nullable|string|max:1000',

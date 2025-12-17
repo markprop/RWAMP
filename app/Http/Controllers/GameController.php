@@ -6,6 +6,7 @@ use App\Models\GameSession;
 use App\Models\GameTrade;
 use App\Models\GamePriceHistory;
 use App\Services\GamePriceEngine;
+use App\Services\FopiGameEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -17,10 +18,12 @@ use Illuminate\Support\Str;
 class GameController extends Controller
 {
     protected $priceEngine;
+    protected $fopiEngine;
 
-    public function __construct(GamePriceEngine $priceEngine)
+    public function __construct(GamePriceEngine $priceEngine, FopiGameEngine $fopiEngine)
     {
         $this->priceEngine = $priceEngine;
+        $this->fopiEngine = $fopiEngine;
         $this->middleware('auth');
     }
 
@@ -132,12 +135,13 @@ class GameController extends Controller
     }
 
     /**
-     * Set or update game PIN
+     * Set or update game PIN (game-specific)
      */
     public function setPin(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'pin' => ['required', 'string', 'regex:/^\d{4}$/'],
+            'game_type' => ['nullable', 'string', 'in:trading,fopi'],
         ]);
 
         if ($validator->fails()) {
@@ -148,9 +152,13 @@ class GameController extends Controller
         }
 
         $user = Auth::user();
+        $gameType = $request->input('game_type', 'trading'); // Default to trading for backward compatibility
         
-        if ($user->setGamePin($request->pin)) {
-            Log::info('Game: User set game PIN', ['user_id' => $user->id]);
+        if ($user->setGameSpecificPin($request->pin, $gameType)) {
+            Log::info('Game: User set game PIN', [
+                'user_id' => $user->id,
+                'game_type' => $gameType
+            ]);
             return response()->json([
                 'success' => true,
                 'message' => 'Game PIN set successfully',
@@ -205,24 +213,31 @@ class GameController extends Controller
             ], 403);
         }
 
-        // Verify PIN
-        if (!$user->verifyGamePin($request->pin)) {
-            if ($user->isGamePinLocked()) {
-                $lockedUntil = $user->game_pin_locked_until->diffForHumans();
+        // Verify game-specific PIN
+        $gameType = $request->input('game_type', 'trading');
+        $failedAttemptsField = $gameType === 'trading' ? 'trading_game_pin_failed_attempts' : 'fopi_game_pin_failed_attempts';
+        
+        if (!$user->verifyGameSpecificPin($request->pin, $gameType)) {
+            if ($user->isGameSpecificPinLocked($gameType)) {
+                $lockedUntilField = $gameType === 'trading' ? 'trading_game_pin_locked_until' : 'fopi_game_pin_locked_until';
+                $lockedUntil = \Carbon\Carbon::parse($user->$lockedUntilField);
+                $lockedUntilHuman = $lockedUntil->diffForHumans();
                 Log::warning('[GameController] PIN locked', [
                     'user_id' => $user->id,
-                    'locked_until' => $lockedUntil
+                    'game_type' => $gameType,
+                    'locked_until' => $lockedUntilHuman
                 ]);
                 return response()->json([
                     'success' => false,
-                    'message' => "PIN locked. Try again in {$lockedUntil}.",
+                    'message' => "PIN locked. Try again in {$lockedUntilHuman}.",
                     'locked' => true,
                 ], 403);
             }
 
-            $attemptsLeft = 3 - $user->game_pin_failed_attempts;
+            $attemptsLeft = 3 - $user->$failedAttemptsField;
             Log::warning('[GameController] Invalid PIN', [
                 'user_id' => $user->id,
+                'game_type' => $gameType,
                 'attempts_left' => $attemptsLeft
             ]);
             return response()->json([
@@ -259,10 +274,14 @@ class GameController extends Controller
             ]);
         }
 
+        // Determine game type (default to 'trading' for backward compatibility)
+        $gameType = $request->input('game_type', 'trading');
+        
         // Create new session with a specific stake amount
         Log::info('[GameController] Creating new game session', [
             'user_id' => $user->id,
-            'token_balance' => $user->token_balance
+            'token_balance' => $user->token_balance,
+            'game_type' => $gameType
         ]);
         
         $stakeAmount = (float) $request->input('amount');
@@ -277,6 +296,28 @@ class GameController extends Controller
 
         DB::beginTransaction();
         try {
+            // Handle FOPI game type
+            if ($gameType === 'fopi') {
+                $session = $this->fopiEngine->startSession($user, $stakeAmount);
+                $state = $this->fopiEngine->getState($session);
+                
+                DB::commit();
+                
+                Log::info('FOPI Game: User entered game', [
+                    'user_id' => $user->id,
+                    'session_id' => $session->id,
+                    'stake' => $stakeAmount,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'session_id' => $session->id,
+                    'game_type' => 'fopi',
+                    'redirect_url' => route('game.fopi.index'),
+                ]);
+            }
+            
+            // Trading game (existing logic)
             // Lock a specific stake from the real account
             $realBalanceStart = $stakeAmount;
             $gameBalanceStart = $realBalanceStart * 10;
@@ -294,6 +335,7 @@ class GameController extends Controller
             
             $session = GameSession::create([
                 'user_id' => $user->id,
+                'type' => 'trading',
                 'real_balance_start' => $realBalanceStart,
                 'game_balance_start' => $gameBalanceStart,
                 'anchor_btc_usd' => $prices['btc_usd'],
@@ -342,11 +384,17 @@ class GameController extends Controller
             Log::error('Game: Failed to create session', [
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
+                'game_type' => $gameType ?? 'trading',
             ]);
+
+            // In local / debug mode, return the detailed error message to help diagnose issues.
+            $message = config('app.debug')
+                ? $e->getMessage()
+                : 'Failed to enter game. Please try again.';
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to enter game. Please try again.',
+                'message' => $message,
             ], 500);
         }
     }
@@ -546,52 +594,61 @@ class GameController extends Controller
 
     /**
      * Get game history (trades and price history)
+     * Returns ALL trades for the user across all sessions, not just current session
      */
     public function history(Request $request)
     {
         $user = Auth::user();
         $sessionId = $request->query('session_id');
 
-        if ($sessionId) {
-            $session = GameSession::where('user_id', $user->id)
-                ->where('id', $sessionId)
-                ->firstOrFail();
-        } else {
-            $session = $user->activeGameSession;
-            if (!$session) {
-                // If no session but user is marked as in game, reset the flag
-                if ($user->is_in_game) {
-                    $user->is_in_game = false;
-                    $user->save();
-                }
-                
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No active game session',
-                    'session' => null,
-                ], 200); // Return 200 instead of 404 to prevent fetch errors
-            }
+        // Get active session for current balance and price history
+        $activeSession = $user->activeGameSession;
+        
+        // If no active session but user is marked as in game, reset the flag
+        if (!$activeSession && $user->is_in_game) {
+            $user->is_in_game = false;
+            $user->save();
         }
 
-        $trades = $session->trades()
-            ->orderBy('created_at', 'desc')
-            ->paginate(50);
+        // Fetch ALL trades for this user across ALL sessions
+        $tradesQuery = GameTrade::whereHas('session', function($query) use ($user) {
+            $query->where('user_id', $user->id);
+        })
+        ->with('session:id,user_id,started_at,ended_at')
+        ->orderBy('created_at', 'desc');
 
-        $priceHistory = $session->priceHistory()
-            ->orderBy('recorded_at', 'asc')
-            ->get();
+        // If specific session_id is requested, filter by it
+        if ($sessionId) {
+            $tradesQuery->where('session_id', $sessionId);
+        }
+
+        $trades = $tradesQuery->paginate(100);
+
+        // Get price history from active session if available
+        $priceHistory = collect();
+        if ($activeSession) {
+            $priceHistory = $activeSession->priceHistory()
+                ->orderBy('recorded_at', 'asc')
+                ->get();
+        }
+
+        // Prepare session data for active session
+        $sessionData = null;
+        if ($activeSession) {
+            $sessionData = [
+                'id' => $activeSession->id,
+                'game_balance_start' => $activeSession->game_balance_start,
+                'current_balance' => $activeSession->calculateCurrentBalance(),
+                'total_revenue' => $activeSession->total_platform_revenue,
+                'started_at' => $activeSession->started_at,
+            ];
+        }
 
         return response()->json([
             'success' => true,
             'trades' => $trades,
             'price_history' => $priceHistory,
-            'session' => [
-                'id' => $session->id,
-                'game_balance_start' => $session->game_balance_start,
-                'current_balance' => $session->calculateCurrentBalance(),
-                'total_revenue' => $session->total_platform_revenue,
-                'started_at' => $session->started_at,
-            ],
+            'session' => $sessionData,
         ]);
     }
 
@@ -712,5 +769,292 @@ class GameController extends Controller
                 'message' => 'Failed to exit game. Please try again.',
             ], 500);
         }
+    }
+
+    /**
+     * Show FOPI game interface
+     */
+    public function fopiIndex()
+    {
+        $user = Auth::user();
+        $session = $user->activeGameSession;
+
+        if (!$session || !$session->isFopi()) {
+            return redirect()->route('game.select')
+                ->with('error', 'No active FOPI game session. Please start a new game.');
+        }
+
+        $state = $this->fopiEngine->getState($session);
+        $gameSettings = \App\Models\GameSetting::current();
+
+        // Load the original static FOPI HTML (with correct emojis/icons) and
+        // extract just the <body> contents. All styling/logic are handled by
+        // public/css/fopi-game.css and public/js/fopi-game.js.
+        $rawHtmlPath = base_path('fopi.rwamp.net/index.html');
+        $fopiHtml = '';
+        if (file_exists($rawHtmlPath)) {
+            $fullHtml = file_get_contents($rawHtmlPath);
+            if (preg_match('/<body[^>]*>(.*)<\/body>/is', $fullHtml, $matches)) {
+                $fopiHtml = $matches[1];
+            } else {
+                $fopiHtml = $fullHtml;
+            }
+
+            // Remove any embedded <style> and <script> blocks to avoid duplication in Laravel.
+            $fopiHtml = preg_replace('/<style\b[^>]*>[\s\S]*?<\/style>/i', '', $fopiHtml);
+            $fopiHtml = preg_replace('/<script\b[^>]*>[\s\S]*?<\/script>/i', '', $fopiHtml);
+        }
+
+        return view('game.fopi', [
+            'session'      => $session,
+            'initialState' => $state,
+            'gameSettings' => $gameSettings,
+            'fopiHtml'     => $fopiHtml,
+            'userContext'  => [
+                'id'           => $user->id,
+                'name'         => $user->name,
+                'token_balance'=> $user->token_balance,
+                'email'        => $user->email,
+            ],
+        ]);
+    }
+
+    /**
+     * Get FOPI game state
+     */
+    public function fopiGetState(Request $request)
+    {
+        $user = Auth::user();
+        $session = $user->activeGameSession;
+
+        if (!$session || !$session->isFopi()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No active FOPI session',
+            ], 404);
+        }
+
+        try {
+            $state = $this->fopiEngine->getState($session);
+            return response()->json([
+                'success' => true,
+                'state' => $state,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('FOPI: Get state failed', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load game state',
+            ], 500);
+        }
+    }
+
+    /**
+     * Start FOPI game session
+     */
+    public function fopiStart(Request $request)
+    {
+        $user = Auth::user();
+        
+        $validator = Validator::make($request->all(), [
+            'stake_rwamp' => 'required|numeric|min:0.01',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+            ], 422);
+        }
+
+        try {
+            $session = $this->fopiEngine->startSession($user, $request->stake_rwamp);
+            $state = $this->fopiEngine->getState($session);
+
+            return response()->json([
+                'success' => true,
+                'session_id' => $session->id,
+                'state' => $state,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('FOPI: Start failed', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Jump month in FOPI game
+     */
+    public function fopiJumpMonth(Request $request)
+    {
+        $user = Auth::user();
+        $session = $user->activeGameSession;
+
+        if (!$session || !$session->isFopi()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No active FOPI session',
+            ], 404);
+        }
+
+        try {
+            $state = $this->fopiEngine->jumpMonth($session);
+            return response()->json([
+                'success' => true,
+                'state' => $state,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('FOPI: Jump month failed', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to jump month',
+            ], 500);
+        }
+    }
+
+    /**
+     * Buy property in FOPI game
+     */
+    public function fopiBuy(Request $request)
+    {
+        $user = Auth::user();
+        $session = $user->activeGameSession;
+
+        if (!$session || !$session->isFopi()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No active FOPI session',
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'property_id' => 'required|string',
+            'sqft' => 'required|numeric|min:0.01',
+            'fee_method' => 'required|in:RWAMP,FOPI',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+            ], 422);
+        }
+
+        try {
+            $state = $this->fopiEngine->buyProperty(
+                $session,
+                $request->property_id,
+                $request->sqft,
+                $request->fee_method
+            );
+            return response()->json([
+                'success' => true,
+                'state' => $state,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('FOPI: Buy failed', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Sell property in FOPI game
+     */
+    public function fopiSell(Request $request)
+    {
+        // TODO: Implement sell logic
+        return response()->json([
+            'success' => false,
+            'message' => 'Sell functionality not yet implemented',
+        ], 501);
+    }
+
+    /**
+     * Claim rent in FOPI game
+     */
+    public function fopiClaimRent(Request $request)
+    {
+        $user = Auth::user();
+        $session = $user->activeGameSession;
+
+        if (!$session || !$session->isFopi()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No active FOPI session',
+            ], 404);
+        }
+
+        try {
+            $state = $this->fopiEngine->claimRent($session);
+            return response()->json([
+                'success' => true,
+                'state' => $state,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('FOPI: Claim rent failed', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to claim rent',
+            ], 500);
+        }
+    }
+
+    /**
+     * Convert FOPI to RWAMP
+     */
+    public function fopiConvert(Request $request)
+    {
+        $user = Auth::user();
+        $session = $user->activeGameSession;
+
+        if (!$session || !$session->isFopi()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No active FOPI session',
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'fopi_amount' => 'required|numeric|min:0.01',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+            ], 422);
+        }
+
+        try {
+            $state = $this->fopiEngine->convertFopiToRwamp($session, $request->fopi_amount);
+            return response()->json([
+                'success' => true,
+                'state' => $state,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('FOPI: Convert failed', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Claim mission reward
+     */
+    public function fopiClaimMission(Request $request)
+    {
+        // TODO: Implement mission claim logic
+        return response()->json([
+            'success' => false,
+            'message' => 'Mission claim functionality not yet implemented',
+        ], 501);
     }
 }

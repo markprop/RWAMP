@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-gray-50" x-data="resellerPaymentsFilters()">
     <!-- Sidebar -->
     @include('components.reseller-sidebar')
     
@@ -20,7 +20,7 @@
         </div>
 
         <!-- Dashboard Content -->
-        <div class="px-4 sm:px-6 lg:px-8 py-6" x-data="resellerPaymentsFilters()">
+        <div class="px-4 sm:px-6 lg:px-8 py-6">
             <!-- Filters -->
             <div class="bg-white rounded-xl shadow-xl p-5 sm:p-6 mb-6 border border-gray-100">
                 <form 
@@ -74,8 +74,8 @@
                 </form>
             </div>
 
-            <!-- Payments Table -->
-            <div id="resellerPaymentsTable" class="bg-white rounded-xl shadow-xl overflow-hidden animate-fadeInUp">
+            <!-- Crypto Payments Table -->
+            <div id="resellerPaymentsTable" class="bg-white rounded-xl shadow-xl overflow-hidden animate-fadeInUp mb-8">
             @if($payments->count() > 0)
                 <div class="rw-table-scroll overflow-x-auto">
                     <table class="min-w-full whitespace-nowrap">
@@ -143,6 +143,106 @@
             @endif
             </div>
 
+            <!-- Bank Transfer Receipts -->
+            <div class="bg-white rounded-xl shadow-xl overflow-hidden">
+                <div class="px-6 py-4 border-b flex items-center justify-between">
+                    <div>
+                        <h2 class="font-montserrat font-bold text-lg">Bank Transfer Receipts</h2>
+                        <p class="text-xs text-gray-500">Offline payments where users uploaded a bank receipt and selected you as their reseller.</p>
+                    </div>
+                    <span class="rw-badge">{{ $bankSubmissions->total() }} total</span>
+                </div>
+
+                @if($bankSubmissions->count() > 0)
+                    <div class="rw-table-scroll overflow-x-auto">
+                        <table class="min-w-full whitespace-nowrap">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="text-left py-4 px-6 font-semibold text-gray-700">User</th>
+                                    <th class="text-left py-4 px-6 font-semibold text-gray-700">Tokens</th>
+                                    <th class="text-left py-4 px-6 font-semibold text-gray-700">Amount</th>
+                                    <th class="text-left py-4 px-6 font-semibold text-gray-700">Bank Ref</th>
+                                    <th class="text-left py-4 px-6 font-semibold text-gray-700">Status</th>
+                                    <th class="text-left py-4 px-6 font-semibold text-gray-700">Date</th>
+                                    <th class="text-left py-4 px-6 font-semibold text-gray-700">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($bankSubmissions as $submission)
+                                    <tr class="border-b hover:bg-gray-50">
+                                        <td class="py-3 px-4 sm:px-6">
+                                            <div class="font-semibold">{{ $submission->user->name }}</div>
+                                            <div class="text-xs sm:text-sm text-gray-600">User ID: {{ $submission->user->id }}</div>
+                                        </td>
+                                        <td class="py-3 px-4 sm:px-6 font-semibold">
+                                            {{ number_format($submission->token_amount, 0) }} RWAMP
+                                        </td>
+                                        <td class="py-3 px-4 sm:px-6">
+                                            {{ $submission->currency }} {{ number_format($submission->fiat_amount, 2) }}
+                                        </td>
+                                        <td class="py-3 px-4 sm:px-6 text-xs sm:text-sm text-gray-600">
+                                            {{ $submission->bank_reference ?: '—' }}
+                                        </td>
+                                        <td class="py-3 px-4 sm:px-6">
+                                            @php
+                                                $statusLower = strtolower($submission->status);
+                                                $badgeClass = $statusLower === 'approved'
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : ($statusLower === 'rejected'
+                                                        ? 'bg-red-100 text-red-800'
+                                                        : 'bg-yellow-100 text-yellow-800');
+                                            @endphp
+                                            <span class="px-3 py-1 rounded text-sm font-semibold {{ $badgeClass }}">
+                                                {{ ucfirst($submission->status) }}
+                                            </span>
+                                        </td>
+                                        <td class="py-3 px-4 sm:px-6 text-xs sm:text-sm text-gray-600">
+                                            {{ $submission->created_at->format('M d, Y H:i') }}
+                                        </td>
+                                        <td class="py-3 px-4 sm:px-6">
+                                            <div class="flex flex-wrap gap-2">
+                                                @if($submission->status === 'pending')
+                                                    <button 
+                                                        type="button" 
+                                                        @click="openBankApprove({{ $submission->id }})" 
+                                                        class="btn-small bg-green-600 hover:bg-green-700 text-white rounded-lg px-3 py-2"
+                                                    >
+                                                        Approve
+                                                    </button>
+                                                    <button 
+                                                        type="button" 
+                                                        @click="openBankReject({{ $submission->id }})" 
+                                                        class="btn-small bg-red-600 hover:bg-red-700 text-white rounded-lg px-3 py-2"
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                @endif
+                                                @if($submission->receipt_path)
+                                                    <button 
+                                                        type="button"
+                                                        class="btn-secondary btn-small"
+                                                        @click="openReceipt('{{ '/storage/' . ltrim($submission->receipt_path, '/') }}')"
+                                                    >
+                                                        View Receipt
+                                                    </button>
+                                                @endif
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="p-4 sm:p-6 border-t">
+                        {{ $bankSubmissions->links() }}
+                    </div>
+                @else
+                    <div class="text-center py-8 text-gray-500 text-sm">
+                        No bank transfer receipts submitted to you yet.
+                    </div>
+                @endif
+            </div>
+
             <!-- Toast -->
             <div
                 x-show="toast.open"
@@ -160,6 +260,105 @@
                     <span x-text="toast.message"></span>
                 </div>
             </div>
+    </div>
+</div>
+
+<!-- Bank Receipt Modal -->
+<div 
+    x-data="bankReceiptModal()"
+    x-show="open"
+    x-cloak
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+    x-on:open-bank-receipt.window="show($event.detail.src)"
+>
+    <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden relative">
+        <button 
+            class="absolute top-3 right-3 text-gray-500 hover:text-gray-800"
+            @click="close()"
+        >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+        <div class="w-full h-[80vh] bg-gray-900 flex items-center justify-center" @click.self="close()">
+            <iframe 
+                x-show="src" 
+                :src="src" 
+                class="w-full h-full" 
+                frameborder="0"></iframe>
+        </div>
+    </div>
+</div>
+
+<!-- Bank Submission Action Modal -->
+<div
+    x-show="bankModal.open"
+    x-cloak
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+>
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 relative">
+        <div class="flex items-start justify-between mb-4">
+            <div>
+                <h3 class="font-montserrat font-bold text-lg" x-text="bankModal.mode === 'approve' ? 'Approve Bank Transfer' : 'Reject Bank Transfer'"></h3>
+                <p class="text-xs text-gray-500 mt-1" x-text="bankModal.mode === 'approve'
+                    ? 'Confirm that you want to approve this offline bank payment and transfer tokens from your balance to the user.'
+                    : 'Provide a clear reason for rejecting this offline bank payment. The user will see this reason in their history.'"></p>
+            </div>
+            <button
+                class="text-gray-400 hover:text-gray-700"
+                @click="closeBankModal()"
+            >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="space-y-4">
+            <div class="flex items-center gap-3 p-3 rounded-lg bg-yellow-50 text-yellow-800" x-show="bankModal.mode === 'approve'">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M12 2a10 10 0 0110 10 9.96 9.96 0 01-1.64 5.5M6.34 6.34A9.96 9.96 0 002 12a10 10 0 0010 10 9.96 9.96 0 005.66-1.84"/>
+                </svg>
+                <p class="text-xs leading-snug">
+                    Approving will <span class="font-semibold">debit tokens from your reseller balance</span> and credit them to the user.
+                    Make sure you have enough tokens before confirming.
+                </p>
+            </div>
+
+            <div x-show="bankModal.mode === 'reject'">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Rejection Reason
+                </label>
+                <textarea
+                    rows="4"
+                    class="form-input w-full text-sm"
+                    placeholder="Explain why this bank transfer is being rejected..."
+                    x-model="bankModal.reason"
+                ></textarea>
+                <p class="text-xs text-gray-500 mt-1">
+                    This message will be visible to the user in their purchase history.
+                </p>
+            </div>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-3">
+            <button
+                type="button"
+                class="btn-secondary px-4 py-2"
+                @click="closeBankModal()"
+            >
+                Cancel
+            </button>
+            <button
+                type="button"
+                class="btn-primary px-4 py-2 flex items-center gap-2"
+                :disabled="bankModal.loading"
+                @click="submitBankAction()"
+            >
+                <span x-show="!bankModal.loading" x-text="bankModal.mode === 'approve' ? 'Confirm Approve' : 'Confirm Reject'"></span>
+                <span x-show="bankModal.loading">Processing…</span>
+            </button>
+        </div>
     </div>
 </div>
 
@@ -186,6 +385,13 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('resellerPaymentsFilters', () => ({
         isLoading: false,
         toast: { open: false, message: '', type: 'info' },
+        bankModal: {
+            open: false,
+            mode: null, // 'approve' or 'reject'
+            submissionId: null,
+            reason: '',
+            loading: false,
+        },
 
         showToast(message, type = 'info') {
             this.toast.message = message;
@@ -229,32 +435,102 @@ document.addEventListener('alpine:init', () => {
             } finally {
                 this.isLoading = false;
             }
+        },
+
+        openReceipt(url) {
+            this.toast.open = false;
+            window.dispatchEvent(new CustomEvent('open-bank-receipt', { detail: { src: url } }));
+        },
+
+        openBankApprove(id) {
+            this.bankModal.open = true;
+            this.bankModal.mode = 'approve';
+            this.bankModal.submissionId = id;
+            this.bankModal.reason = '';
+        },
+
+        openBankReject(id) {
+            this.bankModal.open = true;
+            this.bankModal.mode = 'reject';
+            this.bankModal.submissionId = id;
+            this.bankModal.reason = '';
+        },
+
+        closeBankModal() {
+            this.bankModal.open = false;
+            this.bankModal.loading = false;
+            this.bankModal.reason = '';
+            this.bankModal.submissionId = null;
+            this.bankModal.mode = null;
+        },
+
+        async submitBankAction() {
+            if (!this.bankModal.submissionId || !this.bankModal.mode) return;
+
+            const id   = this.bankModal.submissionId;
+            const mode = this.bankModal.mode;
+
+            if (mode === 'reject' && !this.bankModal.reason.trim()) {
+                this.showToast('Please enter a reason for rejecting this payment.', 'error');
+                return;
+            }
+
+            this.bankModal.loading = true;
+
+            try {
+                const csrf = document.querySelector('meta[name=\"csrf-token\"]').getAttribute('content');
+                let url    = `/api/reseller/bank-payments/${id}/${mode === 'approve' ? 'approve' : 'reject'}`;
+                let options = {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                };
+
+                if (mode === 'reject') {
+                    options.body = JSON.stringify({ reason: this.bankModal.reason.trim() });
+                }
+
+                const response = await fetch(url, options);
+                const data     = await response.json().catch(() => ({}));
+
+                if (!response.ok || !data.success) {
+                    this.showToast(data.message || 'Failed to process bank transfer.', 'error');
+                } else {
+                    this.showToast(
+                        mode === 'approve'
+                            ? 'Bank transfer approved and tokens credited.'
+                            : 'Bank transfer rejected.',
+                        'success'
+                    );
+                    setTimeout(() => { window.location.reload(); }, 900);
+                }
+            } catch (e) {
+                console.error(e);
+                this.showToast('An unexpected error occurred. Please try again.', 'error');
+            } finally {
+                this.closeBankModal();
+            }
         }
     }));
 });
 
-async function approvePayment(paymentId) {
-    if (!confirm('Are you sure you want to approve this payment?')) return;
-
-    try {
-        const response = await fetch(`/api/reseller/crypto-payments/${paymentId}/approve`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        });
-
-        const data = await response.json();
-        if (data.success) {
-            alert('Payment approved successfully!');
-            location.reload();
-        } else {
-            alert(data.message || 'Failed to approve payment');
+function bankReceiptModal() {
+    return {
+        open: false,
+        src: null,
+        show(url) {
+            this.src = url;
+            this.open = true;
+        },
+        close() {
+            this.open = false;
+            this.src = null;
         }
-    } catch (error) {
-        alert('Error approving payment');
-    }
+    };
 }
 
 function openRejectModal(paymentId) {

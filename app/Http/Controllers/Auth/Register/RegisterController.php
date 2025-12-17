@@ -138,7 +138,7 @@ class RegisterController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'phone' => ['required', 'string', 'max:30'],
+            'phone' => ['required', 'string', 'min:8', 'max:20'],
             'role' => ['nullable', 'in:investor,reseller,admin'],
             'password' => ['required', 'confirmed', Password::min(8)],
             'referral_code' => ['nullable', 'string', 'max:20'],
@@ -252,7 +252,7 @@ class RegisterController extends Controller
             $validated = $request->validate([
                 'name' => ['required', 'string', 'max:255'],
                 'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email', 'unique:reseller_applications,email'],
-                'phone' => ['required', 'string', 'max:30'],
+                'phone' => ['required', 'string', 'min:8', 'max:20'],
                 'password' => ['required', 'confirmed', Password::min(8)],
                 'company_name' => ['nullable', 'string', 'max:255'],
                 'investment_capacity' => ['required', 'string', 'max:50'],

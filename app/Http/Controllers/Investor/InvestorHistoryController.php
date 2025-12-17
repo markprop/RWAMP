@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Investor;
 use App\Http\Controllers\Controller;
 use App\Models\BuyFromResellerRequest;
 use App\Models\CryptoPayment;
+use App\Models\PaymentSubmission;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 
@@ -18,7 +19,7 @@ class InvestorHistoryController extends Controller
         $userId = $request->user()->id;
         $currentCoinPrice = \App\Helpers\PriceHelper::getRwampPkrPrice();
 
-        // Payments query
+        // Payments query (crypto)
         $paymentsQuery = CryptoPayment::where('user_id', $userId);
         
         // Search payments
@@ -49,6 +50,15 @@ class InvestorHistoryController extends Controller
         }
 
         $payments = $paymentsQuery->paginate(20, ['*'], 'payments')->withQueryString();
+
+        // Bank transfer submissions (manual payments)
+        $bankQuery = PaymentSubmission::where('user_id', $userId);
+
+        if ($request->filled('bank_status') && in_array($request->bank_status, ['pending', 'approved', 'rejected'])) {
+            $bankQuery->where('status', $request->bank_status);
+        }
+
+        $bankSubmissions = $bankQuery->latest()->paginate(20, ['*'], 'bank_submissions')->withQueryString();
 
         // Transactions query
         $transactionsQuery = Transaction::where('user_id', $userId);
@@ -114,7 +124,13 @@ class InvestorHistoryController extends Controller
 
         $buyRequests = $buyRequestsQuery->paginate(20, ['*'], 'buy_requests')->withQueryString();
 
-        return view('dashboard.user-history', compact('payments','transactions','buyRequests','currentCoinPrice'));
+        return view('dashboard.user-history', compact(
+            'payments',
+            'bankSubmissions',
+            'transactions',
+            'buyRequests',
+            'currentCoinPrice'
+        ));
     }
 }
 

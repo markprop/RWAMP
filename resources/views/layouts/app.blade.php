@@ -81,8 +81,14 @@
     <!-- Styles & Scripts via Vite -->
     @vite(['resources/css/app.css','resources/js/app.js'])
 
-    <!-- Intl Tel Input (phone number with country flags) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/18.1.6/js/intlTelInput.min.js" defer></script>
+    <!-- Intl Tel Input CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/18.2.1/css/intlTelInput.css">
+
+    <!-- Intl Tel Input JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/18.2.1/js/intlTelInput.min.js" defer></script>
+    
+    <!-- Phone Input Initialization -->
+    <script src="{{ asset('js/phone-input.js') }}" defer></script>
 
     <!-- Structured Data: Organization -->
     <script type="application/ld+json">
@@ -121,6 +127,7 @@
 
     @php
         // Check if current route is a dashboard page (has sidebar, no navbar)
+        // Pages with sidebars should not show navbar
         $isDashboardPage = request()->routeIs('dashboard.investor') 
             || request()->routeIs('dashboard.admin') 
             || request()->routeIs('dashboard.reseller')
@@ -133,9 +140,13 @@
             || request()->routeIs('buy.from.reseller.*')
             || request()->routeIs('reseller.*')
             || request()->routeIs('admin.*')
+            || request()->routeIs('game.*')
+            || request()->routeIs('profile.*')
+            || request()->routeIs('user.history')
             || str_starts_with(request()->route()->getName() ?? '', 'dashboard.')
             || str_starts_with(request()->route()->getName() ?? '', 'reseller.')
-            || str_starts_with(request()->route()->getName() ?? '', 'admin.');
+            || str_starts_with(request()->route()->getName() ?? '', 'admin.')
+            || (auth()->check() && in_array(request()->route()->getName() ?? '', ['game.select', 'game.index']));
     @endphp
     
     @if(!$isDashboardPage)

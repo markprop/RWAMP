@@ -11,6 +11,8 @@ class GameSetting extends Model
         'exit_divisor',
         'exit_fee_rate',
         'game_timeout_seconds',
+        'fopi_per_rwamp',
+        'fopi_game_enabled',
     ];
 
     /**
@@ -27,6 +29,8 @@ class GameSetting extends Model
                 'exit_divisor'         => 100.0,
                 'exit_fee_rate'        => 0.0,
                 'game_timeout_seconds' => null,
+                'fopi_per_rwamp'       => 1000.0,
+                'fopi_game_enabled'     => true,
             ]);
         }
 

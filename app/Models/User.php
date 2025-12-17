@@ -43,13 +43,20 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPassword
 		'kyc_selfie_path',
 		'kyc_submitted_at',
 		'kyc_approved_at',
+        'kyc_rejection_reason',
 		'avatar',
 		'status',
 		'receipt_screenshot',
 		'game_pin_hash',
+		'trading_game_pin_hash',
+		'fopi_game_pin_hash',
 		'is_in_game',
 		'game_pin_locked_until',
 		'game_pin_failed_attempts',
+		'trading_game_pin_failed_attempts',
+		'fopi_game_pin_failed_attempts',
+		'trading_game_pin_locked_until',
+		'fopi_game_pin_locked_until',
 	];
 
 	/**
@@ -74,6 +81,8 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPassword
 		'kyc_approved_at' => 'datetime',
 		'is_in_game' => 'boolean',
 		'game_pin_locked_until' => 'datetime',
+		'trading_game_pin_locked_until' => 'datetime',
+		'fopi_game_pin_locked_until' => 'datetime',
 	];
 
 
@@ -415,6 +424,95 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPassword
 	public function isGamePinLocked(): bool
 	{
 		return $this->game_pin_locked_until && $this->game_pin_locked_until->isFuture();
+	}
+
+	/**
+	 * Set game-specific PIN (for Trading or FOPI game)
+	 */
+	public function setGameSpecificPin(string $pin, string $gameType): bool
+	{
+		if (!preg_match('/^\d{4}$/', $pin)) {
+			return false;
+		}
+
+		if ($gameType === 'trading') {
+			$this->trading_game_pin_hash = \Hash::make($pin);
+			$this->trading_game_pin_failed_attempts = 0;
+			$this->trading_game_pin_locked_until = null;
+		} elseif ($gameType === 'fopi') {
+			$this->fopi_game_pin_hash = \Hash::make($pin);
+			$this->fopi_game_pin_failed_attempts = 0;
+			$this->fopi_game_pin_locked_until = null;
+		} else {
+			return false;
+		}
+
+		return $this->save();
+	}
+
+	/**
+	 * Verify game-specific PIN
+	 */
+	public function verifyGameSpecificPin(string $pin, string $gameType): bool
+	{
+		$pinHashField = $gameType === 'trading' ? 'trading_game_pin_hash' : 'fopi_game_pin_hash';
+		$lockedUntilField = $gameType === 'trading' ? 'trading_game_pin_locked_until' : 'fopi_game_pin_locked_until';
+		$failedAttemptsField = $gameType === 'trading' ? 'trading_game_pin_failed_attempts' : 'fopi_game_pin_failed_attempts';
+
+		// Check if locked
+		$lockedUntil = $this->$lockedUntilField;
+		if ($lockedUntil && \Carbon\Carbon::parse($lockedUntil)->isFuture()) {
+			return false;
+		}
+
+		// Check if PIN is set
+		$pinHash = $this->$pinHashField;
+		if (!$pinHash) {
+			return false;
+		}
+
+		// Verify PIN
+		if (\Hash::check($pin, $pinHash)) {
+			// Reset failed attempts on success
+			$this->$failedAttemptsField = 0;
+			$this->$lockedUntilField = null;
+			$this->save();
+			return true;
+		}
+
+		// Increment failed attempts
+		$this->increment($failedAttemptsField);
+
+		// Lock after 3 failed attempts
+		if ($this->$failedAttemptsField >= 3) {
+			$this->$lockedUntilField = now()->addMinutes(5);
+			$this->save();
+		}
+
+		return false;
+	}
+
+	/**
+	 * Check if game-specific PIN is set
+	 */
+	public function hasGamePin(string $gameType): bool
+	{
+		if ($gameType === 'trading') {
+			return !empty($this->trading_game_pin_hash);
+		} elseif ($gameType === 'fopi') {
+			return !empty($this->fopi_game_pin_hash);
+		}
+		return false;
+	}
+
+	/**
+	 * Check if game-specific PIN is locked
+	 */
+	public function isGameSpecificPinLocked(string $gameType): bool
+	{
+		$lockedUntilField = $gameType === 'trading' ? 'trading_game_pin_locked_until' : 'fopi_game_pin_locked_until';
+		$lockedUntil = $this->$lockedUntilField;
+		return $lockedUntil && \Carbon\Carbon::parse($lockedUntil)->isFuture();
 	}
 
 	/**

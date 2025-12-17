@@ -121,4 +121,81 @@ class KycController extends Controller
             return back()->with('error', 'Failed to submit KYC: ' . $e->getMessage())->withInput();
         }
     }
+
+    /**
+     * Download KYC file for the currently authenticated user (profile page)
+     */
+    public function downloadFile(string $type)
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            abort(403, 'Unauthorized');
+        }
+
+        if (!in_array($type, ['front', 'back', 'selfie'], true)) {
+            abort(400, 'Invalid file type. Must be front, back, or selfie.');
+        }
+
+        $dbFilePath = match ($type) {
+            'front' => $user->kyc_id_front_path,
+            'back' => $user->kyc_id_back_path,
+            'selfie' => $user->kyc_selfie_path,
+        };
+
+        if (!$dbFilePath) {
+            abort(404, 'KYC file path not found in your profile for type: ' . $type);
+        }
+
+        // Normalize and secure path
+        $normalizedPath = ltrim($dbFilePath, '/');
+        $normalizedPath = preg_replace('#^(storage/app/|app/)#', '', $normalizedPath);
+
+        // Must live under kyc/ to avoid path traversal
+        if (!str_starts_with($normalizedPath, 'kyc/')) {
+            abort(403, 'Invalid KYC file path.');
+        }
+
+        // Enforce user directory (kyc/{user_id}/...)
+        $filename = basename($normalizedPath);
+        $userDirPath = 'kyc/' . $user->id . '/' . $filename;
+
+        if (\Storage::disk('local')->exists($userDirPath)) {
+            $normalizedPath = $userDirPath;
+        } elseif (!\Storage::disk('local')->exists($normalizedPath)) {
+            abort(404, 'KYC file not found.');
+        }
+
+        try {
+            $file = \Storage::disk('local')->get($normalizedPath);
+
+            if (!$file) {
+                abort(500, 'Failed to read KYC file.');
+            }
+
+            $mimeType = \Storage::disk('local')->mimeType($normalizedPath)
+                ?? match (strtolower(pathinfo($normalizedPath, PATHINFO_EXTENSION))) {
+                    'jpg', 'jpeg' => 'image/jpeg',
+                    'png'        => 'image/png',
+                    'gif'        => 'image/gif',
+                    'pdf'        => 'application/pdf',
+                    default      => 'application/octet-stream',
+                };
+
+            return response($file, 200)
+                ->header('Content-Type', $mimeType)
+                ->header('Content-Disposition', 'inline; filename="' . basename($normalizedPath) . '"')
+                ->header('Cache-Control', 'private, max-age=3600')
+                ->header('X-Content-Type-Options', 'nosniff');
+        } catch (\Exception $e) {
+            \Log::error('Error serving profile KYC file', [
+                'user_id'   => $user->id,
+                'type'      => $type,
+                'file_path' => $normalizedPath,
+                'error'     => $e->getMessage(),
+            ]);
+
+            abort(500, 'Error serving KYC file: ' . $e->getMessage());
+        }
+    }
 }

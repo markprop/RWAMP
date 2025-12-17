@@ -14,6 +14,7 @@ class GameSession extends Model
 
     protected $fillable = [
         'user_id',
+        'type',
         'real_balance_start',
         'game_balance_start',
         'game_balance_end',
@@ -26,6 +27,7 @@ class GameSession extends Model
         'started_at',
         'ended_at',
         'chart_state',
+        'state_json',
     ];
 
     protected $casts = [
@@ -41,6 +43,41 @@ class GameSession extends Model
         'ended_at' => 'datetime',
         'chart_state' => 'array',
     ];
+
+    /**
+     * Get FOPI state as array (deserialize state_json)
+     */
+    public function getFopiState(): ?array
+    {
+        if (!$this->state_json) {
+            return null;
+        }
+        return json_decode($this->state_json, true);
+    }
+
+    /**
+     * Set FOPI state (serialize to state_json)
+     */
+    public function setFopiState(array $state): void
+    {
+        $this->state_json = json_encode($state);
+    }
+
+    /**
+     * Check if this is a FOPI game session
+     */
+    public function isFopi(): bool
+    {
+        return $this->type === 'fopi';
+    }
+
+    /**
+     * Check if this is a Trading game session
+     */
+    public function isTrading(): bool
+    {
+        return $this->type === 'trading';
+    }
 
     /**
      * Get the user that owns the game session

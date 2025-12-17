@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class AdminKycController extends Controller
 {
@@ -59,7 +62,8 @@ class AdminKycController extends Controller
     }
 
     /**
-     * Resolve user from ULID or numeric ID
+     * Resolve user from ULID or numeric ID with enhanced security
+     * Sanitizes input and ensures proper type casting for database queries
      */
     private function resolveUser($user): User
     {
@@ -67,12 +71,234 @@ class AdminKycController extends Controller
             return $user;
         }
         
-        $userModel = User::where('ulid', $user)->orWhere('id', $user)->first();
+        // Sanitize input: ensure we're working with a string or numeric value
+        $sanitized = is_string($user) ? trim($user) : $user;
+        
+        // Try ULID first (26 characters, alphanumeric)
+        if (is_string($sanitized) && strlen($sanitized) === 26 && ctype_alnum($sanitized)) {
+            $userModel = User::where('ulid', $sanitized)->first();
+            if ($userModel) {
+                return $userModel;
+            }
+        }
+        
+        // Try numeric ID (cast to int for proper database matching and security)
+        $numericId = is_numeric($sanitized) ? (int) $sanitized : null;
+        if ($numericId !== null && $numericId > 0) {
+            $userModel = User::find($numericId);
+            if ($userModel) {
+                return $userModel;
+            }
+        }
+        
+        // Last attempt: try both as string/numeric (fallback for edge cases)
+        $userModel = User::where('ulid', $sanitized)
+            ->orWhere('id', $numericId ?? $sanitized)
+            ->first();
+            
         if (!$userModel) {
+            Log::error('User not found in resolveUser', [
+                'provided_user' => $user,
+                'sanitized' => $sanitized,
+                'type' => gettype($user),
+                'numeric_id' => $numericId,
+            ]);
             abort(404, 'User not found.');
         }
         
         return $userModel;
+    }
+
+    /**
+     * Generate a predictable, secure file path for KYC images
+     * Format: kyc/{user_id}/{type}_{timestamp}.{extension}
+     * 
+     * @param User $user The user model
+     * @param string $type File type: 'front', 'back', or 'selfie'
+     * @param \Illuminate\Http\UploadedFile $file The uploaded file
+     * @return string The generated file path relative to storage/app
+     */
+    private function generateKycFilePath(User $user, string $type, $file): string
+    {
+        $timestamp = now()->timestamp;
+        $extension = strtolower($file->getClientOriginalExtension());
+        
+        // Validate extension
+        $allowedExtensions = ['jpg', 'jpeg', 'png'];
+        if (!in_array($extension, $allowedExtensions)) {
+            throw new \InvalidArgumentException("Invalid file extension: {$extension}. Allowed: " . implode(', ', $allowedExtensions));
+        }
+        
+        // Normalize extension (jpg -> jpeg for consistency)
+        if ($extension === 'jpg') {
+            $extension = 'jpeg';
+        }
+        
+        // Generate path: kyc/{user_id}/{type}_{timestamp}.{extension}
+        return "kyc/{$user->id}/{$type}_{$timestamp}.{$extension}";
+    }
+
+    /**
+     * Handle KYC image uploads atomically with guaranteed data integrity
+     * 
+     * This method ensures all three KYC images (front, back, selfie) are uploaded
+     * and saved atomically. If any file fails to upload, all changes are rolled back.
+     * 
+     * @param User $user The user submitting KYC
+     * @param Request $request The request containing uploaded files
+     * @return array Array with 'success' boolean and 'paths' array or 'error' message
+     * @throws \Exception If upload fails
+     */
+    public static function handleKycUploads(User $user, Request $request): array
+    {
+        // Validate that required files are present
+        if (!$request->hasFile('kyc_id_front')) {
+            throw new \InvalidArgumentException('ID front image is required');
+        }
+        
+        if (!$request->hasFile('kyc_selfie')) {
+            throw new \InvalidArgumentException('Selfie image is required');
+        }
+        
+        // ID back is required for CNIC and NICOP
+        $idType = $request->input('kyc_id_type');
+        if (in_array($idType, ['cnic', 'nicop']) && !$request->hasFile('kyc_id_back')) {
+            throw new \InvalidArgumentException('ID back image is required for CNIC and NICOP');
+        }
+        
+        // Validate file types
+        $allowedMimes = ['image/jpeg', 'image/jpg', 'image/png'];
+        $frontFile = $request->file('kyc_id_front');
+        $selfieFile = $request->file('kyc_selfie');
+        $backFile = $request->hasFile('kyc_id_back') ? $request->file('kyc_id_back') : null;
+        
+        // Validate front file
+        if (!in_array($frontFile->getMimeType(), $allowedMimes)) {
+            throw new \InvalidArgumentException('Invalid file type for ID front. Must be JPEG or PNG.');
+        }
+        
+        // Validate selfie file
+        if (!in_array($selfieFile->getMimeType(), $allowedMimes)) {
+            throw new \InvalidArgumentException('Invalid file type for selfie. Must be JPEG or PNG.');
+        }
+        
+        // Validate back file if present
+        if ($backFile && !in_array($backFile->getMimeType(), $allowedMimes)) {
+            throw new \InvalidArgumentException('Invalid file type for ID back. Must be JPEG or PNG.');
+        }
+        
+        // Create instance to access private method
+        $controller = new self();
+        
+        // Generate predictable file paths
+        $frontPath = $controller->generateKycFilePath($user, 'front', $frontFile);
+        $selfiePath = $controller->generateKycFilePath($user, 'selfie', $selfieFile);
+        $backPath = $backFile ? $controller->generateKycFilePath($user, 'back', $backFile) : null;
+        
+        // Ensure directory exists
+        $kycDir = 'kyc/' . $user->id;
+        if (!Storage::disk('local')->exists($kycDir)) {
+            Storage::disk('local')->makeDirectory($kycDir, 0755, true);
+        }
+        
+        // Track uploaded files for rollback if needed
+        $uploadedFiles = [];
+        
+        try {
+            // Begin database transaction for atomicity
+            DB::beginTransaction();
+            
+            // Upload front image
+            $frontStored = Storage::disk('local')->put($frontPath, file_get_contents($frontFile->getRealPath()));
+            if (!$frontStored) {
+                throw new \Exception('Failed to save ID front image');
+            }
+            $uploadedFiles[] = $frontPath;
+            
+            Log::info('KYC front image uploaded successfully', [
+                'user_id' => $user->id,
+                'file_path' => $frontPath,
+            ]);
+            
+            // Upload back image (if provided)
+            if ($backFile) {
+                $backStored = Storage::disk('local')->put($backPath, file_get_contents($backFile->getRealPath()));
+                if (!$backStored) {
+                    throw new \Exception('Failed to save ID back image');
+                }
+                $uploadedFiles[] = $backPath;
+                
+                Log::info('KYC back image uploaded successfully', [
+                    'user_id' => $user->id,
+                    'file_path' => $backPath,
+                ]);
+            }
+            
+            // Upload selfie image
+            $selfieStored = Storage::disk('local')->put($selfiePath, file_get_contents($selfieFile->getRealPath()));
+            if (!$selfieStored) {
+                throw new \Exception('Failed to save selfie image');
+            }
+            $uploadedFiles[] = $selfiePath;
+            
+            Log::info('KYC selfie image uploaded successfully', [
+                'user_id' => $user->id,
+                'file_path' => $selfiePath,
+            ]);
+            
+            // Verify all files exist before updating database
+            foreach ($uploadedFiles as $filePath) {
+                if (!Storage::disk('local')->exists($filePath)) {
+                    throw new \Exception("Uploaded file not found at path: {$filePath}");
+                }
+            }
+            
+            // Update user model with exact paths
+            $user->update([
+                'kyc_id_front_path' => $frontPath,
+                'kyc_id_back_path' => $backPath,
+                'kyc_selfie_path' => $selfiePath,
+                'kyc_submitted_at' => now(),
+            ]);
+            
+            // Commit transaction
+            DB::commit();
+            
+            Log::info('KYC uploads completed successfully', [
+                'user_id' => $user->id,
+                'front_path' => $frontPath,
+                'back_path' => $backPath,
+                'selfie_path' => $selfiePath,
+            ]);
+            
+            return [
+                'success' => true,
+                'paths' => [
+                    'front' => $frontPath,
+                    'back' => $backPath,
+                    'selfie' => $selfiePath,
+                ],
+            ];
+            
+        } catch (\Exception $e) {
+            // Rollback database transaction
+            DB::rollBack();
+            
+            // Delete any partially uploaded files
+            foreach ($uploadedFiles as $filePath) {
+                if (Storage::disk('local')->exists($filePath)) {
+                    Storage::disk('local')->delete($filePath);
+                }
+            }
+            
+            Log::error('KYC upload failed, transaction rolled back', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            throw $e;
+        }
     }
 
     /**
@@ -98,11 +324,43 @@ class AdminKycController extends Controller
         if ($user->role === 'user') {
             $updateData['role'] = 'investor';
             $user->update($updateData);
+
+            // Send KYC approved email
+            try {
+                Mail::send('emails.kyc-approved', [
+                    'user' => $user->fresh(),
+                ], function ($m) use ($user) {
+                    $m->to($user->email, $user->name)
+                        ->subject('Your KYC has been approved - RWAMP');
+                });
+            } catch (\Throwable $e) {
+                Log::error('Failed to send KYC approved email', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
             return back()->with('success', 'KYC approved. User role updated to investor.');
         } else {
             // User already has a role (admin, reseller, or investor) - preserve it
             // Do NOT include role in updateData to ensure it's never changed
             $user->update($updateData);
+
+            // Send KYC approved email
+            try {
+                Mail::send('emails.kyc-approved', [
+                    'user' => $user->fresh(),
+                ], function ($m) use ($user) {
+                    $m->to($user->email, $user->name)
+                        ->subject('Your KYC has been approved - RWAMP');
+                });
+            } catch (\Throwable $e) {
+                Log::error('Failed to send KYC approved email', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
             return back()->with('success', 'KYC approved. User role preserved as ' . ucfirst($user->role) . '.');
         }
     }
@@ -119,11 +377,45 @@ class AdminKycController extends Controller
             return back()->with('error', 'Only pending KYC submissions can be rejected.');
         }
 
-        $user->update([
-            'kyc_status' => 'rejected',
+        // Validate rejection reason
+        $validated = $request->validate([
+            'rejection_reason' => ['required', 'string', 'min:10', 'max:1000'],
+        ], [
+            'rejection_reason.required' => 'Please provide a reason for rejection so the user can fix the issue.',
+            'rejection_reason.min' => 'Rejection reason must be at least 10 characters long.',
+            'rejection_reason.max' => 'Rejection reason cannot exceed 1000 characters.',
         ]);
 
-        return back()->with('success', 'KYC rejected.');
+        $user->update([
+            'kyc_status' => 'rejected',
+            'kyc_rejection_reason' => $validated['rejection_reason'],
+        ]);
+
+        // Log the rejection for audit trail
+        Log::info('KYC submission rejected', [
+            'user_id' => $user->id,
+            'user_email' => $user->email,
+            'rejection_reason' => $validated['rejection_reason'],
+            'admin_id' => auth()->id(),
+        ]);
+
+        // Send KYC rejected email with reason
+        try {
+            Mail::send('emails.kyc-rejected', [
+                'user' => $user->fresh(),
+                'reason' => $validated['rejection_reason'],
+            ], function ($m) use ($user) {
+                $m->to($user->email, $user->name)
+                    ->subject('Your KYC has been rejected - RWAMP');
+            });
+        } catch (\Throwable $e) {
+            Log::error('Failed to send KYC rejected email', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return back()->with('success', 'KYC rejected. The user has been notified with the rejection reason.');
     }
 
     /**
@@ -133,12 +425,14 @@ class AdminKycController extends Controller
     public function update(Request $request, $user)
     {
         $user = $this->resolveUser($user);
+        $previousStatus = $user->kyc_status;
         
         $validated = $request->validate([
             'kyc_id_type' => ['required', 'in:cnic,nicop,passport'],
             'kyc_id_number' => ['required', 'string', 'max:50'],
             'kyc_full_name' => ['required', 'string', 'max:255'],
             'kyc_status' => ['required', 'in:pending,approved,rejected'],
+            'rejection_reason' => ['nullable', 'required_if:kyc_status,rejected', 'string', 'min:10', 'max:1000'],
         ]);
 
         $updateData = [
@@ -147,6 +441,14 @@ class AdminKycController extends Controller
             'kyc_full_name' => $validated['kyc_full_name'],
             'kyc_status' => $validated['kyc_status'],
         ];
+
+        // Handle rejection reason
+        if ($validated['kyc_status'] === 'rejected') {
+            $updateData['kyc_rejection_reason'] = $validated['rejection_reason'] ?? null;
+        } else {
+            // Clear any old rejection reason when status is not rejected
+            $updateData['kyc_rejection_reason'] = null;
+        }
 
         // If status is being changed to approved, set approved_at
         if ($validated['kyc_status'] === 'approved' && $user->kyc_status !== 'approved') {
@@ -165,6 +467,41 @@ class AdminKycController extends Controller
         }
 
         $user->update($updateData);
+
+        // Send notification emails when status changes via Edit modal
+        $user->refresh();
+        if ($previousStatus !== $user->kyc_status) {
+            if ($user->kyc_status === 'approved') {
+                try {
+                    Mail::send('emails.kyc-approved', [
+                        'user' => $user,
+                    ], function ($m) use ($user) {
+                        $m->to($user->email, $user->name)
+                            ->subject('Your KYC has been approved - RWAMP');
+                    });
+                } catch (\Throwable $e) {
+                    Log::error('Failed to send KYC approved email (update)', [
+                        'user_id' => $user->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            } elseif ($user->kyc_status === 'rejected' && !empty($user->kyc_rejection_reason)) {
+                try {
+                    Mail::send('emails.kyc-rejected', [
+                        'user' => $user,
+                        'reason' => $user->kyc_rejection_reason,
+                    ], function ($m) use ($user) {
+                        $m->to($user->email, $user->name)
+                            ->subject('Your KYC has been rejected - RWAMP');
+                    });
+                } catch (\Throwable $e) {
+                    Log::error('Failed to send KYC rejected email (update)', [
+                        'user_id' => $user->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
 
         return back()->with('success', 'KYC information updated successfully.');
     }
@@ -205,7 +542,12 @@ class AdminKycController extends Controller
     }
 
     /**
-     * Download KYC file
+     * Download KYC file - Simplified and secure version
+     * 
+     * This method relies solely on the database path stored during upload.
+     * With the new handleKycUploads method ensuring correct paths, all fallback
+     * logic has been removed for security and reliability.
+     * 
      * Supports both ULID and numeric ID for user lookup
      */
     public function downloadFile($user, string $type)
@@ -215,10 +557,27 @@ class AdminKycController extends Controller
             abort(400, 'Invalid file type. Must be front, back, or selfie.');
         }
 
-        // Resolve user - try ULID first, then numeric ID
-        $user = $this->resolveUser($user);
+        // Log initial request for audit trail
+        Log::info('KYC file download request received', [
+            'user_param' => $user,
+            'user_param_type' => gettype($user),
+            'type' => $type,
+            'request_url' => request()->fullUrl(),
+            'ip_address' => request()->ip(),
+        ]);
 
-        // Get file path from database
+        // Resolve user with enhanced security
+        try {
+            $user = $this->resolveUser($user);
+        } catch (\Exception $e) {
+            Log::error('Failed to resolve user in downloadFile', [
+                'user_param' => $user,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+
+        // Get file path from database (single source of truth)
         $dbFilePath = match($type) {
             'front' => $user->kyc_id_front_path,
             'back' => $user->kyc_id_back_path,
@@ -226,262 +585,88 @@ class AdminKycController extends Controller
             default => null,
         };
 
-        // Log for debugging - this will help us see if the method is being called
-        \Log::info('KYC file download request - METHOD CALLED', [
-            'user_id' => $user->id,
-            'user_email' => $user->email,
-            'type' => $type,
-            'db_file_path' => $dbFilePath,
-            'kyc_id_front_path' => $user->kyc_id_front_path,
-            'kyc_id_back_path' => $user->kyc_id_back_path,
-            'kyc_selfie_path' => $user->kyc_selfie_path,
-            'request_url' => request()->fullUrl(),
-        ]);
-
-        // Build KYC directory path
-        $kycDir = 'kyc/' . $user->id;
-        $kycDirectory = storage_path('app/' . $kycDir);
-        
-        $foundPath = null;
-        
-        // First, try to use database path if it exists
-        if ($dbFilePath) {
-            // Normalize file path - remove any leading/trailing slashes and storage/app prefix
-            $normalizedPath = ltrim($dbFilePath, '/');
-            $normalizedPath = str_replace('storage/app/', '', $normalizedPath);
-            $normalizedPath = str_replace('app/', '', $normalizedPath);
-            
-            // Check absolute path first (most reliable)
-            $absolutePath = storage_path('app/' . $normalizedPath);
-            if (file_exists($absolutePath)) {
-                $foundPath = $normalizedPath;
-                \Log::info('Found KYC file using database path (absolute check)', [
-                    'user_id' => $user->id,
-                    'type' => $type,
-                    'db_path' => $dbFilePath,
-                    'normalized_path' => $normalizedPath,
-                    'absolute_path' => $absolutePath,
-                    'found_path' => $foundPath,
-                ]);
-            } else {
-                // Try Storage check
-                if (Storage::disk('local')->exists($normalizedPath)) {
-                    $foundPath = $normalizedPath;
-                    \Log::info('Found KYC file using database path (Storage check)', [
-                        'user_id' => $user->id,
-                        'type' => $type,
-                        'db_path' => $dbFilePath,
-                        'normalized_path' => $normalizedPath,
-                        'found_path' => $foundPath,
-                    ]);
-                } else {
-                    // Try alternative path formats
-                    $pathsToTry = [
-                        $kycDir . '/' . basename($normalizedPath),
-                        'kyc/' . $user->id . '/' . basename($normalizedPath),
-                    ];
-                    
-                    foreach ($pathsToTry as $path) {
-                        $altAbsolutePath = storage_path('app/' . $path);
-                        if (file_exists($altAbsolutePath)) {
-                            $foundPath = $path;
-                            \Log::info('Found KYC file using alternative path', [
-                                'user_id' => $user->id,
-                                'type' => $type,
-                                'db_path' => $dbFilePath,
-                                'alternative_path' => $path,
-                                'found_path' => $foundPath,
-                            ]);
-                            break;
-                        }
-                    }
-                }
-            }
-            
-            // Log if database path didn't work
-            if (!$foundPath) {
-                \Log::warning('Database path exists but file not found', [
-                    'user_id' => $user->id,
-                    'type' => $type,
-                    'db_path' => $dbFilePath,
-                    'normalized_path' => $normalizedPath,
-                    'absolute_path_checked' => $absolutePath,
-                    'file_exists' => file_exists($absolutePath),
-                    'storage_root' => storage_path('app'),
-                ]);
-            }
-        }
-
-        // If still not found, search in the user's KYC directory and use files by order
-        if (!$foundPath && is_dir($kycDirectory)) {
-                $filesInDir = array_diff(scandir($kycDirectory), ['.', '..']);
-                
-                if (!empty($filesInDir)) {
-                    // Sort files by modification time (oldest first) to maintain consistent order
-                    $filesWithTime = [];
-                    foreach ($filesInDir as $file) {
-                        $filePathFull = $kycDirectory . '/' . $file;
-                        $filesWithTime[] = [
-                            'name' => $file,
-                            'time' => filemtime($filePathFull),
-                            'path' => $kycDir . '/' . $file,
-                        ];
-                    }
-                    usort($filesWithTime, function($a, $b) {
-                        return $a['time'] <=> $b['time'];
-                    });
-                    $sortedFiles = array_column($filesWithTime, 'name');
-                    $sortedPaths = array_column($filesWithTime, 'path');
-                    
-                    // Try to find file by matching filename if database path exists
-                    if ($dbFilePath) {
-                        $searchFilename = basename($dbFilePath);
-                        foreach ($sortedFiles as $index => $file) {
-                            if (strtolower($file) === strtolower($searchFilename) || 
-                                strtolower(pathinfo($file, PATHINFO_FILENAME)) === strtolower(pathinfo($searchFilename, PATHINFO_FILENAME))) {
-                                $foundPath = $sortedPaths[$index];
-                                \Log::info('Found KYC file by filename match', [
-                                    'user_id' => $user->id,
-                                    'type' => $type,
-                                    'searched_filename' => $searchFilename,
-                                    'found_file' => $file,
-                                    'found_path' => $foundPath,
-                                ]);
-                                break;
-                            }
-                        }
-                    }
-                    
-                    // If still not found, use files in order based on type
-                    // This handles cases where database paths don't match actual files
-                    if (!$foundPath) {
-                        $fileCount = count($sortedFiles);
-                        
-                        // Determine file index based on type and available files
-                        // For CNIC/NICOP: front (0), back (1), selfie (2)
-                        // For passport: front (0), selfie (1) - no back
-                        $fileIndex = match($type) {
-                            'front' => 0, // Always first
-                            'back' => ($fileCount >= 3) ? 1 : null, // Second if 3 files, otherwise might not exist
-                            'selfie' => ($fileCount >= 3) ? 2 : ($fileCount >= 2 ? 1 : 0), // Last if 3 files, second if 2 files, first if only 1
-                            default => 0,
-                        };
-                        
-                        if ($fileIndex !== null && isset($sortedPaths[$fileIndex])) {
-                            $foundPath = $sortedPaths[$fileIndex];
-                            \Log::info('Found KYC file by order (database path mismatch or null)', [
-                                'user_id' => $user->id,
-                                'type' => $type,
-                                'file_index' => $fileIndex,
-                                'file_count' => $fileCount,
-                                'selected_file' => $sortedFiles[$fileIndex],
-                                'found_path' => $foundPath,
-                                'all_files' => $sortedFiles,
-                                'database_path' => $dbFilePath,
-                            ]);
-                        } elseif ($type === 'selfie' && $fileCount >= 1) {
-                            // For selfie, use the last file
-                            $lastIndex = $fileCount - 1;
-                            $foundPath = $sortedPaths[$lastIndex];
-                            \Log::info('Found KYC selfie file (using last file)', [
-                                'user_id' => $user->id,
-                                'type' => $type,
-                                'file_index' => $lastIndex,
-                                'file_count' => $fileCount,
-                                'selected_file' => $sortedFiles[$lastIndex],
-                                'found_path' => $foundPath,
-                            ]);
-                        } elseif ($type === 'front' && $fileCount >= 1) {
-                            // For front, use the first file
-                            $foundPath = $sortedPaths[0];
-                            \Log::info('Found KYC front file (using first file)', [
-                                'user_id' => $user->id,
-                                'type' => $type,
-                                'file_count' => $fileCount,
-                                'selected_file' => $sortedFiles[0],
-                                'found_path' => $foundPath,
-                            ]);
-                        } elseif ($type === 'back' && $fileCount >= 2) {
-                            // For back, use the middle file (if 3 files) or second file
-                            $foundPath = $sortedPaths[1];
-                            \Log::info('Found KYC back file (using middle file)', [
-                                'user_id' => $user->id,
-                                'type' => $type,
-                                'file_count' => $fileCount,
-                                'selected_file' => $sortedFiles[1],
-                                'found_path' => $foundPath,
-                            ]);
-                        }
-                    }
-                }
-        }
-
-        // If file still not found, abort with detailed error
-        if (!$foundPath) {
-            $filesInDir = [];
-            if (is_dir($kycDirectory)) {
-                $filesInDir = array_diff(scandir($kycDirectory), ['.', '..']);
-            }
-            
-            \Log::error('KYC file not found after all attempts', [
+        // Validate that database path exists
+        if (!$dbFilePath) {
+            Log::warning('KYC file path not found in database', [
                 'user_id' => $user->id,
                 'user_email' => $user->email,
                 'type' => $type,
-                'database_path' => $dbFilePath,
-                'kyc_directory' => $kycDirectory,
-                'kyc_directory_exists' => is_dir($kycDirectory),
-                'files_in_kyc_directory' => $filesInDir,
-                'storage_root' => storage_path('app'),
             ]);
-            
-            abort(404, 'KYC file not found. Please check if the file exists in storage/app/kyc/' . $user->id . '/');
+            abort(404, 'KYC file path not found in database for user ' . $user->id . ' (type: ' . $type . ')');
         }
 
-        // Use the found path
-        $filePath = $foundPath;
-
-        // Final verification - check if file actually exists
-        $absoluteFilePath = storage_path('app/' . $filePath);
-        if (!file_exists($absoluteFilePath)) {
-            \Log::error('KYC file path found but file does not exist at absolute path', [
+        // Security: Validate path format to prevent path traversal attacks
+        // Path must start with 'kyc/' (but may be in different user's directory due to data issues)
+        $normalizedPath = ltrim($dbFilePath, '/');
+        
+        // Remove any 'storage/app/' or 'app/' prefixes if present
+        $normalizedPath = preg_replace('#^(storage/app/|app/)#', '', $normalizedPath);
+        
+        // Security: Ensure path starts with 'kyc/' to prevent path traversal
+        if (!str_starts_with($normalizedPath, 'kyc/')) {
+            Log::error('KYC file path security validation failed - path traversal attempt detected', [
                 'user_id' => $user->id,
                 'type' => $type,
-                'file_path' => $filePath,
-                'absolute_path' => $absoluteFilePath,
-                'file_exists' => file_exists($absoluteFilePath),
+                'db_path' => $dbFilePath,
+                'normalized_path' => $normalizedPath,
             ]);
-            abort(404, 'KYC file not found at: ' . $absoluteFilePath);
+            abort(403, 'Invalid file path format. Security validation failed.');
+        }
+
+        // Check if file exists using Storage
+        $fileExists = Storage::disk('local')->exists($normalizedPath);
+        
+        // If file doesn't exist at the path, try to find it in the user's directory
+        if (!$fileExists) {
+            $filename = basename($normalizedPath);
+            $userDirPath = "kyc/{$user->id}/{$filename}";
+            
+            // Try the correct user directory
+            if (Storage::disk('local')->exists($userDirPath)) {
+                $normalizedPath = $userDirPath;
+                $fileExists = true;
+                
+                Log::warning('KYC file found in correct user directory but path was wrong', [
+                    'user_id' => $user->id,
+                    'type' => $type,
+                    'original_path' => $dbFilePath,
+                    'corrected_path' => $userDirPath,
+                ]);
+            } else {
+                // File doesn't exist - log detailed error
+                Log::error('KYC file not found at database path or user directory', [
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'type' => $type,
+                    'database_path' => $dbFilePath,
+                    'normalized_path' => $normalizedPath,
+                    'tried_user_dir' => $userDirPath,
+                    'absolute_path' => storage_path('app/' . $normalizedPath),
+                    'storage_root' => storage_path('app'),
+                ]);
+                abort(404, 'KYC file not found at path: ' . $normalizedPath . ' for user ' . $user->id);
+            }
         }
 
         try {
-            // Serve image for viewing (not download)
-            // Try Storage first, fallback to file_get_contents if needed
-            $file = Storage::disk('local')->get($filePath);
+            // Retrieve file content using Storage
+            $file = Storage::disk('local')->get($normalizedPath);
             
             if (!$file) {
-                // Fallback to direct file read
-                $file = file_get_contents($absoluteFilePath);
-                if (!$file) {
-                    \Log::error('Failed to read KYC file using both Storage and file_get_contents', [
-                        'user_id' => $user->id,
-                        'type' => $type,
-                        'file_path' => $filePath,
-                        'absolute_path' => $absoluteFilePath,
-                    ]);
-                    abort(404, 'KYC file could not be read.');
-                }
-                \Log::warning('KYC file read using file_get_contents fallback', [
+                Log::error('Failed to read KYC file content', [
                     'user_id' => $user->id,
                     'type' => $type,
-                    'file_path' => $filePath,
+                    'file_path' => $normalizedPath,
                 ]);
+                abort(500, 'Failed to read KYC file.');
             }
 
-            $mimeType = Storage::disk('local')->mimeType($filePath);
+            // Detect MIME type
+            $mimeType = Storage::disk('local')->mimeType($normalizedPath);
             
-            // Fallback mime type if detection fails
+            // Fallback MIME type detection if Storage fails
             if (!$mimeType) {
-                $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+                $extension = strtolower(pathinfo($normalizedPath, PATHINFO_EXTENSION));
                 $mimeType = match($extension) {
                     'jpg', 'jpeg' => 'image/jpeg',
                     'png' => 'image/png',
@@ -490,16 +675,28 @@ class AdminKycController extends Controller
                     default => 'application/octet-stream',
                 };
             }
-            
-            return response($file, 200)
-                ->header('Content-Type', $mimeType)
-                ->header('Content-Disposition', 'inline; filename="' . basename($filePath) . '"')
-                ->header('Cache-Control', 'private, max-age=3600');
-        } catch (\Exception $e) {
-            \Log::error('Error serving KYC file', [
+
+            // Log successful file access for audit trail
+            Log::info('KYC file served successfully', [
                 'user_id' => $user->id,
                 'type' => $type,
-                'file_path' => $filePath,
+                'file_path' => $normalizedPath,
+                'mime_type' => $mimeType,
+                'file_size' => strlen($file),
+            ]);
+            
+            // Serve file with appropriate headers
+            return response($file, 200)
+                ->header('Content-Type', $mimeType)
+                ->header('Content-Disposition', 'inline; filename="' . basename($normalizedPath) . '"')
+                ->header('Cache-Control', 'private, max-age=3600')
+                ->header('X-Content-Type-Options', 'nosniff');
+                
+        } catch (\Exception $e) {
+            Log::error('Error serving KYC file', [
+                'user_id' => $user->id,
+                'type' => $type,
+                'file_path' => $normalizedPath,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);

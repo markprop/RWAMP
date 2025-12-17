@@ -243,9 +243,9 @@
             <div class="bg-slate-900 rounded-2xl border border-slate-700/80 shadow-md shadow-black/40 p-4">
                 <div class="flex items-center justify-between mb-3">
                     <div>
-                        <h3 class="text-sm font-semibold text-slate-100">Trade History (Current Session)</h3>
+                        <h3 class="text-sm font-semibold text-slate-100">Trade History</h3>
                         <p class="text-[11px] text-slate-400">
-                            Latest trades are pulled dynamically from the server after each execution.
+                            All your trades across all game sessions. Latest trades are pulled dynamically from the server after each execution.
                         </p>
                     </div>
                 </div>
@@ -259,12 +259,13 @@
                                 <th class="px-3 py-2 text-right">Price (PKR)</th>
                                 <th class="px-3 py-2 text-right">Fee (PKR)</th>
                                 <th class="px-3 py-2 text-right">Net (PKR)</th>
+                                <th class="px-3 py-2 text-left">Session</th>
                             </tr>
                         </thead>
                         <tbody>
                             <template x-if="!trades || trades.length === 0">
                                 <tr>
-                                    <td colspan="6" class="px-3 py-4 text-center text-slate-500">
+                                    <td colspan="7" class="px-3 py-4 text-center text-slate-500">
                                         No trades yet. Use the Buy/Sell panels above to place your first trade.
                                     </td>
                                 </tr>
@@ -284,6 +285,9 @@
                                     <td class="px-3 py-2 text-right"
                                         :class="tradeNetClass(trade)"
                                         x-text="formatTradeNet(trade)"></td>
+                                    <td class="px-3 py-2 text-slate-400 text-xs">
+                                        <span x-text="trade.session ? formatSessionDate(trade.session.started_at) : 'N/A'"></span>
+                                    </td>
                                 </tr>
                             </template>
                         </tbody>

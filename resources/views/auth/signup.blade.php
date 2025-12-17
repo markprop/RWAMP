@@ -225,35 +225,40 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
                                 <div x-show="tooltip === 'phone'" @click.away="tooltip = null" x-cloak x-transition class="absolute z-50 w-64 p-3 text-xs text-white bg-gray-900 rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2 mb-2" style="display: none;">
-                                    <p><strong>Phone Format:</strong> Include country code with + sign, followed by space and number. Examples: +92 370 1346038, +1 555 1234567</p>
+                                    <p><strong>Phone Format:</strong> Select your country and enter your full mobile number (e.g., +92 300 1234567).</p>
                                     <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
                                         <div class="border-4 border-transparent border-t-gray-900"></div>
                                     </div>
                                 </div>
                             </div>
                         </label>
-                        <div class="relative">
-                            <input
-                                type="tel"
+                        <div class="phone-input-wrapper relative"
+                             :class="{
+                                'ring-2 ring-green-500/30 border-green-500 rounded-md': phoneStatus.investor === 'valid',
+                                'ring-2 ring-yellow-500/30 border-yellow-500 rounded-md': phoneStatus.investor === 'incomplete',
+                                'ring-2 ring-red-500/30 border-red-500 rounded-md': phoneStatus.investor === 'invalid'
+                             }">
+                            <x-phone-input
                                 name="phone"
                                 id="investor-phone"
-                                value="{{ old('phone') }}"
-                                class="form-input text-sm sm:text-base"
-                                required
-                                placeholder="+92 370 1346038"
-                                data-intl-tel-input
-                                x-on:input.debounce.500ms="validatePhone($event.target.value, 'investor')"
-                                x-on:blur="validatePhone($event.target.value, 'investor')"
-                            >
-                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                <span x-show="phoneValidated.investor && phoneStatus.investor === 'valid'" class="text-green-500">✓</span>
-                                <span x-show="phoneValidated.investor && phoneStatus.investor === 'invalid'" class="text-red-500">✗</span>
-                                <span x-show="phoneStatus.investor === 'checking'" class="animate-spin text-gray-400">⟳</span>
-                            </div>
+                                :value="old('phone')"
+                                :required="true"
+                                placeholder="Enter phone number"
+                                input-class="form-input text-sm sm:text-base"
+                            />
+                            <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <svg x-show="phoneStatus.investor === 'valid'" class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                </svg>
+                                <svg x-show="phoneStatus.investor === 'invalid'" class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
                         </div>
-                        <p class="text-xs text-gray-500 mt-1">Format: Country Code + Space + Number (e.g., +92 370 1346038)</p>
-                        <p x-show="phoneValidated.investor && phoneStatus.investor === 'invalid'" x-cloak class="text-xs text-red-500 mt-1" x-text="phoneMessage.investor"></p>
-                        <p x-show="phoneValidated.investor && phoneStatus.investor === 'valid'" x-cloak class="text-xs text-green-500 mt-1" x-text="phoneMessage.investor"></p>
+                        <p class="text-xs text-gray-500 mt-1">Example: +92 300 1234567.</p>
+                        <p x-show="phoneStatus.investor === 'incomplete'" x-cloak class="text-xs text-yellow-500 mt-1" x-text="phoneMessage.investor"></p>
+                        <p x-show="phoneStatus.investor === 'invalid'" x-cloak class="text-xs text-red-500 mt-1" x-text="phoneMessage.investor"></p>
+                        <p x-show="phoneStatus.investor === 'valid' && phoneMessage.investor" x-cloak class="text-xs text-green-500 mt-1" x-text="phoneMessage.investor"></p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
@@ -537,35 +542,40 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
                                 <div x-show="tooltip === 'reseller-phone'" @click.away="tooltip = null" x-cloak x-transition class="absolute z-50 w-64 p-3 text-xs text-white bg-gray-900 rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2 mb-2" style="display: none;">
-                                    <p><strong>Phone Format:</strong> Include country code with + sign, followed by space and number. Examples: +92 370 1346038, +1 555 1234567</p>
+                                    <p><strong>Phone Format:</strong> Select your country and enter your full mobile number (e.g., +92 300 1234567).</p>
                                     <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
                                         <div class="border-4 border-transparent border-t-gray-900"></div>
                                     </div>
                                 </div>
                             </div>
                         </label>
-                        <div class="relative">
-                            <input
-                                type="tel"
+                        <div class="phone-input-wrapper relative"
+                             :class="{
+                                'ring-2 ring-green-500/30 border-green-500 rounded-md': phoneStatus.reseller === 'valid',
+                                'ring-2 ring-yellow-500/30 border-yellow-500 rounded-md': phoneStatus.reseller === 'incomplete',
+                                'ring-2 ring-red-500/30 border-red-500 rounded-md': phoneStatus.reseller === 'invalid'
+                             }">
+                            <x-phone-input
                                 name="phone"
                                 id="reseller-phone"
-                                value="{{ old('phone') }}"
-                                class="form-input text-sm sm:text-base"
-                                required
-                                placeholder="+92 370 1346038"
-                                data-intl-tel-input
-                                x-on:input.debounce.500ms="validatePhone($event.target.value, 'reseller')"
-                                x-on:blur="validatePhone($event.target.value, 'reseller')"
-                            >
-                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                <span x-show="phoneValidated.reseller && phoneStatus.reseller === 'valid'" class="text-green-500">✓</span>
-                                <span x-show="phoneValidated.reseller && phoneStatus.reseller === 'invalid'" class="text-red-500">✗</span>
-                                <span x-show="phoneStatus.reseller === 'checking'" class="animate-spin text-gray-400">⟳</span>
-                            </div>
+                                :value="old('phone')"
+                                :required="true"
+                                placeholder="Enter phone number"
+                                input-class="form-input text-sm sm:text-base"
+                            />
+                            <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <svg x-show="phoneStatus.reseller === 'valid'" class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                </svg>
+                                <svg x-show="phoneStatus.reseller === 'invalid'" class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
                         </div>
-                        <p class="text-xs text-gray-500 mt-1">Format: Country Code + Space + Number (e.g., +92 370 1346038 or +1 555 1234567)</p>
-                        <p x-show="phoneValidated.reseller && phoneStatus.reseller === 'invalid'" x-cloak class="text-xs text-red-500 mt-1" x-text="phoneMessage.reseller"></p>
-                        <p x-show="phoneValidated.reseller && phoneStatus.reseller === 'valid'" x-cloak class="text-xs text-green-500 mt-1" x-text="phoneMessage.reseller"></p>
+                        <p class="text-xs text-gray-500 mt-1">Example: +92 300 1234567.</p>
+                        <p x-show="phoneStatus.reseller === 'incomplete'" x-cloak class="text-xs text-yellow-500 mt-1" x-text="phoneMessage.reseller"></p>
+                        <p x-show="phoneStatus.reseller === 'invalid'" x-cloak class="text-xs text-red-500 mt-1" x-text="phoneMessage.reseller"></p>
+                        <p x-show="phoneStatus.reseller === 'valid' && phoneMessage.reseller" x-cloak class="text-xs text-green-500 mt-1" x-text="phoneMessage.reseller"></p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">

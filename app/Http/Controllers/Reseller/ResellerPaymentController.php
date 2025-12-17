@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Reseller;
 
 use App\Http\Controllers\Controller;
 use App\Models\CryptoPayment;
+use App\Models\PaymentSubmission;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ResellerPaymentController extends Controller
 {
@@ -43,11 +45,33 @@ class ResellerPaymentController extends Controller
 
         $payments = $query->latest()->paginate(20)->withQueryString();
 
-        return view('dashboard.reseller-payments', compact('payments'));
+        // Bank / manual payment submissions assigned to this reseller
+        $bankQuery = PaymentSubmission::with('user')
+            ->where('recipient_type', 'reseller')
+            ->where('recipient_id', $reseller->id);
+
+        // Reuse same filters where it makes sense
+        if ($request->has('status') && $request->status) {
+            $bankQuery->where('status', $request->status);
+        }
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $bankQuery->where(function($q) use ($search) {
+                $q->where('bank_reference', 'like', "%{$search}%")
+                  ->orWhereHas('user', function($userQ) use ($search) {
+                      $userQ->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $bankSubmissions = $bankQuery->latest()->paginate(20, ['*'], 'bank_submissions')->withQueryString();
+
+        return view('dashboard.reseller-payments', compact('payments', 'bankSubmissions'));
     }
 
     /**
-     * View payment details
+     * View crypto payment details
      */
     public function show(CryptoPayment $payment)
     {
@@ -64,7 +88,7 @@ class ResellerPaymentController extends Controller
     }
 
     /**
-     * Reject payment
+     * Reject crypto payment
      */
     public function reject(Request $request, CryptoPayment $payment)
     {
@@ -127,6 +151,102 @@ class ResellerPaymentController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Payment approved and tokens credited.'
+        ]);
+    }
+
+    /**
+     * Approve a manual/bank PaymentSubmission and credit tokens.
+     */
+    public function approveBank(Request $request, PaymentSubmission $submission)
+    {
+        $reseller = Auth::user();
+
+        if ($submission->recipient_type !== 'reseller' || $submission->recipient_id !== $reseller->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You can only approve bank submissions assigned to you.',
+            ], 403);
+        }
+
+        if ($submission->status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This bank submission has already been processed.',
+            ], 400);
+        }
+
+        DB::transaction(function () use ($submission, $reseller) {
+            $user        = $submission->user;
+            $tokenAmount = (int) $submission->token_amount;
+
+            if ($reseller->token_balance < $tokenAmount) {
+                throw new \RuntimeException('Insufficient reseller balance to approve this payment.');
+            }
+
+            // Update submission status
+            $submission->update(['status' => 'approved']);
+
+            // Transfer tokens: reseller -> user
+            $reseller->decrement('token_balance', $tokenAmount);
+            $user->addTokens($tokenAmount, 'Bank transfer approved by reseller');
+
+            $pricePerCoin = $submission->token_amount > 0
+                ? round($submission->fiat_amount / $submission->token_amount, 4)
+                : null;
+
+            Transaction::create([
+                'user_id'        => $user->id,
+                'sender_id'      => $reseller->id,
+                'recipient_id'   => $user->id,
+                'sender_type'    => 'reseller',
+                'type'           => 'crypto_purchase',
+                'amount'         => $tokenAmount,
+                'price_per_coin' => $pricePerCoin,
+                'total_price'    => $submission->fiat_amount,
+                'status'         => 'completed',
+                'reference'      => 'BANK-' . $submission->id,
+            ]);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Bank payment approved and tokens credited.',
+        ]);
+    }
+
+    /**
+     * Reject a manual/bank PaymentSubmission with a reason.
+     */
+    public function rejectBank(Request $request, PaymentSubmission $submission)
+    {
+        $reseller = Auth::user();
+
+        if ($submission->recipient_type !== 'reseller' || $submission->recipient_id !== $reseller->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You can only reject bank submissions assigned to you.',
+            ], 403);
+        }
+
+        if ($submission->status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This bank submission has already been processed.',
+            ], 400);
+        }
+
+        $data = $request->validate([
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        $submission->update([
+            'status'      => 'rejected',
+            'admin_notes' => $data['reason'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Bank payment rejected.',
         ]);
     }
 
@@ -208,4 +328,3 @@ class ResellerPaymentController extends Controller
         ]);
     }
 }
-

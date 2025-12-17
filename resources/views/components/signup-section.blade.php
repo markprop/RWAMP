@@ -5,12 +5,12 @@
                 Be the First to Know
             </h2>
             <p class="text-xl md:text-2xl mb-12 opacity-90">
-                Get exclusive updates about RWAMP launch, presale opportunities, and investment insights
+                Get Exclusive Updates about $RWAMP, platform updates and upcoming AirDrop campaigns.
             </p>
             
-            <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-8 md:p-12 animate-on-scroll" data-animation="zoomIn" x-data="newsletterForm" x-cloak>
+            <div class="newsletter-form bg-white/10 backdrop-blur-sm rounded-2xl p-8 md:p-12 animate-on-scroll" data-animation="zoomIn" x-data="newsletterForm" x-cloak>
                 <div x-show="!success" x-cloak>
-                    <form @submit.prevent="submitForm" class="space-y-6">
+                    <form @submit.prevent="submitForm" class="space-y-6" data-phone-managed="alpine">
                         <!-- Honeypot field to trap bots -->
                         <div class="hidden" aria-hidden="true">
                             <label class="block text-sm">Leave this field empty</label>
@@ -28,20 +28,39 @@
                                     class="w-full px-4 py-4 rounded-lg border border-white/30 bg-white/10 text-white placeholder-white/70 focus:border-white focus:ring-2 focus:ring-white/20 focus:outline-none transition-all duration-300"
                                     placeholder="your.email@example.com"
                                 />
+                                <p x-show="emailStatus === 'invalid'" x-cloak class="text-xs text-red-400 mt-1" x-text="emailMessage"></p>
+                                <p x-show="emailStatus === 'valid'" x-cloak class="text-xs text-green-400 mt-1" x-text="emailMessage"></p>
                             </div>
                             
                             <div>
                                 <label class="block text-sm font-medium text-white mb-2 text-left">
                                     WhatsApp Number
                                 </label>
-                                <input
-                                    type="tel"
-                                    x-model="whatsapp"
-                                    required
-                                    class="w-full px-4 py-4 rounded-lg border border-white/30 bg-white/10 text-white placeholder-white/70 focus:border-white focus:ring-2 focus:ring-white/20 focus:outline-none transition-all duration-300"
-                                    placeholder="+92 370 1346038"
-                                    data-intl-tel-input
-                                />
+                                <div class="phone-input-wrapper relative"
+                                     :class="{
+                                        'ring-2 ring-green-500/30 border-green-500 rounded-lg': phoneStatus === 'valid',
+                                        'ring-2 ring-yellow-500/30 border-yellow-500 rounded-lg': phoneStatus === 'incomplete',
+                                        'ring-2 ring-red-500/30 border-red-500 rounded-lg': phoneStatus === 'invalid'
+                                     }">
+                                    <x-phone-input
+                                        name="whatsapp"
+                                        :required="true"
+                                        placeholder="Enter phone number"
+                                        input-class="w-full px-4 py-4 rounded-lg border border-white/30 bg-white/10 text-white placeholder-white/70 focus:border-white focus:ring-2 focus:ring-white/20 focus:outline-none transition-all duration-300"
+                                    />
+                                    <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                        <svg x-show="phoneStatus === 'valid'" class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                        </svg>
+                                        <svg x-show="phoneStatus === 'invalid'" class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                        </svg>
+                                    </span>
+                                </div>
+                                <p class="text-xs text-white/70 mt-1">Example: +92 300 1234567.</p>
+                                <p x-show="phoneStatus === 'incomplete'" x-cloak class="text-xs text-yellow-400 mt-1" x-text="phoneMessage"></p>
+                                <p x-show="phoneStatus === 'invalid'" x-cloak class="text-xs text-red-400 mt-1" x-text="phoneMessage"></p>
+                                <p x-show="phoneStatus === 'valid' && phoneMessage" x-cloak class="text-xs text-green-400 mt-1" x-text="phoneMessage"></p>
                             </div>
                         </div>
                         
@@ -74,7 +93,7 @@
                 
                 <!-- Error Message -->
                 <div x-show="error" x-cloak class="text-center p-4 bg-red-600/20 rounded-lg" style="display: none;">
-                    <p class="text-white">Something went wrong. Please try again later.</p>
+                    <p class="text-white" x-text="errorMessage || 'Something went wrong. Please try again later.'"></p>
                 </div>
                 
                 <div class="mt-8 pt-6 border-t border-white/20">

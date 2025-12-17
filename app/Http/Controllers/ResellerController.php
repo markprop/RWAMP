@@ -36,43 +36,13 @@ class ResellerController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s\-\'\.]{2,}$/'],
             'email' => 'required|email|max:255',
-            'phone' => 'required|string|max:20',
+            'phone' => 'required|string|min:8|max:20',
             'company' => 'nullable|string|max:255',
             'investmentCapacity' => 'required|string|in:1-10k,10-50k,50-100k,100k+',
             'message' => 'nullable|string|max:1000',
             'hp' => 'nullable|string|max:0', // honeypot
             'recaptcha_token' => 'nullable|string',
         ]);
-
-        // Format phone number to Pakistan format
-        $phone = $validated['phone'];
-        $phoneDigits = preg_replace('/\D/', '', $phone); // Remove all non-digits
-        
-        // Auto-format to Pakistan format
-        if (strlen($phoneDigits) > 0) {
-            // If starts with 0, remove it
-            if (str_starts_with($phoneDigits, '0')) {
-                $phoneDigits = substr($phoneDigits, 1);
-            }
-            
-            // Format based on length and pattern
-            if (strlen($phoneDigits) === 10 && str_starts_with($phoneDigits, '3')) {
-                // Pakistan mobile number (10 digits starting with 3)
-                $phone = '+92 ' . substr($phoneDigits, 0, 3) . ' ' . substr($phoneDigits, 3);
-            } elseif (strlen($phoneDigits) === 12 && str_starts_with($phoneDigits, '92')) {
-                // Already has country code
-                $phone = '+92 ' . substr($phoneDigits, 2, 3) . ' ' . substr($phoneDigits, 5);
-            } elseif (strlen($phoneDigits) === 11 && str_starts_with($phoneDigits, '92')) {
-                // 11 digits starting with 92
-                $phone = '+92 ' . substr($phoneDigits, 2, 3) . ' ' . substr($phoneDigits, 5);
-            } else {
-                // Keep original format if it doesn't match Pakistan pattern
-                $phone = $validated['phone'];
-            }
-        } else {
-            $phone = $validated['phone'];
-        }
-        $validated['phone'] = $phone;
 
         try {
             if (config('services.recaptcha.secret_key') && ! empty($validated['recaptcha_token'])) {

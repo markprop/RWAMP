@@ -42,20 +42,121 @@ body {
   width: 100%;
 }
 
-/* Hide country list by default; show only when widget is open */
-.iti__country-list,
-.intl-tel-input .country-list {
-  display: none;
+/* === BECOME PARTNER FORM - DARK THEME OVERRIDES (scoped) === */
+/* Input appearance */
+.become-partner-form .phone-input-wrapper input.phone-input {
+  color: #ffffff !important;
+  background-color: #111827 !important;
 }
-.iti--open .iti__country-list,
-.intl-tel-input.iti-open .country-list {
-  display: block;
+.become-partner-form .phone-input-wrapper input.phone-input::placeholder {
+  color: #9ca3af !important;
 }
 
-/* Intl Tel Input flags sprite (cdnjs path) */
-.iti__flag,
-.iti-flag {
-  background-image: url('https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/18.1.6/img/flags.png') !important;
+/* Selected flag / dial code area */
+.become-partner-form .iti__selected-dial-code,
+.become-partner-form .iti__country-name,
+.become-partner-form .iti__dial-code {
+  color: #e5e7eb !important; /* gray-200 */
+}
+
+/* Generic wrapper: allow dropdown to overflow (all forms) */
+/* Ensure .iti wrapper can display borders and rings */
+.iti.ring-2 {
+    border-radius: 0.375rem; /* rounded-md */
+}
+
+.phone-input-wrapper {
+  position: relative;
+  overflow: visible;
+}
+
+/* Real-time validation borders - scoped to Become Partner form only */
+.become-partner-form .phone-input-wrapper.phone-valid {
+  border-color: #10b981 !important; /* emerald-500 */
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.5);
+}
+.become-partner-form .phone-input-wrapper.phone-incomplete {
+  border-color: #f59e0b !important; /* amber-500 */
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.5);
+}
+.become-partner-form .phone-input-wrapper.phone-invalid {
+  border-color: #ef4444 !important; /* red-500 */
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.5);
+}
+
+/* Optional inline status text - scoped to Become Partner form only */
+.become-partner-form .phone-input-wrapper::after {
+  content: none !important; /* avoid overlapping with inline Alpine messages */
+}
+
+/* Dropdown list (Become Partner only: dark theme) */
+.become-partner-form .intl-tel-input .country-list {
+  /* force panel to be fully visible above dark card overlays */
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 9999 !important;
+  background-color: #1f2937 !important; /* gray-800 */
+  border: 1px solid #374151 !important; /* gray-700 */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+              0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+.become-partner-form .intl-tel-input .country-list .country {
+  color: #ffffff !important; /* white country name */
+  padding: 0.5rem 0.75rem !important;
+  transition: background-color 0.15s ease-in-out !important;
+}
+.become-partner-form .intl-tel-input .country-list .country:hover {
+  background-color: #374151 !important; /* gray-700 hover */
+  color: #ffffff !important;
+}
+.become-partner-form .intl-tel-input .country-list .country .iti__dial-code,
+.become-partner-form .intl-tel-input .country-list .country .dial-code {
+  color: #9ca3af !important; /* gray-400 for dial codes */
+}
+
+/* Support newer intl-tel-input markup that uses iti__country-* classes */
+.become-partner-form .iti__country-list {
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 9999 !important;
+  background-color: #1f2937 !important; /* gray-800 */
+  border: 1px solid #374151 !important; /* gray-700 */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+              0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+.become-partner-form .iti__country {
+  color: #ffffff !important;
+  padding: 0.5rem 0.75rem !important;
+  transition: background-color 0.15s ease-in-out !important;
+}
+.become-partner-form .iti__country:hover {
+  background-color: #374151 !important;
+  color: #ffffff !important;
+}
+.become-partner-form .iti__country .iti__dial-code {
+  color: #9ca3af !important;
+}
+
+/* === NEWSLETTER FORM (homepage) - light dropdown text === */
+.newsletter-form .intl-tel-input .country-list,
+.newsletter-form .iti__country-list {
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important; /* gray-200 */
+  color: #111827 !important;
+}
+.newsletter-form .intl-tel-input .country-list .country,
+.newsletter-form .iti__country {
+  color: #111827 !important; /* black-ish text */
+  padding: 0.4rem 0.75rem !important;
+}
+.newsletter-form .intl-tel-input .country-list .country .iti__dial-code,
+.newsletter-form .intl-tel-input .country-list .country .dial-code,
+.newsletter-form .iti__country .iti__dial-code {
+  color: #4b5563 !important; /* gray-600 dial code */
+}
+.newsletter-form .intl-tel-input .country-list .country:hover,
+.newsletter-form .iti__country:hover {
+  background-color: #f3f4f6 !important; /* gray-100 hover */
 }
 
 .font-montserrat {
@@ -1422,4 +1523,10 @@ label {
     font-size: 1.5rem;
     width: 2rem;
   }
+}
+
+/* Password fields: hide native browser reveal icon so only Alpine eye is used */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
 }

@@ -34,6 +34,7 @@ use App\Http\Controllers\Reseller\ResellerSellController;
 use App\Http\Controllers\Reseller\ResellerBuyRequestController;
 use App\Http\Controllers\KycController;
 use App\Http\Controllers\WithdrawController;
+use App\Http\Controllers\PaymentSubmissionController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\GameController;
 use App\Http\Controllers\GameSettingController;
@@ -275,6 +276,9 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{payment}', [AdminCryptoPaymentController::class, 'destroy'])->name('delete');
         Route::post('/{payment}/approve', [AdminCryptoPaymentController::class, 'approve'])->name('approve');
         Route::post('/{payment}/reject', [AdminCryptoPaymentController::class, 'reject'])->name('reject');
+        // Approve manual/bank submissions (PaymentSubmission ID)
+        Route::post('/bank/{submission}/approve', [AdminCryptoPaymentController::class, 'approveBank'])
+            ->name('bank-approve');
     });
     
     // Legacy crypto payment routes for backward compatibility (commented out - route group above handles these)
@@ -331,6 +335,12 @@ Route::middleware(['auth'])->group(function () {
     
     // User History
     Route::get('/dashboard/history', [InvestorHistoryController::class, 'index'])->name('user.history');
+
+    // Manual / bank payment submission (investor side)
+    Route::get('/dashboard/payments/submit', [PaymentSubmissionController::class, 'create'])
+        ->name('payments.submit');
+    Route::post('/dashboard/payments/submit', [PaymentSubmissionController::class, 'store'])
+        ->name('payments.submit.store');
     
     // Admin 2FA routes
     Route::prefix('admin/2fa')->middleware('role:admin')->name('admin.2fa.')->group(function () {
@@ -454,15 +464,28 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Form submissions
-Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:3,60')->name('contact.store');
-Route::post('/reseller', [ResellerController::class, 'store'])->middleware('throttle:3,60')->name('reseller.store');
-Route::post('/newsletter', [NewsletterController::class, 'store'])->middleware('throttle:6,60')->name('newsletter.store');
+// Note: higher limits on local/dev so you can test freely
+Route::post('/contact', [ContactController::class, 'store'])
+    ->middleware(app()->environment('local') ? 'throttle:60,1' : 'throttle:3,60')
+    ->name('contact.store');
+
+Route::post('/reseller', [ResellerController::class, 'store'])
+    ->middleware(app()->environment('local') ? 'throttle:60,1' : 'throttle:3,60')
+    ->name('reseller.store');
+
+Route::post('/newsletter', [NewsletterController::class, 'store'])
+    ->middleware(app()->environment('local') ? 'throttle:60,1' : 'throttle:6,60')
+    ->name('newsletter.store');
 
 // API routes for AJAX requests
 Route::prefix('api')->group(function () {
-    Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:3,60');
-    Route::post('/reseller', [ResellerController::class, 'store'])->middleware('throttle:3,60');
-    Route::post('/newsletter', [NewsletterController::class, 'store'])->middleware('throttle:6,60');
+    Route::post('/contact', [ContactController::class, 'store'])
+        ->middleware(app()->environment('local') ? 'throttle:60,1' : 'throttle:3,60');
+    Route::post('/reseller', [ResellerController::class, 'store'])
+        ->middleware(app()->environment('local') ? 'throttle:60,1' : 'throttle:3,60');
+    Route::post('/newsletter', [NewsletterController::class, 'store'])
+        ->middleware(app()->environment('local') ? 'throttle:60,1' : 'throttle:6,60');
+    Route::get('/newsletter/check', [NewsletterController::class, 'check'])->name('api.newsletter.check');
     Route::get('/check-referral-code', [AuthController::class, 'checkReferralCode'])->name('api.check.referral.code');
     Route::get('/check-email', [RegisterController::class, 'checkEmail'])->name('api.check.email');
     Route::get('/check-phone', [RegisterController::class, 'checkPhone'])->name('api.check.phone');
@@ -490,6 +513,8 @@ Route::prefix('api')->group(function () {
             Route::post('/reseller/send-otp', [ResellerSellController::class, 'sendOtp']);
             Route::post('/reseller/fetch-payment-proof', [ResellerPaymentController::class, 'fetchUserPaymentProof']);
             Route::post('/reseller/crypto-payments/{payment}/approve', [ResellerPaymentController::class, 'approve']);
+            Route::post('/reseller/bank-payments/{submission}/approve', [ResellerPaymentController::class, 'approveBank']);
+            Route::post('/reseller/bank-payments/{submission}/reject', [ResellerPaymentController::class, 'rejectBank']);
             Route::get('/reseller/search-users', [ResellerSellController::class, 'searchUsers'])->name('reseller.search-users');
         });
         
@@ -515,7 +540,9 @@ Route::prefix('api')->group(function () {
 // Authentication
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('login.post');
+    Route::post('/login', [AuthController::class, 'login'])
+        ->middleware(app()->environment('local') ? 'throttle:60,1' : 'throttle:5,1')
+        ->name('login.post');
     Route::get('/register', [RegisterController::class, 'show'])->name('register');
     Route::post('/register', [RegisterController::class, 'store'])->name('register.post');
     
@@ -536,8 +563,40 @@ Route::middleware('guest')->group(function () {
     })->name('password.email');
 
     // Reset password form
-    Route::get('/reset-password/{token}', function (string $token) {
-        return view('auth.passwords.reset', ['token' => $token, 'email' => request('email')]);
+    Route::get('/reset-password/{token}', function (string $token, \Illuminate\Http\Request $request) {
+        $email = $request->query('email');
+        
+        // Validate email is provided
+        if (empty($email)) {
+            return redirect()->route('password.request')
+                ->withErrors(['email' => 'Email address is required for password reset.']);
+        }
+        
+        // Try to find the user to validate token
+        $user = \App\Models\User::where('email', $email)->first();
+        
+        if (!$user) {
+            return redirect()->route('password.request')
+                ->withErrors(['email' => 'We can\'t find a user with that email address.']);
+        }
+        
+        // Validate token exists and is not expired
+        $tokenRepository = \Illuminate\Support\Facades\Password::getRepository();
+        if (!$tokenRepository->exists($user, $token)) {
+            \Log::warning('Invalid or expired password reset token', [
+                'email' => $email,
+                'token_provided' => substr($token, 0, 10) . '...',
+                'user_id' => $user->id,
+            ]);
+            
+            return redirect()->route('password.request')
+                ->withErrors(['email' => 'This password reset link is invalid or has expired. Please request a new one.']);
+        }
+        
+        return view('auth.passwords.reset', [
+            'token' => $token, 
+            'email' => $email
+        ]);
     })->name('password.reset');
 
     // Handle reset
@@ -547,6 +606,13 @@ Route::middleware('guest')->group(function () {
             'email' => 'required|email',
             'password' => ['required', 'confirmed', \Illuminate\Validation\Rules\Password::min(8)],
         ]);
+        
+        // Log the reset attempt for debugging
+        \Log::info('Password reset attempt', [
+            'email' => $request->email,
+            'token_length' => strlen($request->token),
+        ]);
+        
         $status = \Illuminate\Support\Facades\Password::reset(
             $request->only('email','password','password_confirmation','token'),
             function ($user, $password) {
@@ -554,13 +620,37 @@ Route::middleware('guest')->group(function () {
                     'password' => \Illuminate\Support\Facades\Hash::make($password),
                 ])->setRememberToken(\Illuminate\Support\Str::random(60));
                 $user->save();
+                
+                // Clear password reset required flag if it exists
+                \Illuminate\Support\Facades\Cache::forget('password_reset_required_user_' . $user->id);
+                
+                \Log::info('Password reset successful', [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                ]);
             }
         );
-        return $status === \Illuminate\Support\Facades\Password::PASSWORD_RESET
-            ? redirect()->route('login')->with('status', __($status))
-            : back()->withErrors(['email' => [__($status)]]);
+        
+        if ($status === \Illuminate\Support\Facades\Password::PASSWORD_RESET) {
+            return redirect()->route('login')->with('status', __($status));
+        } else {
+            \Log::warning('Password reset failed', [
+                'status' => $status,
+                'email' => $request->email,
+                'error_message' => __($status),
+            ]);
+            
+            return back()
+                ->withInput($request->only('email'))
+                ->withErrors(['email' => [__($status)]]);
+        }
     })->name('password.update');
 });
+
+// Lightweight CSRF token refresh endpoint for long-lived pages
+Route::get('/csrf-token', function () {
+    return response()->json(['token' => csrf_token()]);
+})->name('csrf.token');
 
 // Custom logout route with tab session handling
 // Note: Fortify also registers a logout route named "logout".
@@ -577,12 +667,17 @@ Route::middleware('auth')->group(function () {
     Route::put('/wallet', [ProfileController::class, 'updateWallet'])->name('wallet.update');
     Route::post('/wallet/generate', [ProfileController::class, 'generateWallet'])->name('wallet.generate');
     Route::post('/email/verification/resend', [ProfileController::class, 'resendEmailVerification'])->name('email.verification.resend');
+
+    // User-facing KYC document download (current authenticated user only)
+    Route::get('/profile/kyc/download/{type}', [KycController::class, 'downloadFile'])
+        ->name('kyc.profile.download');
 });
 
 // Game Routes (KYC-approved investors and resellers)
 Route::middleware(['auth', 'kyc.approved'])->prefix('game')->name('game.')->group(function () {
     Route::get('/', [GameController::class, 'select'])->name('select');
     Route::get('/trading', [GameController::class, 'index'])->name('index');
+    Route::get('/fopi', [GameController::class, 'fopiIndex'])->name('fopi.index');
     Route::post('/set-pin', [GameController::class, 'setPin'])->name('set-pin');
     Route::post('/enter', [GameController::class, 'enter'])->name('enter');
     Route::get('/price', [GameController::class, 'price'])->name('price');
@@ -590,4 +685,16 @@ Route::middleware(['auth', 'kyc.approved'])->prefix('game')->name('game.')->grou
     Route::get('/history', [GameController::class, 'history'])->name('history');
     Route::post('/exit', [GameController::class, 'exit'])->name('exit');
     Route::post('/force-reset', [GameController::class, 'forceReset'])->name('force-reset');
+    
+    // FOPI Game API Routes
+    Route::prefix('fopi')->name('fopi.')->group(function () {
+        Route::get('/state', [GameController::class, 'fopiGetState'])->name('state');
+        Route::post('/start', [GameController::class, 'fopiStart'])->name('start');
+        Route::post('/jump-month', [GameController::class, 'fopiJumpMonth'])->name('jump-month');
+        Route::post('/buy', [GameController::class, 'fopiBuy'])->name('buy');
+        Route::post('/sell', [GameController::class, 'fopiSell'])->name('sell');
+        Route::post('/claim-rent', [GameController::class, 'fopiClaimRent'])->name('claim-rent');
+        Route::post('/convert', [GameController::class, 'fopiConvert'])->name('convert');
+        Route::post('/mission/claim', [GameController::class, 'fopiClaimMission'])->name('mission.claim');
+    });
 });

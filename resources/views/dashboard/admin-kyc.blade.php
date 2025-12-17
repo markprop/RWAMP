@@ -181,12 +181,10 @@
                                                 @csrf
                                                 <button type="submit" class="btn-secondary text-sm px-3 py-1.5">✅ Approve</button>
                                             </form>
-                                            <form method="POST" action="{{ route('admin.kyc.reject', $user) }}" class="inline">
-                                                @csrf
-                                                <button type="submit" class="btn-primary text-sm px-3 py-1.5">❌ Reject</button>
-                                            </form>
+                                            <button @click="openRejectModal({{ $user->id }}, @js($user->name))" 
+                                                    class="btn-primary text-sm px-3 py-1.5">❌ Reject</button>
                                         @endif
-                                        <button @click="openEditModal({{ $user->id }}, @js($user->name), @js($user->email), @js($user->kyc_id_type ?? ''), @js($user->kyc_id_number ?? ''), @js($user->kyc_full_name ?? ''), @js($user->kyc_status ?? ''))" 
+                                        <button @click="openEditModal({{ $user->id }}, @js($user->name), @js($user->email), @js($user->kyc_id_type ?? ''), @js($user->kyc_id_number ?? ''), @js($user->kyc_full_name ?? ''), @js($user->kyc_status ?? ''), @js($user->kyc_rejection_reason ?? '') )" 
                                                 class="btn-secondary text-sm px-3 py-1.5">✏️ Edit</button>
                                         <button @click="openDeleteModal({{ $user->id }}, @js($user->name))" 
                                                 class="bg-red-600 hover:bg-red-700 text-white text-sm px-3 py-1.5 rounded-lg transition">🗑️ Delete</button>
@@ -319,9 +317,79 @@
                     </div>
                 </div>
                 
+                <div class="mt-4" x-show="editModal.status === 'rejected'" x-cloak>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Rejection Reason <span class="text-red-500">*</span></label>
+                    <textarea 
+                        name="rejection_reason" 
+                        x-model="editModal.rejectionReason"
+                        rows="4" 
+                        class="form-input w-full" 
+                        placeholder="Explain clearly why this KYC is being rejected so the user can fix it on the next attempt."
+                        maxlength="1000"
+                    ></textarea>
+                    <p class="text-xs text-gray-500 mt-1">
+                        <span x-text="(editModal.rejectionReason || '').length"></span>/1000 characters
+                    </p>
+                </div>
+                
                 <div class="mt-6 flex gap-3 justify-end">
                     <button type="button" @click="closeEditModal()" class="btn-secondary">Cancel</button>
                     <button type="submit" class="btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reject KYC Modal -->
+    <div x-show="rejectModal.open" 
+         x-cloak
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+         @click.self="closeRejectModal()"
+         @keydown.escape.window="closeRejectModal()">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div class="bg-red-600 text-white px-6 py-4 rounded-t-xl">
+                <h3 class="text-xl font-montserrat font-bold">Reject KYC Submission</h3>
+            </div>
+            
+            <form method="POST" :action="rejectModal.rejectUrl" @submit.prevent="submitReject($event)" class="p-6">
+                @csrf
+                <div class="space-y-4">
+                    <p class="text-gray-700">
+                        Are you sure you want to reject the KYC submission for <strong x-text="rejectModal.name"></strong>?
+                    </p>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Rejection Reason <span class="text-red-500">*</span>
+                        </label>
+                        <textarea 
+                            name="rejection_reason" 
+                            x-model="rejectModal.reason"
+                            rows="4" 
+                            class="form-input w-full" 
+                            placeholder="Please provide a clear reason for rejection so the user can fix the issue..."
+                            required
+                            maxlength="1000"
+                        ></textarea>
+                        <p class="text-xs text-gray-500 mt-1">
+                            <span x-text="(rejectModal.reason || '').length"></span>/1000 characters
+                        </p>
+                    </div>
+                    <p class="text-sm text-yellow-600 bg-yellow-50 p-3 rounded-lg">
+                        ⚠️ The user will be notified with this rejection reason and can resubmit their KYC after fixing the issues.
+                    </p>
+                </div>
+                
+                <div class="mt-6 flex gap-3 justify-end">
+                    <button type="button" @click="closeRejectModal()" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition">
+                        Reject KYC
+                    </button>
                 </div>
             </form>
         </div>
@@ -452,9 +520,10 @@ function kycManagement() {
             idNumber: '',
             fullName: '',
             status: '',
+            rejectionReason: '',
             updateUrl: ''
         },
-        openEditModal(userId, name, email, idType, idNumber, fullName, status) {
+        openEditModal(userId, name, email, idType, idNumber, fullName, status, rejectionReason) {
             this.editModal.userId = userId;
             this.editModal.name = name;
             this.editModal.email = email;
@@ -462,7 +531,8 @@ function kycManagement() {
             this.editModal.idNumber = idNumber;
             this.editModal.fullName = fullName;
             this.editModal.status = status;
-            this.editModal.updateUrl = `{{ url('/admin/kyc') }}/${userId}/update`;
+            this.editModal.rejectionReason = rejectionReason || '';
+            this.editModal.updateUrl = `{{ url('/dashboard/admin/kyc') }}/${userId}/update`;
             this.editModal.open = true;
         },
         closeEditModal() {
@@ -474,7 +544,67 @@ function kycManagement() {
             this.editModal.idNumber = '';
             this.editModal.fullName = '';
             this.editModal.status = '';
+            this.editModal.rejectionReason = '';
             this.editModal.updateUrl = '';
+        },
+        
+        // Reject modal
+        rejectModal: {
+            open: false,
+            userId: null,
+            name: '',
+            reason: '',
+            rejectUrl: ''
+        },
+        openRejectModal(userId, name) {
+            this.rejectModal.userId = userId;
+            this.rejectModal.name = name;
+            this.rejectModal.reason = '';
+            this.rejectModal.rejectUrl = `{{ url('/dashboard/admin/kyc') }}/${userId}/reject`;
+            this.rejectModal.open = true;
+        },
+        closeRejectModal() {
+            this.rejectModal.open = false;
+            this.rejectModal.userId = null;
+            this.rejectModal.name = '';
+            this.rejectModal.reason = '';
+            this.rejectModal.rejectUrl = '';
+        },
+        async submitReject(event) {
+            const form = event.target;
+            const formData = new FormData(form);
+            
+            // Validate reason
+            const reason = formData.get('rejection_reason')?.trim();
+            if (!reason || reason.length < 10) {
+                this.showToast('Please provide a detailed rejection reason (at least 10 characters).', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    }
+                });
+                
+                if (response.ok) {
+                    this.closeRejectModal();
+                    this.showToast('KYC rejected successfully. User has been notified.', 'success');
+                    // Reload the page after a short delay to show updated status
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    const data = await response.json().catch(() => ({}));
+                    this.showToast(data.message || 'Failed to reject KYC. Please try again.', 'error');
+                }
+            } catch (error) {
+                console.error('Error rejecting KYC:', error);
+                this.showToast('An error occurred. Please try again.', 'error');
+            }
         },
         
         // Delete modal
@@ -487,7 +617,7 @@ function kycManagement() {
         openDeleteModal(userId, name) {
             this.deleteModal.userId = userId;
             this.deleteModal.name = name;
-            this.deleteModal.deleteUrl = `{{ url('/admin/kyc') }}/${userId}/delete`;
+            this.deleteModal.deleteUrl = `{{ url('/dashboard/admin/kyc') }}/${userId}/delete`;
             this.deleteModal.open = true;
         },
         closeDeleteModal() {
@@ -501,4 +631,3 @@ function kycManagement() {
 </script>
 @endpush
 @endsection
-

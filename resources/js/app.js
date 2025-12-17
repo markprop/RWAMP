@@ -32,6 +32,42 @@ import Pusher from 'pusher-js';
 })();
 
 // -------------------------------------------------------------------------
+// CSRF token auto-refresh for long-lived pages
+// -------------------------------------------------------------------------
+(function () {
+    try {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (!meta) return;
+
+        const refreshCsrf = () => {
+            fetch('/csrf-token', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            })
+                .then((r) => (r.ok ? r.json() : null))
+                .then((data) => {
+                    if (data && data.token) {
+                        meta.setAttribute('content', data.token);
+                    }
+                })
+                .catch(() => {
+                    // Non-critical; ignore network errors here
+                });
+        };
+
+        // Initial refresh after page load, then every 15 minutes
+        setTimeout(refreshCsrf, 1000 * 30);
+        setInterval(refreshCsrf, 15 * 60 * 1000);
+    } catch (e) {
+        // Fail silently
+    }
+})();
+
+// -------------------------------------------------------------------------
 // Per-tab session ID (for independent tab authentication)
 // -------------------------------------------------------------------------
 (function () {
@@ -126,64 +162,71 @@ Alpine.data('smoothScroll', () => ({
 }));
 
 // -------------------------------------------------------------------------
-// Intl Tel Input initialisation (phone input with country flags)
+// Phone input initialization is now handled by resources/js/phone-input.js
+// Old phone logic has been removed and replaced with unified implementation
 // -------------------------------------------------------------------------
 
-window.initIntlTelInputs = function initIntlTelInputs() {
-    try {
-        // Wait for intlTelInput to be available (handles deferred loading)
-        if (typeof window.intlTelInput !== 'function') {
-            window.__intlTelInitRetries = (window.__intlTelInitRetries || 0) + 1;
-            if (window.__intlTelInitRetries <= 20) {
-                // Retry up to ~5 seconds total (20 * 250ms)
-                setTimeout(initIntlTelInputs, 250);
+// Form handling
+Alpine.data('contactForm', () => ({
+    phoneStatus: null,
+    phoneMessage: '',
+    
+    init() {
+        // Hook phone validation
+        this.$nextTick(() => {
+            const phoneInput = document.getElementById('phone');
+            if (phoneInput) {
+                phoneInput.addEventListener('input', () => this.validatePhone());
+                phoneInput.addEventListener('countrychange', () => this.validatePhone());
+            }
+        });
+    },
+    
+    validatePhone() {
+        const input = document.getElementById('phone');
+        if (!input) return;
+        
+        const iti = input._iti;
+        if (!iti) return;
+        
+        // Get the .iti wrapper element
+        const itiWrapper = input.closest('.iti') || input.parentElement?.querySelector('.iti');
+        if (itiWrapper) {
+            // Remove previous status classes
+            itiWrapper.classList.remove('ring-2', 'ring-green-500/30', 'border-green-500', 'ring-yellow-500/30', 'border-yellow-500', 'ring-red-500/30', 'border-red-500');
+        }
+
+        const val = input.value.trim();
+
+        if (!val) {
+            this.phoneStatus = null;
+            this.phoneMessage = '';
+            return;
+        }
+
+        if (!iti.isValidNumber()) {
+            if (iti.isPossibleNumber()) {
+                this.phoneStatus = 'incomplete';
+                this.phoneMessage = 'Phone number looks incomplete. Please enter full number.';
+                if (itiWrapper) {
+                    itiWrapper.classList.add('ring-2', 'ring-yellow-500/30', 'border-yellow-500');
+                }
+            } else {
+                this.phoneStatus = 'invalid';
+                this.phoneMessage = 'Invalid phone number for selected country.';
+                if (itiWrapper) {
+                    itiWrapper.classList.add('ring-2', 'ring-red-500/30', 'border-red-500');
+                }
             }
             return;
         }
 
-        const inputs = document.querySelectorAll('input[data-intl-tel-input]');
-        inputs.forEach((input) => {
-            if (input.dataset.intlTelInitialized === '1') return;
-
-            const iti = window.intlTelInput(input, {
-                initialCountry: 'pk',
-                preferredCountries: ['pk', 'us', 'gb'],
-                autoPlaceholder: 'polite',
-                utilsScript: 'https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/18.1.6/js/utils.js',
-            });
-
-            input.dataset.intlTelInitialized = '1';
-
-            const form = input.closest('form');
-            if (form) {
-                form.addEventListener('submit', () => {
-                    try {
-                        const value = iti.getNumber();
-                        if (value) {
-                            input.value = value;
-                        }
-                    } catch (e) {
-                        // Ignore normalisation errors and submit raw value
-                    }
-                });
-            }
-        });
-    } catch (e) {
-        // Fail silently; forms still work as normal inputs
-    }
-};
-
-// Initialise on DOM ready and on window load (extra safety for slow networks)
-document.addEventListener('DOMContentLoaded', () => {
-    window.initIntlTelInputs();
-});
-
-window.addEventListener('load', () => {
-    window.initIntlTelInputs();
-});
-
-// Form handling
-Alpine.data('contactForm', () => ({
+        this.phoneStatus = 'valid';
+        this.phoneMessage = 'Phone number is valid.';
+        if (itiWrapper) {
+            itiWrapper.classList.add('ring-2', 'ring-green-500/30', 'border-green-500');
+        }
+    },
     formData: {
         name: '',
         email: '',
@@ -261,7 +304,11 @@ Alpine.data('resellerForm', function() {
         loading: false,
         success: false,
         error: false,
+        // Message fields used by the template – keep them defined
+        successMessage: '',
         errorMessage: '',
+        phoneStatus: null, // 'valid' | 'invalid' | 'incomplete'
+        phoneMessage: '',
         tooltip: null,
         nameStatus: null,
         nameMessage: '',
@@ -269,9 +316,6 @@ Alpine.data('resellerForm', function() {
         emailStatus: null,
         emailMessage: '',
         emailValidated: false,
-        phoneStatus: null,
-        phoneMessage: '',
-        phoneValidated: false,
         validationTimeout: { email: null, phone: null },
 
         init() {
@@ -280,7 +324,37 @@ Alpine.data('resellerForm', function() {
             // Initialize validation states
             this.nameStatus = null;
             this.emailStatus = null;
-            this.phoneStatus = null;
+
+            // Hook phone validation once DOM is ready
+            this.$nextTick(() => {
+                const input = document.querySelector('.phone-input');
+                if (!input) return;
+                input.addEventListener('input', () => this.validatePhone());
+                input.addEventListener('countrychange', () => this.validatePhone());
+
+                // Optional: server-side phone availability check (if API exists)
+                input.addEventListener('blur', async () => {
+                    const val = input.value.trim();
+                    if (!val || !window.fetch) return;
+                    try {
+                        const response = await fetch(`/api/check-phone?phone=${encodeURIComponent(val)}`);
+                        const data = await response.json();
+                        if (data.exists) {
+                            this.phoneStatus = 'invalid';
+                            this.phoneMessage = data.message || 'This phone number is already registered.';
+                        } else if (this.phoneStatus === 'valid') {
+                            this.phoneMessage = data.message || 'Phone number is valid and available.';
+                        }
+                    } catch (_) {
+                        // ignore network errors here; backend will still validate
+                    }
+                });
+            });
+        },
+
+        // Fix \"Undefined variable: debouncedValidateEmail\"
+        debouncedValidateEmail(value) {
+            this.validateEmail(value);
         },
     showTooltip(tooltipName, event) {
         if (event) {
@@ -292,47 +366,6 @@ Alpine.data('resellerForm', function() {
             this.tooltip = null;
         } else {
             this.tooltip = tooltipName;
-        }
-    },
-
-    formatPhone(input) {
-        let value = input.value.replace(/\D/g, ''); // Remove all non-digits
-        
-        // Auto-format to Pakistan format if it looks like a Pakistan number
-        if (value.length > 0) {
-            // If starts with 0, remove it and add +92
-            if (value.startsWith('0')) {
-                value = '92' + value.substring(1);
-            }
-            // If starts with 92 and doesn't have +, add +
-            if (value.startsWith('92') && !input.value.startsWith('+')) {
-                value = '+' + value;
-            }
-            // If doesn't start with +, assume Pakistan and add +92
-            if (!value.startsWith('+') && value.length >= 10) {
-                // Check if it's a valid Pakistan mobile number (10 digits starting with 3)
-                if (value.length === 10 && value.startsWith('3')) {
-                    value = '+92' + value;
-                } else if (value.length === 12 && value.startsWith('92')) {
-                    value = '+' + value;
-                }
-            }
-            
-            // Format: +92 XXX XXXXXXX
-            if (value.startsWith('+92') && value.length > 3) {
-                const number = value.substring(3);
-                if (number.length <= 3) {
-                    input.value = '+92 ' + number;
-                } else if (number.length <= 10) {
-                    input.value = '+92 ' + number.substring(0, 3) + ' ' + number.substring(3);
-                } else {
-                    input.value = value;
-                }
-            } else {
-                input.value = value;
-            }
-            
-            this.formData.phone = input.value;
         }
     },
 
@@ -442,53 +475,35 @@ Alpine.data('resellerForm', function() {
         }, 500);
     },
 
-    async validatePhone(phone) {
-        if (this.validationTimeout.phone) {
-            clearTimeout(this.validationTimeout.phone);
-        }
+    validatePhone() {
+        const input = document.querySelector('.phone-input');
+        const iti = input && input._iti;
+        if (!input || !iti) return;
 
-        if (!phone || phone.trim() === '') {
+        const val = input.value.trim();
+
+        if (!val) {
             this.phoneStatus = null;
             this.phoneMessage = '';
-            this.phoneValidated = false;
             return;
         }
 
-        // Normalize phone for validation
-        const normalized = phone.replace(/\s+/g, '').replace(/\D/g, '');
-        if (normalized.length < 10) {
-            this.phoneStatus = null;
-            this.phoneMessage = '';
-            this.phoneValidated = false;
-            return;
-        }
-
-        this.validationTimeout.phone = setTimeout(async () => {
-            this.phoneStatus = 'checking';
-            this.phoneMessage = 'Checking phone number...';
-            this.phoneValidated = true;
-
-            try {
-                const response = await fetch(`/api/check-phone?phone=${encodeURIComponent(phone)}`);
-                const data = await response.json();
-                
-                if (data.valid && !data.exists) {
-                    this.phoneStatus = 'valid';
-                    this.phoneMessage = data.message || 'Phone number is valid and available';
-                } else if (data.exists) {
-                    this.phoneStatus = 'invalid';
-                    this.phoneMessage = data.message || 'This phone number is already registered';
-                } else {
-                    this.phoneStatus = 'invalid';
-                    this.phoneMessage = data.message || 'Please enter a valid phone number';
-                }
-            } catch (error) {
-                this.phoneStatus = null;
-                this.phoneMessage = '';
-                this.phoneValidated = false;
+        if (!iti.isValidNumber()) {
+            if (iti.isPossibleNumber()) {
+                this.phoneStatus = 'incomplete';
+                this.phoneMessage = 'Phone number looks incomplete. Please enter full number.';
+            } else {
+                this.phoneStatus = 'invalid';
+                this.phoneMessage = 'Invalid phone number for selected country.';
             }
-        }, 500);
+            return;
+        }
+
+        this.phoneStatus = 'valid';
+        this.phoneMessage = 'Phone number is valid and available (pending server check).';
     },
+
+    // Phone validation now handled by shared PhoneInput component
 
     getErrorMessage() {
         return this.errorMessage || 'Something went wrong. Please try again later.';
@@ -501,8 +516,12 @@ Alpine.data('resellerForm', function() {
         this.errorMessage = '';
 
         try {
+            // Get phone from hidden input (E.164 format)
+            const phoneInput = this.$el.querySelector ? this.$el.querySelector('input[name="phone"].phone-hidden') : null;
+            const phoneValue = phoneInput ? phoneInput.value : (this.formData.phone || '');
+
             // Validate required fields
-            if (!this.formData.name || !this.formData.email || !this.formData.phone || !this.formData.investmentCapacity) {
+            if (!this.formData.name || !this.formData.email || !phoneValue || !this.formData.investmentCapacity) {
                 this.error = true;
                 this.errorMessage = 'Please fill in all required fields.';
                 this.loading = false;
@@ -521,14 +540,6 @@ Alpine.data('resellerForm', function() {
             if (!this.emailValidated || this.emailStatus !== 'valid') {
                 this.error = true;
                 this.errorMessage = 'Please enter a valid and available email address.';
-                this.loading = false;
-                return;
-            }
-
-            // Validate phone
-            if (!this.phoneValidated || this.phoneStatus !== 'valid') {
-                this.error = true;
-                this.errorMessage = 'Please enter a valid phone number.';
                 this.loading = false;
                 return;
             }
@@ -564,7 +575,7 @@ Alpine.data('resellerForm', function() {
                 body: JSON.stringify({
                     name: this.formData.name,
                     email: this.formData.email,
-                    phone: this.formData.phone,
+                    phone: phoneValue,
                     company: this.formData.company || '',
                     investmentCapacity: this.formData.investmentCapacity,
                     message: this.formData.message || '',
@@ -605,10 +616,8 @@ Alpine.data('resellerForm', function() {
                 // Reset validation states
                 this.nameValidated = false;
                 this.emailValidated = false;
-                this.phoneValidated = false;
                 this.nameStatus = null;
                 this.emailStatus = null;
-                this.phoneStatus = null;
                 // Scroll to success message
                 setTimeout(() => {
                     const successEl = document.querySelector('[x-show="success"]');
@@ -647,21 +656,185 @@ Alpine.data('newsletterForm', () => ({
     loading: false,
     success: false,
     error: false,
+    errorMessage: '',
+    emailStatus: null,
+    emailMessage: '',
+    phoneStatus: null,
+    phoneMessage: '',
+    
+    init() {
+        // Hook phone validation
+        this.$nextTick(() => {
+            // Find the phone input within the newsletter form
+            const form = this.$el.querySelector ? this.$el.querySelector('form') : null;
+            const whatsappInput = form ? form.querySelector('.phone-input') : null;
+            if (whatsappInput) {
+                whatsappInput.addEventListener('input', () => this.validatePhone());
+                whatsappInput.addEventListener('countrychange', () => this.validatePhone());
+                whatsappInput.addEventListener('blur', () => this.checkDuplicates());
+            }
+            // Email duplicate check on blur
+            const emailInput = form ? form.querySelector('input[type=\"email\"]') : null;
+            if (emailInput) {
+                let debounceId = null;
+                emailInput.addEventListener('input', () => {
+                    if (debounceId) clearTimeout(debounceId);
+                    debounceId = setTimeout(() => this.checkDuplicates(), 500);
+                });
+                emailInput.addEventListener('blur', () => this.checkDuplicates());
+            }
+        });
+    },
+
+    getWhatsappE164() {
+        const form = this.$el.querySelector ? this.$el.querySelector('form') : null;
+        const whatsappTelInput = form ? form.querySelector('.phone-input') : null;
+        const iti = whatsappTelInput && whatsappTelInput._iti ? whatsappTelInput._iti : null;
+        if (iti && iti.isValidNumber()) {
+            return iti.getNumber(); // e.g. +923322795419
+        }
+        const whatsappHidden = this.$el.querySelector ? this.$el.querySelector('input[name=\"whatsapp"].phone-hidden') : null;
+        return whatsappHidden ? whatsappHidden.value : (this.whatsapp || '');
+    },
+    
+    validatePhone() {
+        // Find the phone input within the newsletter form
+        const form = this.$el.querySelector ? this.$el.querySelector('form') : null;
+        const whatsappInput = form ? form.querySelector('.phone-input') : null;
+        if (!whatsappInput) return;
+        
+        const iti = whatsappInput._iti;
+        if (!iti) return;
+        
+        // Get the .iti wrapper element
+        const itiWrapper = whatsappInput.closest('.iti') || whatsappInput.parentElement?.querySelector('.iti');
+        if (itiWrapper) {
+            // Remove previous status classes
+            itiWrapper.classList.remove('ring-2', 'ring-green-500/30', 'border-green-500', 'ring-yellow-500/30', 'border-yellow-500', 'ring-red-500/30', 'border-red-500');
+        }
+
+        const val = whatsappInput.value.trim();
+
+        if (!val) {
+            this.phoneStatus = null;
+            this.phoneMessage = '';
+            return;
+        }
+
+        if (!iti.isValidNumber()) {
+            if (iti.isPossibleNumber()) {
+                this.phoneStatus = 'incomplete';
+                this.phoneMessage = 'Phone number looks incomplete. Please enter full number.';
+                if (itiWrapper) {
+                    itiWrapper.classList.add('ring-2', 'ring-yellow-500/30', 'border-yellow-500');
+                }
+            } else {
+                this.phoneStatus = 'invalid';
+                this.phoneMessage = 'Invalid phone number for selected country.';
+                if (itiWrapper) {
+                    itiWrapper.classList.add('ring-2', 'ring-red-500/30', 'border-red-500');
+                }
+            }
+            return;
+        }
+
+        this.phoneStatus = 'valid';
+        this.phoneMessage = 'Phone number is valid.';
+        if (itiWrapper) {
+            itiWrapper.classList.add('ring-2', 'ring-green-500/30', 'border-green-500');
+        }
+    },
+
+    async checkDuplicates() {
+        try {
+            const params = new URLSearchParams();
+            if (this.email) {
+                params.append('email', this.email);
+            }
+            const whatsappValue = this.getWhatsappE164();
+            if (whatsappValue) {
+                params.append('whatsapp', whatsappValue);
+            }
+            if (!params.toString()) return;
+
+            const response = await fetch(`/api/newsletter/check?${params.toString()}`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+            const data = await response.json();
+
+            // Email duplicate feedback
+            if (this.email) {
+                if (data.email_exists) {
+                    this.emailStatus = 'invalid';
+                    this.emailMessage = 'This email is already subscribed.';
+                } else {
+                    this.emailStatus = 'valid';
+                    this.emailMessage = 'Email is available.';
+                }
+            }
+
+            // WhatsApp duplicate feedback
+            if (whatsappValue) {
+                if (data.whatsapp_exists) {
+                    this.phoneStatus = 'invalid';
+                    this.phoneMessage = 'This WhatsApp number is already subscribed.';
+                } else if (this.phoneStatus === 'valid') {
+                    this.phoneMessage = 'Phone number is valid.';
+                }
+            }
+
+            if (data.email_exists || data.whatsapp_exists) {
+                this.errorMessage = 'This email or WhatsApp number is already subscribed.';
+            } else if (this.errorMessage && !this.error) {
+                this.errorMessage = '';
+            }
+
+            return data;
+        } catch (e) {
+            console.error('Newsletter duplicate check failed', e);
+            return null;
+        }
+    },
 
     async submitForm() {
+        // Validate phone before submitting (if provided)
+        this.validatePhone();
+        if (this.phoneStatus && this.phoneStatus !== 'valid') {
+            this.error = true;
+            this.errorMessage = this.phoneMessage || 'Please enter a valid WhatsApp number.';
+            return;
+        }
+
+        // Check for duplicate email / phone before submit
+        const dupResult = await this.checkDuplicates();
+        if (dupResult && (!dupResult.valid)) {
+            this.error = true;
+            this.errorMessage = dupResult.message || 'This email or WhatsApp number is already subscribed.';
+            return;
+        }
+
         this.loading = true;
         this.error = false;
         this.success = false;
 
         try {
             if (this.hp) { this.error = true; this.loading = false; return; }
+            
+            // Get whatsapp in E.164 format
+            const whatsappValue = this.getWhatsappE164();
+            
             const response = await fetch('/newsletter', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify({ email: this.email, whatsapp: this.whatsapp, hp: this.hp })
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                },                
+                body: JSON.stringify({ email: this.email, whatsapp: whatsappValue, hp: this.hp })
             });
 
             let data = null;
@@ -670,11 +843,15 @@ Alpine.data('newsletterForm', () => ({
                 this.success = true;
                 this.email = '';
                 this.whatsapp = '';
+                this.error = false;
+                this.errorMessage = '';
             } else {
                 this.error = true;
+                this.errorMessage = (data && data.message) || 'Unable to subscribe at the moment. Please try again later.';
             }
         } catch (error) {
             this.error = true;
+            this.errorMessage = 'Network error. Please check your connection and try again.';
         } finally {
             this.loading = false;
         }
@@ -689,9 +866,6 @@ Alpine.data('signupTabs', function() {
         emailStatus: { investor: null, reseller: null },
         emailMessage: { investor: '', reseller: '' },
         emailValidated: { investor: false, reseller: false },
-        phoneStatus: { investor: null, reseller: null },
-        phoneMessage: { investor: '', reseller: '' },
-        phoneValidated: { investor: false, reseller: false },
         passwordCriteria: { 
             investor: { 
                 hasUpperCase: false, 
@@ -745,7 +919,9 @@ Alpine.data('signupTabs', function() {
         nameStatus: { investor: null, reseller: null },
         nameMessage: { investor: '', reseller: '' },
         nameValidated: { investor: false, reseller: false },
-        validationTimeout: { email: { investor: null, reseller: null }, phone: { investor: null, reseller: null } },
+        phoneStatus: { investor: null, reseller: null },
+        phoneMessage: { investor: '', reseller: '' },
+        validationTimeout: { email: { investor: null, reseller: null } },
     init: function() {
         // Ensure tooltip is null on init
         this.tooltip = null;
@@ -753,9 +929,6 @@ Alpine.data('signupTabs', function() {
         this.emailStatus = { investor: null, reseller: null };
         this.emailMessage = { investor: '', reseller: '' };
         this.emailValidated = { investor: false, reseller: false };
-        this.phoneStatus = { investor: null, reseller: null };
-        this.phoneMessage = { investor: '', reseller: '' };
-        this.phoneValidated = { investor: false, reseller: false };
         this.passwordCriteria = { 
             investor: { 
                 hasUpperCase: false, 
@@ -806,10 +979,33 @@ Alpine.data('signupTabs', function() {
         this.nameStatus = { investor: null, reseller: null };
         this.nameMessage = { investor: '', reseller: '' };
         this.nameValidated = { investor: false, reseller: false };
+        this.phoneStatus = { investor: null, reseller: null };
+        this.phoneMessage = { investor: '', reseller: '' };
         
-        // Auto-validate if referral code is pre-filled from URL
+        // Hook phone validation for both investor and reseller forms
         var self = this;
         this.$nextTick(function() {
+            // Hook investor phone input
+            const investorPhoneInput = document.getElementById('investor-phone');
+            if (investorPhoneInput) {
+                investorPhoneInput.addEventListener('input', () => self.validatePhone('investor', investorPhoneInput));
+                investorPhoneInput.addEventListener('countrychange', () => self.validatePhone('investor', investorPhoneInput));
+                investorPhoneInput.addEventListener('blur', async () => {
+                    await self.checkPhoneAvailability('investor', investorPhoneInput);
+                });
+            }
+            
+            // Hook reseller phone input
+            const resellerPhoneInput = document.getElementById('reseller-phone');
+            if (resellerPhoneInput) {
+                resellerPhoneInput.addEventListener('input', () => self.validatePhone('reseller', resellerPhoneInput));
+                resellerPhoneInput.addEventListener('countrychange', () => self.validatePhone('reseller', resellerPhoneInput));
+                resellerPhoneInput.addEventListener('blur', async () => {
+                    await self.checkPhoneAvailability('reseller', resellerPhoneInput);
+                });
+            }
+            
+            // Auto-validate if referral code is pre-filled from URL
             const referralInput = document.getElementById('referralCode');
             if (referralInput && referralInput.value) {
                 self.validateReferralCode(referralInput.value);
@@ -913,55 +1109,6 @@ Alpine.data('signupTabs', function() {
             }
         }, 500);
     },
-    validatePhone: async function(phone, type) {
-        // Clear previous timeout
-        if (this.validationTimeout.phone[type]) {
-            clearTimeout(this.validationTimeout.phone[type]);
-        }
-
-        // Reset status if empty
-        if (!phone || phone.trim() === '') {
-            this.phoneStatus[type] = null;
-            this.phoneMessage[type] = '';
-            this.phoneValidated[type] = false;
-            return;
-        }
-
-        // Only validate if phone starts with + and has reasonable length
-        if (!phone.trim().startsWith('+') || phone.trim().length < 8) {
-            this.phoneStatus[type] = null;
-            this.phoneMessage[type] = '';
-            this.phoneValidated[type] = false;
-            return;
-        }
-
-        // Debounce validation - wait 500ms after user stops typing
-        this.validationTimeout.phone[type] = setTimeout(async () => {
-            this.phoneStatus[type] = 'checking';
-            this.phoneMessage[type] = 'Checking phone number...';
-            this.phoneValidated[type] = true;
-
-            try {
-                const response = await fetch(`/api/check-phone?phone=${encodeURIComponent(phone)}`);
-                const data = await response.json();
-                
-                if (data.valid && !data.exists) {
-                    this.phoneStatus[type] = 'valid';
-                    this.phoneMessage[type] = data.message || 'Phone number is valid and available';
-                } else if (data.exists) {
-                    this.phoneStatus[type] = 'invalid';
-                    this.phoneMessage[type] = data.message || 'This phone number is already registered';
-                } else {
-                    this.phoneStatus[type] = 'invalid';
-                    this.phoneMessage[type] = data.message || 'Please enter a valid phone number';
-                }
-            } catch (error) {
-                this.phoneStatus[type] = null;
-                this.phoneMessage[type] = '';
-                this.phoneValidated[type] = false;
-            }
-        }, 500);
-    },
     validateName: function(name, type) {
         if (!name || name.trim() === '') {
             this.nameStatus[type] = null;
@@ -1049,6 +1196,80 @@ Alpine.data('signupTabs', function() {
                criteria.hasSpecialChar && 
                criteria.minLength;
     },
+    validatePhone: function(type, input) {
+        if (!input) {
+            input = document.getElementById(type === 'investor' ? 'investor-phone' : 'reseller-phone');
+        }
+        if (!input) return;
+        
+        const iti = input._iti;
+        if (!iti) return;
+        
+        // Get the .iti wrapper element
+        const itiWrapper = input.closest('.iti') || input.parentElement?.querySelector('.iti');
+        if (itiWrapper) {
+            // Remove previous status classes
+            itiWrapper.classList.remove('ring-2', 'ring-green-500/30', 'border-green-500', 'ring-yellow-500/30', 'border-yellow-500', 'ring-red-500/30', 'border-red-500');
+        }
+
+        const val = input.value.trim();
+
+        if (!val) {
+            this.phoneStatus[type] = null;
+            this.phoneMessage[type] = '';
+            return;
+        }
+
+        if (!iti.isValidNumber()) {
+            if (iti.isPossibleNumber()) {
+                this.phoneStatus[type] = 'incomplete';
+                this.phoneMessage[type] = 'Phone number looks incomplete. Please enter full number.';
+                if (itiWrapper) {
+                    itiWrapper.classList.add('ring-2', 'ring-yellow-500/30', 'border-yellow-500');
+                }
+            } else {
+                this.phoneStatus[type] = 'invalid';
+                this.phoneMessage[type] = 'Invalid phone number for selected country.';
+                if (itiWrapper) {
+                    itiWrapper.classList.add('ring-2', 'ring-red-500/30', 'border-red-500');
+                }
+            }
+            return;
+        }
+
+        this.phoneStatus[type] = 'valid';
+        this.phoneMessage[type] = 'Phone number is valid and available (pending server check).';
+        if (itiWrapper) {
+            itiWrapper.classList.add('ring-2', 'ring-green-500/30', 'border-green-500');
+        }
+    },
+    
+    async checkPhoneAvailability(type, input) {
+        if (!input) {
+            input = document.getElementById(type === 'investor' ? 'investor-phone' : 'reseller-phone');
+        }
+        if (!input) return;
+        
+        const iti = input._iti;
+        if (!iti || !iti.isValidNumber()) return;
+        
+        const phoneNumber = iti.getNumber();
+        if (!phoneNumber || !window.fetch) return;
+        
+        try {
+            const response = await fetch(`/api/check-phone?phone=${encodeURIComponent(phoneNumber)}`);
+            const data = await response.json();
+            if (data.exists) {
+                this.phoneStatus[type] = 'invalid';
+                this.phoneMessage[type] = data.message || 'This phone number is already registered.';
+            } else if (this.phoneStatus[type] === 'valid') {
+                this.phoneMessage[type] = data.message || 'Phone number is valid and available.';
+            }
+        } catch (_) {
+            // ignore network errors here; backend will still validate
+        }
+    },
+    
     validateReferralCode: async function(code) {
         const statusEl = document.getElementById('referralCodeStatus');
         const messageEl = document.getElementById('referralCodeMessage');
@@ -1138,6 +1359,13 @@ Alpine.data('kycForm', (initialIdType = '') => ({
         this.alertTitle = title || (type === 'success' ? 'Success' : type === 'error' ? 'Error' : type === 'warning' ? 'Warning' : 'Information');
         this.showAlert = true;
     },
+
+    closeAlert() {
+        this.showAlert = false;
+        this.alertMessage = '';
+        this.alertType = 'info';
+    },
+
     prevStep() {
         if (this.step > 1) {
             this.step--;
@@ -1518,7 +1746,7 @@ Alpine.data('imageViewer', () => ({
 }));
 
 // Investor Dashboard Component
-Alpine.data('investorDashboard', (isInGame = false, hasPin = false) => ({
+Alpine.data('investorDashboard', (isInGame = false, hasTradingPin = false, hasFopiPin = false) => ({
     purchaseModalOpen: false,
     // Game-related properties
     showGameWarning: false,
@@ -1527,8 +1755,11 @@ Alpine.data('investorDashboard', (isInGame = false, hasPin = false) => ({
     pin: '',
     pinConfirm: '',
     stakeAmount: '',
+    gameType: 'trading', // Default to trading, can be set to 'fopi'
     isInGame: isInGame,
-    hasPin: hasPin,
+    hasPin: hasTradingPin, // For backward compatibility
+    hasTradingPin: hasTradingPin,
+    hasFopiPin: hasFopiPin,
     pinError: '',
     stakeError: '',
     pinLoading: false,
@@ -1589,12 +1820,18 @@ Alpine.data('investorDashboard', (isInGame = false, hasPin = false) => ({
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                 },
-                body: JSON.stringify({ pin: this.pin }),
+                body: JSON.stringify({ pin: this.pin, game_type: this.gameType || 'trading' }),
             });
 
             const data = await response.json();
             if (data.success) {
-                this.hasPin = true;
+                // Update the appropriate PIN flag based on the selected game type
+                if (this.gameType === 'fopi') {
+                    this.hasFopiPin = true;
+                } else {
+                    this.hasTradingPin = true;
+                    this.hasPin = true; // Backward compatibility for trading
+                }
                 this.showPinSetup = false;
                 this.pin = '';
                 this.pinConfirm = '';
@@ -1616,14 +1853,25 @@ Alpine.data('investorDashboard', (isInGame = false, hasPin = false) => ({
         this.showAlert = true;
     },
 
+    closeAlert() {
+        this.showAlert = false;
+        this.alertMessage = '';
+        this.alertType = 'info';
+    },
+
     async enterGame() {
         console.log('[InvestorDashboard] enterGame() called', {
-            hasPin: this.hasPin,
+            gameType: this.gameType,
+            hasTradingPin: this.hasTradingPin,
+            hasFopiPin: this.hasFopiPin,
             pinLength: this.pin.length
         });
         
-        if (!this.hasPin) {
-            console.log('[InvestorDashboard] No PIN set, showing PIN setup modal');
+        // Check for game-specific PIN
+        const hasGamePin = this.gameType === 'fopi' ? this.hasFopiPin : this.hasTradingPin;
+        
+        if (!hasGamePin) {
+            console.log('[InvestorDashboard] No PIN set for game type:', this.gameType);
             this.showPinSetup = true;
             this.showGameWarning = false;
             return;
@@ -1649,7 +1897,7 @@ Alpine.data('investorDashboard', (isInGame = false, hasPin = false) => ({
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                 },
-                body: JSON.stringify({ pin: this.pin, amount: this.stakeAmount }),
+                body: JSON.stringify({ pin: this.pin, amount: this.stakeAmount, game_type: this.gameType || 'trading' }),
             });
 
             const data = await response.json();
@@ -1695,13 +1943,50 @@ Alpine.data('investorDashboard', (isInGame = false, hasPin = false) => ({
         this.showAlert = true;
     },
 
+    closeAlert() {
+        this.showAlert = false;
+        this.alertMessage = '';
+        this.alertType = 'info';
+    },
+
     openGame() {
-        if (!this.hasPin) {
+        // Check for game-specific PIN
+        const hasGamePin = this.gameType === 'fopi' ? this.hasFopiPin : this.hasTradingPin;
+        
+        if (!hasGamePin) {
             this.showPinSetup = true;
         } else {
             this.showPinEntry = true;
         }
         this.showGameWarning = false;
+    },
+
+    openFopiGame() {
+        console.log('[InvestorDashboard] openFopiGame() called');
+        this.gameType = 'fopi';
+        
+        // Check if FOPI PIN is set
+        if (!this.hasFopiPin) {
+            this.showPinSetup = true;
+            this.showGameWarning = false;
+        } else {
+            this.showGameWarning = true;
+        }
+    },
+
+    closePinEntry() {
+        this.showPinEntry = false;
+        this.pin = '';
+        this.pinError = '';
+        this.stakeAmount = '';
+        this.stakeError = '';
+    },
+
+    closePinSetup() {
+        this.showPinSetup = false;
+        this.pin = '';
+        this.pinConfirm = '';
+        this.pinError = '';
     },
 
     openGamePage() {
@@ -1823,15 +2108,18 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Game Session Component (for Reseller Dashboard)
-Alpine.data('gameDashboard', (isInGame = false, hasPin = false) => ({
+Alpine.data('gameDashboard', (isInGame = false, hasTradingPin = false, hasFopiPin = false) => ({
     showGameWarning: false,
     showPinSetup: false,
     showPinEntry: false,
     pin: '',
     pinConfirm: '',
     stakeAmount: '',
+    gameType: 'trading', // Default to trading, can be set to 'fopi'
     isInGame: isInGame,
-    hasPin: hasPin,
+    hasPin: hasTradingPin, // For backward compatibility
+    hasTradingPin: hasTradingPin,
+    hasFopiPin: hasFopiPin,
     pinError: '',
     stakeError: '',
     pinLoading: false,
@@ -1844,7 +2132,8 @@ Alpine.data('gameDashboard', (isInGame = false, hasPin = false) => ({
     init() {
         console.log('[GameDashboard] Initializing component', {
             isInGame: this.isInGame,
-            hasPin: this.hasPin,
+            hasTradingPin: this.hasTradingPin,
+            hasFopiPin: this.hasFopiPin,
             url: window.location.href
         });
         
@@ -1874,16 +2163,29 @@ Alpine.data('gameDashboard', (isInGame = false, hasPin = false) => ({
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                 },
-                body: JSON.stringify({ pin: this.pin }),
+                body: JSON.stringify({ pin: this.pin, game_type: this.gameType || 'trading' }),
             });
 
             const data = await response.json();
             if (data.success) {
-                this.hasPin = true;
+                // Update the appropriate PIN flag
+                if (this.gameType === 'fopi') {
+                    this.hasFopiPin = true;
+                } else {
+                    this.hasTradingPin = true;
+                    this.hasPin = true; // For backward compatibility
+                }
                 this.showPinSetup = false;
                 this.pin = '';
                 this.pinConfirm = '';
                 this.showAlertDialog('Game PIN set successfully!', 'success', 'Success');
+                
+                // After setting PIN, show the warning modal if it was triggered
+                if (this.gameType === 'fopi') {
+                    this.showGameWarning = true;
+                } else {
+                    this.showPinEntry = true;
+                }
             } else {
                 this.pinError = data.message || 'Failed to set PIN';
             }
@@ -1895,7 +2197,10 @@ Alpine.data('gameDashboard', (isInGame = false, hasPin = false) => ({
     },
 
     async enterGame() {
-        if (!this.hasPin) {
+        // Check for game-specific PIN
+        const hasGamePin = this.gameType === 'fopi' ? this.hasFopiPin : this.hasTradingPin;
+        
+        if (!hasGamePin) {
             this.showPinSetup = true;
             this.showGameWarning = false;
             return;
@@ -1919,13 +2224,14 @@ Alpine.data('gameDashboard', (isInGame = false, hasPin = false) => ({
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                 },
-                body: JSON.stringify({ pin: this.pin, amount: this.stakeAmount }),
+                body: JSON.stringify({ pin: this.pin, amount: this.stakeAmount, game_type: this.gameType || 'trading' }),
             });
 
             const data = await response.json();
             if (data.success) {
-                // Redirect to game interface
-                window.location.href = '/game/trading';
+                // Redirect to the appropriate game interface (trading or FOPI)
+                const redirectUrl = data.redirect_url || (this.gameType === 'fopi' ? '/game/fopi' : '/game/trading');
+                window.location.href = redirectUrl;
             } else {
                 if (data.locked) {
                     this.pinError = data.message;
@@ -1941,12 +2247,43 @@ Alpine.data('gameDashboard', (isInGame = false, hasPin = false) => ({
     },
 
     openGame() {
-        if (!this.hasPin) {
+        // Check for game-specific PIN
+        const hasGamePin = this.gameType === 'fopi' ? this.hasFopiPin : this.hasTradingPin;
+        
+        if (!hasGamePin) {
             this.showPinSetup = true;
         } else {
             this.showPinEntry = true;
         }
         this.showGameWarning = false;
+    },
+
+    openFopiGame() {
+        console.log('[GameDashboard] openFopiGame() called');
+        this.gameType = 'fopi';
+        
+        // Check if FOPI PIN is set
+        if (!this.hasFopiPin) {
+            this.showPinSetup = true;
+            this.showGameWarning = false;
+        } else {
+            this.showGameWarning = true;
+        }
+    },
+
+    closePinEntry() {
+        this.showPinEntry = false;
+        this.pin = '';
+        this.pinError = '';
+        this.stakeAmount = '';
+        this.stakeError = '';
+    },
+
+    closePinSetup() {
+        this.showPinSetup = false;
+        this.pin = '';
+        this.pinConfirm = '';
+        this.pinError = '';
     },
 
     openGamePage() {
@@ -2398,6 +2735,28 @@ Alpine.data('gameSession', (initialBalance = 0, initialPrices = {}, gameBalanceS
         return value || '—';
     },
 
+    formatSessionDate(isoString) {
+        if (!isoString) return 'N/A';
+        try {
+            const date = new Date(isoString);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) {
+                return 'Today';
+            } else if (diffDays === 1) {
+                return 'Yesterday';
+            } else if (diffDays < 7) {
+                return `${diffDays} days ago`;
+            } else {
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+            }
+        } catch (e) {
+            return 'N/A';
+        }
+    },
+
     formatTradeTime(isoString) {
         if (!isoString) return '—';
         const d = new Date(isoString);
@@ -2427,6 +2786,12 @@ Alpine.data('gameSession', (initialBalance = 0, initialPrices = {}, gameBalanceS
         this.alertType = type;
         this.alertTitle = title || (type === 'success' ? 'Success' : type === 'error' ? 'Error' : type === 'warning' ? 'Warning' : 'Information');
         this.showAlert = true;
+    },
+
+    closeAlert() {
+        this.showAlert = false;
+        this.alertMessage = '';
+        this.alertType = 'info';
     },
 })); 
 

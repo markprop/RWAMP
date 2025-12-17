@@ -129,6 +129,11 @@ class PriceHelper
      */
     public static function getUsdToPkrRate(): float
     {
+        // In local/dev, avoid external HTTP calls to keep pages fast
+        if (app()->environment('local')) {
+            return (float) config('crypto.rates.usd_pkr', 278);
+        }
+
         // Check cache first (cache for 1 hour)
         $cached = Cache::get('exchange_rate_usd_pkr');
         if ($cached !== null) {
@@ -150,6 +155,11 @@ class PriceHelper
      */
     public static function fetchUsdToPkrRate(): float
     {
+        // In local/dev, don’t hit external APIs
+        if (app()->environment('local')) {
+            return (float) config('crypto.rates.usd_pkr', 278);
+        }
+
         try {
             // Try exchangerate-api.com first (free tier, no API key needed for basic usage)
             $client = new \GuzzleHttp\Client(['timeout' => 10]);
@@ -221,6 +231,11 @@ class PriceHelper
      */
     public static function getUsdToAedRate(): float
     {
+        // In local/dev, avoid external HTTP calls to keep pages fast
+        if (app()->environment('local')) {
+            return (float) config('crypto.rates.usd_aed', 3.67);
+        }
+
         // Check cache first (cache for 1 hour)
         $cached = Cache::get('exchange_rate_usd_aed');
         if ($cached !== null) {
@@ -242,6 +257,10 @@ class PriceHelper
      */
     public static function fetchUsdToAedRate(): float
     {
+        // In local/dev, don’t hit external APIs
+        if (app()->environment('local')) {
+            return (float) config('crypto.rates.usd_aed', 3.67);
+        }
         try {
             // Try exchangerate-api.com first (free tier, no API key needed for basic usage)
             $client = new \GuzzleHttp\Client(['timeout' => 10]);

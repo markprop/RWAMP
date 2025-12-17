@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CryptoPayment;
+use App\Models\PaymentSubmission;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Helpers\PriceHelper;
@@ -303,7 +304,7 @@ class AdminCryptoPaymentController extends Controller
     {
         $currentCoinPrice = (float) (config('crypto.rates.coin_price_rs') ?? config('app.coin_price_rs') ?? 0.70);
 
-        // Payments query
+        // Payments query (crypto)
         $paymentsQuery = CryptoPayment::with('user');
         
         // Search payments
@@ -338,6 +339,25 @@ class AdminCryptoPaymentController extends Controller
         }
 
         $payments = $paymentsQuery->paginate(20, ['*'], 'payments')->withQueryString();
+
+        // Bank / manual payment submissions (all)
+        $bankQuery = PaymentSubmission::with(['user', 'recipient']);
+
+        if ($request->filled('payment_search')) {
+            $search = $request->payment_search;
+            $bankQuery->where(function ($q) use ($search) {
+                $q->where('bank_reference', 'like', "%{$search}%")
+                  ->orWhereHas('user', function ($userQ) use ($search) {
+                      $userQ->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                  });
+            });
+        }
+        if ($request->filled('payment_status') && in_array($request->payment_status, ['pending', 'approved', 'rejected'])) {
+            $bankQuery->where('status', $request->payment_status);
+        }
+
+        $bankSubmissions = $bankQuery->latest()->paginate(20, ['*'], 'bank_submissions')->withQueryString();
 
         // Transactions query
         $transactionsQuery = Transaction::with('user');
@@ -391,7 +411,19 @@ class AdminCryptoPaymentController extends Controller
 
         $transactions = $transactionsQuery->paginate(20, ['*'], 'transactions')->withQueryString();
 
-        return view('dashboard.admin-history', compact('payments', 'transactions', 'currentCoinPrice'));
+        return view('dashboard.admin-history', compact('payments', 'bankSubmissions', 'transactions', 'currentCoinPrice'));
+    }
+
+    /**
+     * Approve a manual/bank PaymentSubmission and credit tokens (admin side).
+     */
+    public function approveBank(Request $request, PaymentSubmission $submission)
+    {
+        // Business rule: Only the assigned reseller may approve/reject
+        // manual/bank PaymentSubmissions. Admins can review and view receipts only.
+        return back()->withErrors([
+            'message' => 'Only the assigned reseller can approve or reject this bank payment. Admins have view-only access.',
+        ]);
     }
 }
 

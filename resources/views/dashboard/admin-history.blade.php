@@ -170,6 +170,97 @@
             </div>
         </div>
 
+        <!-- Bank Transfer Receipts (manual submissions) -->
+        <div class="bg-white rounded-xl shadow-xl p-4 sm:p-6 card-hover">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
+                <div>
+                    <h3 class="font-montserrat font-bold text-lg sm:text-xl">Bank Transfer Receipts</h3>
+                    <p class="text-gray-600 text-xs sm:text-sm">Offline payments submitted with bank receipts. Admin can review and approve them here.</p>
+                </div>
+                <span class="rw-badge text-xs sm:text-sm">{{ $bankSubmissions->total() }} total</span>
+            </div>
+
+            <div class="rw-table-scroll overflow-x-auto -mx-4 sm:mx-0">
+                <div class="inline-block min-w-full align-middle">
+                    <div class="overflow-hidden">
+                        <table class="min-w-full text-xs sm:text-sm divide-y divide-gray-200 whitespace-nowrap">
+                            <thead class="bg-gray-50">
+                                <tr class="text-left text-gray-600">
+                                    <th class="px-3 sm:px-6 py-3 font-medium text-gray-700 uppercase tracking-wider">Date</th>
+                                    <th class="px-3 sm:px-6 py-3 font-medium text-gray-700 uppercase tracking-wider">User</th>
+                                    <th class="px-3 sm:px-6 py-3 font-medium text-gray-700 uppercase tracking-wider">Tokens</th>
+                                    <th class="px-3 sm:px-6 py-3 font-medium text-gray-700 uppercase tracking-wider">Amount</th>
+                                    <th class="px-3 sm:px-6 py-3 font-medium text-gray-700 uppercase tracking-wider hidden md:table-cell">Bank</th>
+                                    <th class="px-3 sm:px-6 py-3 font-medium text-gray-700 uppercase tracking-wider hidden lg:table-cell">Recipient</th>
+                                    <th class="px-3 sm:px-6 py-3 font-medium text-gray-700 uppercase tracking-wider">Status</th>
+                                    <th class="px-3 sm:px-6 py-3 font-medium text-gray-700 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                @forelse($bankSubmissions as $s)
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-3 sm:px-6 py-3 text-gray-500">{{ $s->created_at->format('Y-m-d H:i') }}</td>
+                                        <td class="px-3 sm:px-6 py-3">
+                                            <div class="font-medium text-gray-900">{{ $s->user->name ?? 'N/A' }}</div>
+                                            <div class="text-gray-500 text-xs">{{ $s->user->email ?? 'N/A' }}</div>
+                                        </td>
+                                        <td class="px-3 sm:px-6 py-3 text-gray-900">
+                                            {{ number_format($s->token_amount) }} RWAMP
+                                        </td>
+                                        <td class="px-3 sm:px-6 py-3 text-gray-900">
+                                            {{ $s->currency }} {{ number_format($s->fiat_amount, 2) }}
+                                        </td>
+                                        <td class="px-3 sm:px-6 py-3 text-gray-500 hidden md:table-cell">
+                                            {{ $s->bank_name ?? '—' }}<br>
+                                            <span class="text-xs">Ref: {{ $s->bank_reference ?? '—' }}</span>
+                                        </td>
+                                        <td class="px-3 sm:px-6 py-3 text-gray-500 hidden lg:table-cell">
+                                            @if($s->recipient_type === 'reseller' && $s->recipient)
+                                                Reseller: {{ $s->recipient->name }} (ID: {{ $s->recipient->id }})
+                                            @else
+                                                Admin
+                                            @endif
+                                        </td>
+                                        <td class="px-3 sm:px-6 py-3">
+                                            @php
+                                                $statusLower = strtolower($s->status);
+                                                $badgeClass = $statusLower === 'approved'
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : ($statusLower === 'rejected'
+                                                        ? 'bg-red-100 text-red-800'
+                                                        : 'bg-yellow-100 text-yellow-800');
+                                            @endphp
+                                            <span class="rw-badge {{ $badgeClass }}">{{ ucfirst($s->status) }}</span>
+                                        </td>
+                                        <td class="px-3 sm:px-6 py-3">
+                                            <div class="flex flex-wrap gap-2">
+                                                @if($s->receipt_path)
+                                                    <button
+                                                        type="button"
+                                                        class="btn-secondary btn-small"
+                                                        @click="openReceipt('{{ '/storage/' . ltrim($s->receipt_path, '/') }}')"
+                                                    >
+                                                        View Receipt
+                                                    </button>
+                                                @endif
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="8" class="px-3 sm:px-6 py-6 text-center text-xs sm:text-sm text-gray-500">
+                                            No bank transfer receipts found.
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4">{{ $bankSubmissions->links() }}</div>
+        </div>
+
         <!-- Token Transactions -->
         <div class="bg-white rounded-xl shadow-xl p-4 sm:p-6 card-hover">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
@@ -344,6 +435,34 @@
             </div>
             <div class="mt-4 text-lg">Estimated Profit: <span class="font-semibold">Rs <span x-text="profit"></span></span></div>
         </div>
+
+        <!-- Bank Receipt Modal -->
+        <div 
+            x-data="bankReceiptModal()"
+            x-show="open"
+            x-cloak
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+            x-on:open-bank-receipt.window="show($event.detail.src)"
+        >
+            <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden relative">
+                <button 
+                    class="absolute top-3 right-3 text-gray-500 hover:text-gray-800"
+                    @click="close()"
+                >
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+                <div class="w-full h-[80vh] bg-gray-900 flex items-center justify-center" @click.self="close()">
+                    <iframe 
+                        x-show="src" 
+                        :src="src" 
+                        class="w-full h-full" 
+                        frameborder="0">
+                    </iframe>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Toast Notification -->
@@ -439,6 +558,24 @@ function adminHistoryFilters() {
                 if (field) field.value = '';
             });
             this.submitTransactions(form);
+        },
+        openReceipt(url) {
+            window.dispatchEvent(new CustomEvent('open-bank-receipt', { detail: { src: url } }));
+        }
+    };
+}
+
+function bankReceiptModal() {
+    return {
+        open: false,
+        src: null,
+        show(url) {
+            this.src = url;
+            this.open = true;
+        },
+        close() {
+            this.open = false;
+            this.src = null;
         }
     };
 }
