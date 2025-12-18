@@ -1,0 +1,2280 @@
+﻿<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+
+  <!-- ðŸ” Password Gate (Shown on every load) -->
+  <div id="passwordGate" style="
+    position: fixed; inset: 0; 
+    background: rgba(0,0,0,0.95); 
+    backdrop-filter: blur(4px);
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    z-index: 9999;
+    padding: 20px; text-align: center;
+  ">
+    <h2 style="
+      color: #f6c453; font-size: 1.4rem; font-weight: 600;
+      margin-bottom: 20px; letter-spacing: 0.5px;
+    ">ðŸ”’ FOPI Game Access</h2>
+    <input type="password" id="passwordInput" 
+      placeholder="Enter Access Code" 
+      autocomplete="off"
+      style="
+        padding: 12px 20px; font-size: 16px; width: 280px;
+        border-radius: 8px; border: 1px solid #3a3a5a;
+        background: #161622; color: #f5f5f8;
+        text-align: center; outline: none;
+      "
+    />
+    <button id="unlockBtn" style="
+      margin-top: 16px; padding: 10px 28px;
+      font-size: 15px; font-weight: 600;
+      border: none; border-radius: 999px;
+      background: linear-gradient(135deg, #f6c453, #d48c2a);
+      color: #02130a; cursor: pointer;
+      box-shadow: 0 0 14px rgba(246, 196, 83, 0.6);
+    ">Unlock Game</button>
+    <div id="wrongMsg" style="
+      margin-top: 12px; font-size: 13px; min-height: 1.4em;
+      color: #ff4b6a;
+    "></div>
+  </div>
+
+    <!-- Intro Screen -->
+    <div id="screen-intro" class="screen" style="display:none;">
+        <div style="width:60px; height:60px; background:var(--gold-primary); border-radius:50%; margin-bottom:1rem; box-shadow: 0 0 20px var(--gold-primary);"></div>
+        <h1 class="text-xl" style="font-size: 2rem; margin-bottom:0.5rem;">FOPI</h1>
+        <p class="text-muted" style="margin-bottom:2rem; letter-spacing: 2px;">FUTURE OF PROPERTY INVESTMENT</p>
+        
+        <div class="card" style="width:100%; max-width:350px; text-align:center;">
+            <h3>Initialize Wallet</h3>
+            <p class="text-small text-muted" style="margin-bottom:1rem;">Enter your initial RWAMP (Master Token) investment.</p>
+            <input type="number" id="intro-rwamp" placeholder="e.g. 5000" value="5000" style="text-align:center; font-size:1.2rem; margin-bottom:1rem;">
+            <p class="text-small text-info" style="margin-bottom:1rem;">
+                1 RWAMP = 100 $F<br>
+                Grants initial $F liquidity automatically.
+            </p>
+            <button class="btn btn-gold" onclick="app.startGame()">ENTER RWAMP METAVERSE</button>
+        </div>
+    </div>
+
+    <!-- TUTORIAL ELEMENTS (Separated for correct stacking) -->
+    <div id="tutorial-backdrop"></div>
+    
+    <div id="tutorial-tooltip">
+        <h4 id="tut-title">Tutorial</h4>
+        <p id="tut-desc">Instructions go here.</p>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:0.8rem; color:var(--text-muted); text-decoration:underline; cursor:pointer;" onclick="app.endTutorial()">Skip</span>
+            <button id="tut-next-btn" class="btn btn-gold btn-sm" style="width:auto; padding:6px 16px;">NEXT</button>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+        <div style="display:flex; align-items:center;">
+            <div style="width:24px; height:24px; background:var(--gold-primary); border-radius:50%; margin-right:8px; box-shadow: 0 0 10px var(--gold-primary);"></div>
+            <div style="line-height:1;">
+                <h1 style="font-size:1.1rem; margin:0;">FOPI</h1>
+                <span id="player-tag" class="badge" style="background:rgba(255,255,255,0.1); color:#fff; font-weight:normal; font-size:0.6rem;">NOVICE</span>
+            </div>
+        </div>
+        <div style="text-align:right;">
+            <div class="text-gold text-small" style="font-weight:bold;">MTH <span id="header-month">1 | D 1</span></div>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <div class="text-muted text-small" style="font-size:0.7rem; cursor:pointer;" onclick="app.openExchange()">ðŸ’± Exchange</div>
+                <div class="text-muted text-small" style="font-size:1.2rem; cursor:pointer;" onclick="app.startTutorial()" title="Replay Tutorial">â“</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <div class="container">
+        <!-- DASHBOARD SCREEN -->
+        <div id="screen-dashboard" class="screen active">
+            <h2>Command Center</h2>
+            <!-- Balances -->
+            <div class="card" id="dash-main-stats">
+                <div class="stat-grid">
+                    <div class="stat-box">
+                        <div class="info-tooltip">Liquid FOPI cash available for trading and investing.</div>
+                        <div class="text-muted text-small">FOPI (Liquid)</div>
+                        <div class="text-lg text-cyan glow-text" id="dash-fopi">$F 0</div>
+                    </div>
+                    <div class="stat-box" style="border-color:rgba(255,215,0,0.2);">
+                        <div class="info-tooltip">Premium RWAMP tokens. Used for fees and exclusive syndicates.</div>
+                        <div class="text-muted text-small">RWAMP Balance</div>
+                        <div class="text-lg text-gold" id="dash-rwamp">R 0</div>
+                        <div class="text-small text-muted" id="dash-rwamp-lifetime" style="margin-top:2px; font-size:0.7rem;">Lifetime: R 0</div>
+                    </div>
+                </div>
+                <button class="btn btn-outline btn-sm" style="margin-bottom:0.8rem;" onclick="app.withdrawRwamp()">Withdraw RWAMP</button>
+                <div class="stat-grid">
+                    <div class="stat-box">
+                        <div class="info-tooltip">Total combined value of your cash and property assets.</div>
+                        <div class="text-muted text-small">Net Worth</div>
+                        <div class="text-lg" id="dash-networth">$F 0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="info-tooltip">Yield accumulated from properties. Click 'Claim' to withdraw.</div>
+                        <div class="text-muted text-small">Unclaimed Rent</div>
+                        <div class="text-lg text-success" id="dash-rent">$F 0</div>
+                    </div>
+                </div>
+                <button id="btn-claim-yield" class="btn btn-primary" onclick="app.claimAllRent()">Claim Yield ($F)</button>
+                <!-- CONVERT / MINE SECTION -->
+                <div id="treasury-section" class="treasury-box">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <span class="text-small text-gold">Mint RWAMP</span>
+                        <span class="text-small text-muted">Rate: 1000 $F = 1 R</span>
+                    </div>
+                    <div class="text-small text-info" style="margin-bottom:5px;">
+                        Profit Available to Convert: <span id="dash-profit-bal" class="text-white">$F 0</span>
+                    </div>
+                    <div class="input-group">
+                        <input type="number" id="dash-convert-input" placeholder="Enter FOPI Amount">
+                        <button id="btn-mint-rwamp" class="btn btn-gold btn-sm" onclick="app.convertFopiToRwamp()">MINT</button>
+                    </div>
+                    <div style="margin-top:5px; font-size:0.8rem; text-align:right; color:var(--text-muted);">
+                        You receive: <span id="mint-preview" class="text-gold">0 R</span>
+                    </div>
+                    <div style="margin-top:5px; font-size:0.8rem; text-align:right;">
+                         <span class="text-muted">Total Mined: <span id="dash-total-mined" class="text-gold">0</span></span>
+                    </div>
+                </div>
+                <!-- BURN STATS SECTION -->
+                <div id="burn-section" class="treasury-box" style="border-top-color: rgba(255,0,85,0.3);">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span class="text-small text-danger">ðŸ”¥ RWAMP Burn</span>
+                        <span class="text-small text-muted">Supply: <span id="dash-sim-supply">100B</span></span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-top:5px; font-size:0.8rem;">
+                        <span class="text-muted">This Month: <span id="dash-burn-month" class="text-danger">0</span></span>
+                        <span class="text-muted">Total: <span id="dash-burn-total" class="text-danger">0</span></span>
+                    </div>
+                </div>
+            </div>
+            <!-- Achievements -->
+            <div id="achievement-section">
+                <div class="text-small text-muted" style="margin-bottom:5px;">TROPHIES</div>
+                <div id="dashboard-achievements" class="achievement-grid"></div>
+            </div>
+            <!-- News Ticker -->
+            <div id="news-widget" class="card" style="padding:0.8rem; background:rgba(0,0,0,0.3); border-left:3px solid var(--neon-purple); transition: border-color 0.3s;">
+                <div class="text-small text-muted" style="margin-bottom:5px;">MARKET FEED</div>
+                <div id="dashboard-news-text" style="font-size:0.9rem;">No updates...</div>
+            </div>
+            
+            <div style="display:flex; gap:10px; margin-bottom: 0.8rem;">
+                <button class="btn btn-gold" style="flex:1;" onclick="app.openMissions()">ðŸ“œ MISSIONS</button>
+                <button class="btn btn-primary" style="flex:1;" onclick="app.openTokenomics()">ðŸ“Š TOKENOMICS</button>
+            </div>
+            <button id="btn-jump-month" class="btn btn-outline" style="width:100%; margin-bottom: 1.5rem;" onclick="app.jumpMonth()">
+                Jump Month &#9658;
+            </button>
+            
+            <h3>Top Assets</h3>
+            <div id="dash-holdings-list"></div>
+        </div>
+
+        <!-- MARKETPLACE SCREEN -->
+        <div id="screen-marketplace" class="screen">
+            <h2>Global Market</h2>
+            <div class="btn-group">
+                <button class="btn btn-tab active" onclick="app.setMarketRegion('PK')">ASIA</button>
+                <button class="btn btn-tab" onclick="app.setMarketRegion('AE')">MENA</button>
+                <button class="btn btn-tab" onclick="app.setMarketRegion('INTL')">WEST</button>
+            </div>
+            <div id="marketplace-list"></div>
+        </div>
+
+        <!-- PORTFOLIO SCREEN -->
+        <div id="screen-portfolio" class="screen">
+            <h2>Portfolio</h2>
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                    <span class="text-muted">Total Asset Value</span>
+                    <span class="text-xl text-cyan" id="port-total-value">$F 0</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="text-muted">Unrealized P/L</span>
+                    <span id="port-pl" class="text-lg">$F 0</span>
+                </div>
+            </div>
+            <!-- RWAMP P/L CARD -->
+            <div class="card" style="border-top:1px solid rgba(255,215,0,0.2);">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="text-muted">Total RWAMP P/L</span>
+                    <span id="port-rwamp-pnl" class="text-lg">R 0</span>
+                </div>
+                <div class="text-small text-muted" style="text-align:right;">Current Valuation vs Initial</div>
+            </div>
+            <h3 style="margin-top:1.5rem;">Active Holdings</h3>
+            <button class="btn btn-danger btn-sm" style="margin-bottom:1rem; width:auto;" onclick="app.liquidateAll()">âš  LIQUIDATE ALL ASSETS</button>
+            <div id="portfolio-list"></div>
+            <h3 style="margin-top:1.5rem;">My Installment Plans</h3>
+            <div id="plans-list"></div>
+            <h3 style="margin-top:1.5rem;">Pending Exits</h3>
+            <div id="sell-queue-list"></div>
+        </div>
+
+        <!-- CLUBS SCREEN -->
+        <div id="screen-clubs" class="screen">
+            <h2>Syndicates</h2>
+            <p class="text-muted text-small" style="margin-bottom:1rem;">Pool RWAMP resources for premium acquisitions.</p>
+            <div class="card" id="club-buyout-card"></div>
+            <h2>Private Equity</h2>
+            <div id="club-resale-container"></div>
+        </div>
+
+        <!-- LEADERBOARD SCREEN -->
+        <div id="screen-leaderboard" class="screen">
+            <h2>Whale Rankings</h2>
+            <div id="leaderboard-list"></div>
+        </div>
+    </div>
+
+    <!-- TOKENOMICS MODAL -->
+    <div id="modal-tokenomics" class="modal-overlay" onclick="if(event.target===this) app.closeModal('tokenomics')">
+        <div class="modal-content" style="max-width:500px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h2 style="margin:0; border:none;">RWAMP Tokenomics</h2>
+            </div>
+            
+            <div id="tokenomics-content" style="max-height:70vh; overflow-y:auto; padding-right:5px;">
+                <!-- Content injected via JS -->
+            </div>
+            
+            <button class="btn btn-outline" onclick="app.closeModal('tokenomics')" style="margin-top:1.5rem;">Close</button>
+        </div>
+    </div>
+
+    <!-- MISSIONS MODAL -->
+    <div id="modal-missions" class="modal-overlay" onclick="if(event.target===this) app.closeModal('missions')">
+        <div class="modal-content" style="max-width:500px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h2 style="margin:0; border:none;">Missions</h2>
+                <div class="text-gold text-lg" style="font-size:1rem;">RWAMP: <span id="mission-rwamp-bal">0</span></div>
+            </div>
+            
+            <div class="btn-group">
+                <button id="tab-missions" class="btn btn-tab active" onclick="app.renderMissionsModal('missions')">MISSIONS</button>
+                <button id="tab-achievements" class="btn btn-tab" onclick="app.renderMissionsModal('achievements')">ACHIEVEMENTS</button>
+                <button id="tab-awards" class="btn btn-tab" onclick="app.renderMissionsModal('awards')">AWARDS</button>
+            </div>
+
+            <div id="missions-content" style="max-height:60vh; overflow-y:auto; padding-right:5px;"></div>
+            
+            <button class="btn btn-outline" onclick="app.closeModal('missions')" style="margin-top:1.5rem;">Close</button>
+        </div>
+    </div>
+
+    <!-- ANALYTICS MODAL -->
+    <div id="modal-analytics" class="modal-overlay" onclick="if(event.target===this) app.closeModal('analytics')">
+        <div class="modal-content" style="max-width:500px;">
+            <h2 id="analytics-title" style="border:none; margin-bottom:0.5rem;">Analytics</h2>
+            <div style="display:flex; justify-content:space-between; margin-bottom:1rem;">
+                <span id="analytics-region" class="badge">REGION</span>
+                <span id="analytics-status" class="badge">STATUS</span>
+            </div>
+            <div class="text-small text-muted" style="margin-bottom:5px;">Price History ($F/sqft)</div>
+            <div class="chart-wrapper">
+                <canvas id="analytics-chart"></canvas>
+            </div>
+            <div id="analytics-stats" class="card" style="padding:0.8rem; background:rgba(255,255,255,0.03);"></div>
+            <h3 style="margin-top:1.5rem; font-size:0.9rem;">Market Event Log</h3>
+            <div id="analytics-events" class="event-log"></div>
+            <button class="btn btn-outline" onclick="app.closeModal('analytics')" style="margin-top:1.5rem;">Close Analysis</button>
+        </div>
+    </div>
+
+    <!-- EXCHANGE MODAL -->
+    <div id="modal-exchange" class="modal-overlay" onclick="if(event.target===this) app.closeModal('exchange')">
+        <div class="modal-content">
+            <h2 style="border:none;">Token Exchange</h2>
+            <div class="card" style="text-align:center; padding:1rem; margin-bottom:1rem;">
+                <div class="text-muted text-small">Rate</div>
+                <div class="text-lg"><span class="text-gold">1 R</span> = <span class="text-cyan">100 $F</span></div>
+            </div>
+            <div style="margin-bottom:1.5rem;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span class="text-small">Sell RWAMP</span>
+                    <span class="text-small text-gold" id="ex-rwamp-bal">Bal: 0</span>
+                </div>
+                <div class="input-group">
+                    <input type="number" id="swap-rwamp-input" placeholder="Amount RWAMP">
+                    <button class="btn btn-gold btn-sm" onclick="app.swapTokens('RtoF')">SWAP &#8595;</button>
+                </div>
+            </div>
+            <div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span class="text-small">Buy RWAMP</span>
+                    <span class="text-small text-cyan" id="ex-fopi-bal">Bal: 0</span>
+                </div>
+                <div class="input-group">
+                    <input type="number" id="swap-fopi-input" placeholder="Amount FOPI">
+                    <button class="btn btn-primary btn-sm" onclick="app.swapTokens('FtoR')">SWAP &#8593;</button>
+                </div>
+            </div>
+            <button class="btn btn-outline" style="margin-top:1.5rem;" onclick="app.closeModal('exchange')">Close</button>
+        </div>
+    </div>
+
+    <!-- REWARD MODAL -->
+    <div id="modal-reward" class="modal-overlay" style="z-index:2000;">
+        <div class="modal-content" style="border-color:var(--gold-primary); text-align:center; background: radial-gradient(circle, #2a2a10 0%, #050505 100%);">
+            <div style="width:60px; height:60px; background:var(--gold-primary); border-radius:50%; margin:0 auto 1rem auto; display:flex; align-items:center; justify-content:center; box-shadow:0 0 20px var(--gold-primary);">
+                <span style="font-size:30px;">ðŸ†</span>
+            </div>
+            <h2 class="text-gold" style="border:none; margin-bottom:0.5rem;">SYNDICATE COMPLETED!</h2>
+            <p class="text-muted" style="margin-bottom:1.5rem;">The investment pool has reached 100%.</p>
+            <div class="card" style="margin-bottom:1.5rem; text-align:left;">
+                <div style="margin-bottom:10px;">
+                    <span class="text-muted text-small">Acquired Asset</span>
+                    <div class="text-lg" id="reward-name">Property Name</div>
+                </div>
+                <div class="stat-grid">
+                    <div class="stat-box">
+                        <div class="text-muted text-small">Your Share</div>
+                        <div class="text-cyan text-lg" id="reward-sqft">0</div>
+                    </div>
+                    <div class="stat-box" style="border-color:var(--gold-primary);">
+                        <div class="text-muted text-small">3% Discount Refund</div>
+                        <div class="text-gold text-lg" id="reward-refund">$F 0</div>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-gold" onclick="document.getElementById('modal-reward').classList.remove('active')">COLLECT ASSET</button>
+        </div>
+    </div>
+
+    <!-- PROPERTY DETAILS MODAL -->
+    <div id="modal-details" class="modal-overlay" onclick="if(event.target===this) app.closeModal('details')">
+        <div class="modal-content">
+            <h2 id="modal-title" style="border:none; margin-bottom:0.2rem; font-size:1.3rem;">Property Name</h2>
+            <div style="margin-bottom:1rem; display:flex; gap:5px;">
+                <span id="modal-badge" class="badge">STATUS</span>
+                <span id="modal-rwamp-req" class="badge badge-rwamp">Req: 0 R</span>
+            </div>
+            <div class="stat-grid">
+                <div class="stat-box">
+                    <div class="text-muted text-small">Price/Sqft</div>
+                    <div class="text-cyan" id="modal-price">$F 0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="text-muted text-small">Yield</div>
+                    <div class="text-success" id="modal-yield">0%</div>
+                </div>
+            </div>
+            <div id="modal-uc-info" style="display:none; background:rgba(255,165,0,0.1); padding:0.5rem; border-radius:4px; margin-bottom:1rem; text-align:center; border:1px dashed orange;">
+                <div class="text-gold" style="font-weight:bold;">UNDER CONSTRUCTION</div>
+                <div class="text-small text-muted">Handover: <span id="modal-handover" style="color:white;">0</span> months</div>
+            </div>
+            <p class="text-muted text-small">Trend (6 Months)</p>
+            <div id="modal-chart" class="mini-chart"></div>
+
+            <!-- BUY SECTION -->
+            <div id="modal-buy-interface" style="background:rgba(255,255,255,0.02); padding:10px; border-radius:6px; margin-top:1rem; border:1px solid rgba(255,255,255,0.05);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <h3 style="margin:0;">Acquire</h3>
+                    <select id="buy-fee-method" class="text-small" style="background:rgba(0,0,0,0.5); color:var(--text-muted); border:1px solid rgba(255,255,255,0.1); border-radius:4px; padding:2px;">
+                        <option value="RWAMP">Fee: RWAMP (1%)</option>
+                        <option value="FOPI">Fee: FOPI (2%)</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <input type="number" id="modal-buy-input" placeholder="Sqft Amount">
+                    <button class="btn btn-gold btn-sm" onclick="app.setMaxBuy()">MAX</button>
+                    <button id="btn-modal-buy" class="btn btn-primary btn-sm" onclick="app.buyFromModal()">BUY</button>
+                </div>
+                <p class="text-muted text-small" style="margin-top:5px;">
+                    Cost: <span id="modal-buy-cost" class="text-cyan">$F 0</span> + <span id="modal-buy-fee" class="text-gold">R 0</span>
+                </p>
+                <div id="modal-installment-opt" style="display:none; margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
+                    <div class="text-small text-info" style="margin-bottom:5px;">Construct: Installment Plan</div>
+                    <div class="input-group">
+                        <input type="number" id="modal-installment-input" placeholder="Monthly Sqft" value="10">
+                        <button class="btn btn-outline btn-sm" onclick="app.startInstallmentPlan()">Auto-Invest</button>
+                    </div>
+                    <p class="text-muted text-small" style="font-size:0.7rem; margin-top:4px;">
+                        Auto-buys this amount every month until completion.
+                    </p>
+                </div>
+            </div>
+
+            <!-- SELL SECTION -->
+            <div id="modal-sell-section" style="margin-top:1rem; background:rgba(255,255,255,0.02); padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <h3 style="margin:0;">Liquidation</h3>
+                    <select id="sell-fee-method" class="text-small" style="background:rgba(0,0,0,0.5); color:var(--text-muted); border:1px solid rgba(255,255,255,0.1); border-radius:4px; padding:2px;">
+                        <option value="RWAMP">Fee: RWAMP (1%)</option>
+                        <option value="FOPI">Fee: FOPI (2%)</option>
+                    </select>
+                </div>
+                <p class="text-muted text-small">Owned: <span id="modal-owned" class="text-cyan">0</span> | Available: <span id="modal-avail" class="text-success">0</span></p>
+                <div class="input-group">
+                    <input type="number" id="modal-sell-input" placeholder="Amount to Sell">
+                    <button class="btn btn-gold btn-sm" onclick="app.setMaxSell()">MAX</button>
+                    <button class="btn btn-outline btn-sm" onclick="app.scheduleSell()">INITIATE SELL</button>
+                </div>
+                <p class="text-danger text-small" style="margin-top:5px; font-size:0.7rem;">
+                    Fee deducted immediately. Cash realized in ~2 months.
+                </p>
+            </div>
+            <button class="btn btn-outline" onclick="app.closeModal('details')" style="margin-top:1rem; border-color:#333; color:#666;">Close</button>
+        </div>
+    </div>
+    <!-- Bottom Nav -->
+    <div class="bottom-nav">
+        <div id="nav-dash" class="nav-item active" onclick="app.switchScreen('dashboard')">
+            <span class="nav-icon">â˜—</span>Dash
+        </div>
+        <div id="nav-market" class="nav-item" onclick="app.switchScreen('marketplace')">
+            <span class="nav-icon">âš–</span>Market
+        </div>
+        <div id="nav-port" class="nav-item" onclick="app.switchScreen('portfolio')">
+            <span class="nav-icon">ðŸ’¼</span>Assets
+        </div>
+        <div id="nav-jump" class="nav-item" onclick="app.jumpMonth()">
+            <span class="nav-icon" style="color:var(--neon-blue);">â–¶</span>
+            <span style="color:var(--neon-blue);">Jump</span>
+        </div>
+        <div id="nav-clubs" class="nav-item" onclick="app.switchScreen('clubs')">
+            <span class="nav-icon">â™›</span>Clubs
+        </div>
+        <div id="nav-rank" class="nav-item" onclick="app.switchScreen('leaderboard')">
+            <span class="nav-icon">ðŸ†</span>Rank
+        </div>
+    </div>
+<script>
+/**
+ * FOPI - Future of Property Investment (v23.1)
+ * - Fixed ReferenceError: app is not defined (Missing methods restored)
+ */
+const CONSTANTS = {
+    EXCHANGE_RATE: 100,
+    FOPI_PER_RWAMP: 1000,
+    FEE_PERCENT: 0.02,
+    BASE_SELL_DELAY: 2,
+    AUTO_BUY_AMOUNT: 10,
+    MAX_HISTORY: 12,
+    RWAMP_MAX_SUPPLY: 100000000000
+};
+// ... [Retaining existing data structures] ...
+const ACHIEVEMENTS = [
+    { id: 'first_buy', title: 'First Keys', icon: 'ðŸ”‘', desc: 'Acquire your first asset.' },
+    { id: 'first_rent', title: 'Cash Flow', icon: 'ðŸ’¸', desc: 'Claim your first rental yield.' },
+    { id: 'first_handover', title: 'Ribbon Cutter', icon: 'âœ‚ï¸', desc: 'Complete a UC project.' },
+    { id: 'millionaire', title: 'Early Whale', icon: 'ðŸ’Ž', desc: 'Reach $F 1,000,000 Net Worth.' }, 
+    { id: 'syndicate_join', title: 'Inner Circle', icon: 'ðŸ¤', desc: 'Join a Syndicate pool.' },
+    { id: 'sell_complete', title: 'Liquidity Event', icon: 'ðŸ¦', desc: 'Complete a sale.' },
+    { id: 'tycoon', title: 'Property Tycoon', icon: 'ðŸ™ï¸', desc: 'Own at least 3 different properties.' },
+    { id: 'flipper', title: 'Smart Flipper', icon: 'ðŸ’°', desc: 'Sell any property at â‰¥ 20% profit.' },
+    { id: 'landlord', title: 'Landlord', icon: 'ðŸ‘‘', desc: 'Collect rent 10 times.' }
+];
+
+const MISSIONS = [
+    { id: 'buy_1', title: 'Buy Your First Property', desc: 'Make a successful purchase.', reward: 2, trigger: 'buy', max: 1 },
+    { id: 'jump_3', title: 'Jump 3 Months', desc: 'Advance time 3 times.', reward: 3, trigger: 'jump', max: 3 },
+    { id: 'claim_3', title: 'Claim Rent 3 Times', desc: 'Claim yield successfully.', reward: 3, trigger: 'claim', max: 3 },
+    { id: 'convert_1', title: 'Convert FOPI â†’ RWAMP', desc: 'Make a conversion.', reward: 5, trigger: 'convert', max: 1 },
+    { id: 'nw_500k', title: 'Net Worth F 500,000', desc: 'Grow your empire.', reward: 10, trigger: 'nw', max: 500000 },
+    { id: 'rwamp_20', title: 'Accumulate 20 RWAMP', desc: 'Hold balance.', reward: 10, trigger: 'rwamp', max: 20 },
+    { id: 'hold_12', title: 'Hold for 12 Months', desc: 'Keep a property for a year.', reward: 15, trigger: 'jump', max: 12 },
+    { id: 'burn_1k', title: 'Monthly Burn > 1k R', desc: 'High activity burn.', reward: 20, trigger: 'burn', max: 1000 }
+];
+
+const AWARDS = [
+    { id: 'miner_50', title: 'RWAMP Miner Award', desc: 'Mine 50 RWAMP total.', reward: 20, trigger: 'mine', max: 50 },
+    { id: 'elite_inv', title: 'Elite Investor Award', desc: 'Realized P/L > F 200,000.', reward: 50, trigger: 'profit', max: 200000 },
+    { id: 'syndicate', title: 'Club Syndicate Award', desc: 'Commit to any club.', reward: 5, trigger: 'club', max: 1 }
+];
+
+const INITIAL_PROPERTIES = [
+    {
+        id: 'pk1', name: 'Blue World City', region: 'PK', status: 'UC',
+        pricePerSqft: 12500, annualYieldPct: 0, annualAppreciationPct: 12, handoverMonth: 24, originalHandover: 24,
+        history: [12000, 12100, 12200, 12300, 12400, 12500],
+        delayRiskPct: 0.2, maxDelayMonths: 6, hasUcYield: false, ucAnnualYieldPct: 0,
+        minRwamp: 1000
+    },
+    {
+        id: 'pk2', name: 'Bahria Town Karachi 2', region: 'PK', status: 'READY',
+        pricePerSqft: 18500, annualYieldPct: 6.2, annualAppreciationPct: 8, handoverMonth: 0,
+        history: [18000, 18100, 18200, 18300, 18400, 18500],
+        minRwamp: 2000
+    },
+    {
+        id: 'pk3', name: 'Capital Smart City', region: 'PK', status: 'UC',
+        pricePerSqft: 15200, annualYieldPct: 0, annualAppreciationPct: 14, handoverMonth: 18, originalHandover: 18,
+        history: [14500, 14600, 14800, 14900, 15000, 15200],
+        delayRiskPct: 0.1, maxDelayMonths: 3, hasUcYield: false, ucAnnualYieldPct: 0,
+        minRwamp: 1500
+    },
+     {
+        id: 'pk4', name: 'DHA Quetta', region: 'PK', status: 'UC',
+        pricePerSqft: 10800, annualYieldPct: 0, annualAppreciationPct: 10, handoverMonth: 36, originalHandover: 36,
+        history: [10000, 10200, 10300, 10500, 10600, 10800],
+        delayRiskPct: 0.3, maxDelayMonths: 8, hasUcYield: false, ucAnnualYieldPct: 0,
+        minRwamp: 800
+    },
+    {
+        id: 'ae1', name: 'Neon Views Dubai', region: 'AE', status: 'UC',
+        pricePerSqft: 65000, annualYieldPct: 0, annualAppreciationPct: 12, handoverMonth: 8, originalHandover: 8,
+        history: [60000, 61000, 62000, 63000, 64000, 65000],
+        delayRiskPct: 0.1, maxDelayMonths: 2, hasUcYield: true, ucAnnualYieldPct: 2.5,
+        minRwamp: 5000
+    },
+    {
+        id: 'ae2', name: 'Palm Jumeirah Pod', region: 'AE', status: 'READY',
+        pricePerSqft: 120000, annualYieldPct: 7.2, annualAppreciationPct: 8, handoverMonth: 0,
+        history: [110000, 112000, 114000, 116000, 118000, 120000],
+        minRwamp: 10000
+    },
+    {
+        id: 'intl1', name: 'London Neural Hub', region: 'INTL', status: 'READY',
+        pricePerSqft: 180000, annualYieldPct: 4.5, annualAppreciationPct: 3, handoverMonth: 0,
+        history: [178000, 178500, 179000, 179500, 179800, 180000],
+        minRwamp: 15000
+    },
+    {
+        id: 'club1', name: 'Orbital Penthouse', region: 'CLUB', status: 'READY',
+        pricePerSqft: 450000, annualYieldPct: 8.5, annualAppreciationPct: 6, handoverMonth: 0,
+        history: [440000, 442000, 444000, 446000, 448000, 450000],
+        minRwamp: 50000, baseFairValue: 400000
+    }
+];
+
+const NEWS_SCENARIOS = [
+    { id: 'rent_surge', text: "Rental Demand Surge! +10% Yields (READY Assets).", type: 'pos' },
+    { id: 'delay', text: "Construction Halt! +2 Months Handover (UC).", type: 'neg' },
+    { id: 'crash', text: "Market Correction! Prices -8%.", type: 'neg' },
+    { id: 'rally', text: "Bull Run! Prices +12%.", type: 'pos' },
+    { id: 'mena_boom', text: "MENA Investment Boom! +5% Dubai Prices.", type: 'pos' },
+    { id: 'normal', text: "Market Stable. Steady growth.", type: 'neu' },
+    { id: 'normal', text: "Market Stable. Steady growth.", type: 'neu' }
+];
+
+const tutorialSteps = [
+    { step: 1, title: "Welcome", text: "Welcome to Future of Property Investment!<br>Let's walk through your first moves.", target: null, nextBtn: "START TUTORIAL" },
+    { step: 2, title: "Command Center", text: "This is your dashboard: Net Worth, Liquid FOPI, and RWAMP balance.", target: "dash-main-stats", nextBtn: "NEXT", action: () => app.switchScreen('dashboard') },
+    { step: 3, title: "The Market", text: "Tap <b>MARKET</b> to browse properties to invest in.", target: "nav-market", nextBtn: "NEXT", action: () => app.closeModal('details') },
+    { step: 4, title: "View Details", text: "Tap <b>VIEW</b> to see details and purchase options.", target: "tutorial-market-item-1", nextBtn: "NEXT", action: () => app.switchScreen('marketplace') },
+    { step: 5, title: "Buy Assets", text: "Enter a small amount of SQFT and tap <b>BUY</b> to purchase your first share.", target: "modal-buy-interface", nextBtn: "NEXT", action: () => { if(document.getElementById('modal-details').style.display !== 'flex') app.openDetails(app.state.properties[0].id); } },
+    { step: 6, title: "Pass Time", text: "Tap <b>JUMP MONTH</b> to simulate time and update your portfolio.", target: "btn-jump-month", nextBtn: "NEXT", action: () => { app.closeModal('details'); app.switchScreen('dashboard'); } },
+    { step: 7, title: "Earn Yield", text: "Your properties generate rental yield. Tap <b>CLAIM YIELD</b> to collect it.", target: "btn-claim-yield", nextBtn: "NEXT", action: () => app.switchScreen('dashboard') },
+    { step: 8, title: "Mine RWAMP", text: "Convert a small part of your profit into RWAMP. This simulates mining.", target: "treasury-section", nextBtn: "NEXT", action: () => app.switchScreen('dashboard') },
+    { step: 9, title: "Burning", text: "Each month, RWAMP fees are burned, reducing supply. This models scarcity.", target: "burn-section", nextBtn: "FINISH TUTORIAL" }
+];
+
+const app = {
+    state: {},
+    currentMarketRegion: 'PK',
+    selectedPropertyId: null,
+    tutorialActive: false,
+    tutorialStep: 0,
+    activeMissionTab: 'missions',
+
+    init: function() {
+        const saved = localStorage.getItem('fopi_v19');
+        const tutCompleted = localStorage.getItem('fopi_tut_complete');
+        
+        if (saved) {
+            this.state = JSON.parse(saved);
+            // Migrations
+            if(!this.state.user.totalRwampMined) this.state.user.totalRwampMined = 0;
+            if(this.state.user.generatedRevenue === undefined) this.state.user.generatedRevenue = 0;
+            if(this.state.user.totalRwampEarned === undefined) this.state.user.totalRwampEarned = this.state.user.rwamp;
+            if(this.state.user.totalRwampSpent === undefined) this.state.user.totalRwampSpent = 0;
+            if(this.state.user.initialRwamp === undefined) this.state.user.initialRwamp = 5000;
+            if(this.state.user.unclaimedRent === undefined) this.state.user.unclaimedRent = 0;
+            if(!this.state.burn) {
+                this.state.burn = {
+                    rwampInitialSupply: CONSTANTS.RWAMP_MAX_SUPPLY,
+                    totalRwampBurned: 0,
+                    rwampSimulatedSupply: CONSTANTS.RWAMP_MAX_SUPPLY,
+                    rwampFeesThisMonth: 0,
+                    lastBurnAmount: 0,
+                    history: [],
+                    maxSupply: CONSTANTS.RWAMP_MAX_SUPPLY
+                };
+            }
+            if(!this.state.burn.history) this.state.burn.history = [];
+            if(!this.state.burn.maxSupply) this.state.burn.maxSupply = CONSTANTS.RWAMP_MAX_SUPPLY;
+            
+            if(this.state.burn.rwampSimulatedSupply < 1000000000) {
+                 this.state.burn.rwampSimulatedSupply = this.state.burn.maxSupply - this.state.burn.totalRwampBurned;
+            }
+
+            if(!this.state.user.stats) {
+                this.state.user.stats = { jumps: 0, claims: 0, conversions: 0, rentCollections: 0, totalRealizedPL: 0 };
+            }
+            if(!this.state.user.missions) {
+                this.state.user.missions = {};
+            }
+            if(!this.state.user.awards) {
+                this.state.user.awards = [];
+            }
+            if(this.state.holdings) {
+                this.state.holdings.forEach(h => {
+                   if(h.monthsHeld === undefined) h.monthsHeld = 0; 
+                });
+            }
+            if(this.state.user.rwampStartingBalance === undefined) {
+                this.state.user.rwampStartingBalance = this.state.user.initialRwamp || 5000;
+                if (this.state.user.totalRwampEarned >= this.state.user.rwampStartingBalance) {
+                    this.state.user.totalRwampEarned -= this.state.user.rwampStartingBalance;
+                } else {
+                    this.state.user.totalRwampEarned = 0;
+                }
+            }
+            if(this.state.user.rwampPnL === undefined) {
+                this.state.user.rwampPnL = this.state.user.totalRwampEarned - this.state.user.totalRwampSpent;
+            }
+            
+            // Auto Time Migrations
+            if(this.state.user.gameDay === undefined) this.state.user.gameDay = 1;
+            if(!this.state.sys) this.state.sys = {};
+            if(this.state.sys.lastTick === undefined) this.state.sys.lastTick = Date.now();
+
+            this.renderAll();
+            this.startGameLoop();
+            
+            if (!tutCompleted) {
+                setTimeout(() => this.startTutorial(), 500);
+            }
+        } else {
+            document.getElementById('screen-intro').style.display = 'flex';
+        }
+
+        // Listeners
+        document.getElementById('buy-fee-method').addEventListener('change', () => this.updateBuyPreview());
+        document.getElementById('modal-buy-input').addEventListener('input', () => this.updateBuyPreview());
+
+        document.getElementById('dash-convert-input').addEventListener('input', (e) => {
+            const val = parseInt(e.target.value) || 0;
+            const r = Math.floor(val / CONSTANTS.FOPI_PER_RWAMP);
+            document.getElementById('mint-preview').innerText = this.formatRWAMP(r);
+        });
+
+        document.getElementById('tut-next-btn').addEventListener('click', () => {
+            this.nextTutorialStep();
+        });
+    },
+
+    startGame: function() {
+        const input = document.getElementById('intro-rwamp');
+        const initialRwamp = parseInt(input.value) || 5000;
+        
+        this.state = {
+            user: {
+                rwamp: initialRwamp,
+                initialRwamp: initialRwamp,
+                rwampStartingBalance: initialRwamp,
+                fopi: initialRwamp * CONSTANTS.EXCHANGE_RATE,
+                currentMonth: 1,
+                gameDay: 1,
+                totalRentCollected: 0,
+                unclaimedRent: 0,
+                playerTag: "Novice",
+                syndicateStaked: 0,
+                syndicateCostBasis: 0,
+                achievements: [],
+                totalRwampMined: 0,
+                generatedRevenue: 0,
+                totalRwampEarned: 0,
+                totalRwampSpent: 0,
+                rwampPnL: 0, 
+                stats: { jumps: 0, claims: 0, conversions: 0, rentCollections: 0, totalRealizedPL: 0 },
+                missions: {},
+                awards: []
+            },
+            properties: JSON.parse(JSON.stringify(INITIAL_PROPERTIES)),
+            holdings: [],
+            sellQueue: [],
+            installmentPlans: [],
+            club: { id: 'ae1', target: 20000, committed: 6400, completed: false },
+            news: [{ month: 1, text: "Welcome to the Metaverse.", type: 'pos' }],
+            burn: {
+                rwampInitialSupply: CONSTANTS.RWAMP_MAX_SUPPLY,
+                maxSupply: CONSTANTS.RWAMP_MAX_SUPPLY,
+                totalRwampBurned: 0,
+                rwampSimulatedSupply: CONSTANTS.RWAMP_MAX_SUPPLY,
+                rwampFeesThisMonth: 0,
+                lastBurnAmount: 0,
+                history: []
+            },
+            sys: {
+                lastTick: Date.now()
+            }
+        };
+
+        this.saveState();
+        document.getElementById('screen-intro').style.display = 'none';
+        this.renderAll();
+        this.startGameLoop();
+        setTimeout(() => this.startTutorial(), 500);
+    },
+
+    startGameLoop: function() {
+        // Run ticker every 1 second to check for real minute passing
+        setInterval(() => {
+            this.tick();
+        }, 1000);
+    },
+
+    tick: function() {
+        const now = Date.now();
+        // Check if 60 seconds (60000ms) have passed since lastTick
+        if (now - this.state.sys.lastTick >= 60000) {
+            this.state.user.gameDay++;
+            this.state.sys.lastTick = now; // Reset anchor for next day cycle
+
+            if (this.state.user.gameDay > 30) {
+                this.state.user.gameDay = 1;
+                this.processMonth(false); // Auto month rollover
+            } else {
+                this.saveState(); // Save day progression
+                this.renderDashboard(); // Update header Day display
+            }
+        }
+    },
+
+    /* RWAMP HELPERS */
+    addRwampEarned: function(amount) {
+        if(!amount || amount <= 0) return;
+        this.state.user.rwamp += amount;
+        this.state.user.totalRwampEarned += amount;
+    },
+
+    addRwampSpent: function(amount) {
+        if(!amount || amount <= 0) return;
+        this.state.user.rwamp -= amount;
+        this.state.user.totalRwampSpent += amount;
+    },
+
+    /* TOKENOMICS LOGIC */
+    openTokenomics: function() {
+        this.renderTokenomicsModal();
+        document.getElementById('modal-tokenomics').classList.add('active');
+    },
+
+    renderTokenomicsModal: function() {
+        const u = this.state.user;
+        const b = this.state.burn;
+        const container = document.getElementById('tokenomics-content');
+        container.innerHTML = '';
+        
+        // Recalculate PnL
+        const rwampPnL = u.totalRwampEarned - u.totalRwampSpent;
+        const pnlClass = rwampPnL >= 0 ? 'text-success' : 'text-danger';
+        const pnlLabel = rwampPnL >= 0 ? 'Profit' : 'Loss';
+
+        // SECTION A: SUPPLY
+        const cardA = document.createElement('div');
+        cardA.className = 'card';
+        cardA.innerHTML = `
+            <h3>Supply & Burn</h3>
+            <div class="stat-grid">
+                <div class="stat-box">
+                    <div class="text-muted text-small">Max Supply</div>
+                    <div class="text-gold text-lg">100B R</div>
+                </div>
+                <div class="stat-box">
+                    <div class="text-muted text-small">Simulated Circ.</div>
+                    <div class="text-cyan text-lg">${this.formatMoney(b.rwampSimulatedSupply)}</div>
+                </div>
+            </div>
+            <div style="margin-top:0.5rem; display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">
+                <span class="text-muted text-small">Initial Supply</span>
+                <span>${this.formatMoney(b.maxSupply)}</span>
+            </div>
+            <div style="margin-top:0.5rem; display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">
+                <span class="text-muted text-small">Total Burned</span>
+                <span class="text-danger">${this.formatMoney(b.totalRwampBurned)}</span>
+            </div>
+            <div style="margin-top:0.5rem; display:flex; justify-content:space-between;">
+                <span class="text-muted text-small">Burn This Month</span>
+                <span class="text-danger">${this.formatMoney(b.lastBurnAmount)}</span>
+            </div>
+        `;
+        container.appendChild(cardA);
+
+        // SECTION B: FEES
+        const cardB = document.createElement('div');
+        cardB.className = 'card';
+        let burnHistoryHtml = '';
+        const recentBurns = b.history ? b.history.slice().reverse().slice(0, 6) : [];
+        
+        if (recentBurns.length === 0) {
+            burnHistoryHtml = '<div class="text-small text-muted" style="font-style:italic;">No burns yet.</div>';
+        } else {
+            recentBurns.forEach(h => {
+                burnHistoryHtml += `<div class="text-small" style="margin-bottom:2px;"><span class="text-muted">Month ${h.month}</span> â€” Burned <span class="text-danger">${this.formatMoney(h.amount)}</span></div>`;
+            });
+        }
+
+        cardB.innerHTML = `
+            <h3>Protocol Fees</h3>
+            <div class="stat-grid">
+                <div class="stat-box">
+                    <div class="text-muted text-small">Fees This Month</div>
+                    <div class="text-gold text-lg">${this.formatMoney(b.rwampFeesThisMonth)}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="text-muted text-small">Lifetime Fees</div>
+                    <div class="text-gold text-lg">${this.formatMoney(u.totalRwampSpent)}</div>
+                </div>
+            </div>
+            <div style="margin-top:1rem;">
+                <div class="text-small text-muted" style="margin-bottom:5px;">Recent Burn Events</div>
+                ${burnHistoryHtml}
+            </div>
+        `;
+        container.appendChild(cardB);
+
+        // SECTION C: PLAYER ECONOMICS
+        const cardC = document.createElement('div');
+        cardC.className = 'card';
+        cardC.innerHTML = `
+            <h3>Your RWAMP Economy</h3>
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                <span class="text-muted">Total Mined (Minted)</span>
+                <span class="text-cyan">${this.formatMoney(Math.floor(u.totalRwampMined/1000))} R</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                <span class="text-muted">Total Earned (Gross)</span>
+                <span class="text-success">${this.formatMoney(u.totalRwampEarned)} R</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">
+                <span class="text-muted">Total Spent</span>
+                <span class="text-danger">${this.formatMoney(u.totalRwampSpent)} R</span>
+            </div>
+            <div style="text-align:right;">
+                <span class="text-small text-muted">Net P/L: </span>
+                <span class="text-lg ${pnlClass}"> ${pnlLabel} ${this.formatMoney(rwampPnL)} R</span>
+            </div>
+        `;
+        container.appendChild(cardC);
+
+        // SECTION D: EXPLANATION
+        const cardD = document.createElement('div');
+        cardD.className = 'card';
+        cardD.style.border = '1px dashed var(--neon-blue)';
+        cardD.innerHTML = `
+            <p class="text-small text-muted" style="line-height:1.4;">
+                RWAMP is a deflationary token. Every month, all RWAMP fees paid in-game are burned, reducing the simulated circulating supply. With a max supply of 100 Billion RWAMP, every burn event makes the token more scarce. This panel tracks RWAMP supply, burn history, and your personal RWAMP earnings over time.
+            </p>
+        `;
+        container.appendChild(cardD);
+    },
+
+    /* MISSIONS LOGIC */
+    checkMission: function(trigger, payload = null) {
+        const u = this.state.user;
+        const mState = u.missions;
+
+        MISSIONS.forEach(m => {
+            if(!mState[m.id]) mState[m.id] = { progress: 0, claimed: false };
+            const ms = mState[m.id];
+            if(ms.claimed) return;
+
+            let updated = false;
+
+            // Type 1: Counters (Jump, Claim, Convert)
+            if(m.trigger === 'jump' && trigger === 'jump') {
+                if(m.id === 'jump_3') {
+                    // Manual jumps track in stats.jumps
+                    if(u.stats.jumps >= 3) ms.progress = 3;
+                    else ms.progress = u.stats.jumps;
+                    updated = true;
+                }
+                if(m.id === 'hold_12') {
+                    // Auto & Manual trigger hold calculation
+                    let maxHeld = 0;
+                    this.state.holdings.forEach(h => { if(h.monthsHeld > maxHeld) maxHeld = h.monthsHeld; });
+                    ms.progress = maxHeld;
+                    updated = true;
+                }
+            }
+            if(m.trigger === 'claim' && trigger === 'claim') {
+                if(m.id === 'claim_3') {
+                     if(u.stats.claims >= 3) ms.progress = 3;
+                     else ms.progress = u.stats.claims;
+                     updated = true;
+                }
+            }
+            if(m.trigger === 'convert' && trigger === 'convert') {
+                 if(m.id === 'convert_1') { ms.progress = 1; updated = true; }
+            }
+            
+            // Type 2: Thresholds (NW, Burn, RWAMP) - Checked on 'tick' or specific trigger
+            if(m.trigger === 'nw') {
+                const nw = this.calculateNetWorth();
+                if(nw >= m.max) ms.progress = m.max;
+                else ms.progress = nw;
+                updated = true;
+            }
+            if(m.trigger === 'rwamp') {
+                if(u.rwamp >= m.max) ms.progress = m.max;
+                else ms.progress = u.rwamp;
+                updated = true;
+            }
+            if(m.trigger === 'burn' && trigger === 'burn') {
+                // payload is burn amount
+                if(payload >= m.max) ms.progress = m.max; // This is a single event check
+                updated = true;
+            }
+            if(m.trigger === 'buy' && trigger === 'buy') {
+                ms.progress = 1;
+                updated = true;
+            }
+            
+            if(updated && ms.progress >= m.max && !ms.claimed && !ms.completed_notified) {
+                 // Mark as ready to claim visually? or just let render handle it
+                 // We don't auto claim missions usually
+            }
+        });
+
+        // Awards Logic (Auto Claim)
+        AWARDS.forEach(a => {
+            if(u.awards.includes(a.id)) return;
+            
+            let unlocked = false;
+            if(a.id === 'miner_50' && u.totalRwampMined >= (a.max * 1000)) unlocked = true; // max is 50R, mined is in F
+            if(a.id === 'elite_inv' && u.stats.totalRealizedPL >= a.max) unlocked = true;
+            if(a.id === 'syndicate' && trigger === 'club') unlocked = true;
+
+            if(unlocked) {
+                u.awards.push(a.id);
+                this.addRwampEarned(a.reward);
+                this.toast(`ðŸŽ– Award Unlocked: ${a.title} (+${a.reward} R)`, 'success');
+            }
+        });
+    },
+
+    openMissions: function() {
+        this.renderMissionsModal(this.activeMissionTab);
+        document.getElementById('modal-missions').classList.add('active');
+    },
+
+    renderMissionsModal: function(tab) {
+        this.activeMissionTab = tab;
+        const container = document.getElementById('missions-content');
+        container.innerHTML = '';
+
+        // Tabs UI
+        document.getElementById('tab-missions').className = `btn btn-tab ${tab==='missions'?'active':''}`;
+        document.getElementById('tab-achievements').className = `btn btn-tab ${tab==='achievements'?'active':''}`;
+        document.getElementById('tab-awards').className = `btn btn-tab ${tab==='awards'?'active':''}`;
+        
+        document.getElementById('mission-rwamp-bal').innerText = this.state.user.rwamp;
+
+        if(tab === 'missions') {
+            MISSIONS.forEach(m => {
+                let ms = this.state.user.missions[m.id];
+                if(!ms) { ms = { progress:0, claimed:false }; }
+                
+                const isDone = ms.progress >= m.max;
+                const pct = Math.min(100, (ms.progress / m.max) * 100);
+                
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.style.padding = '10px';
+                card.style.marginBottom = '8px';
+                card.style.opacity = ms.claimed ? '0.6' : '1';
+                
+                let btnHtml = '';
+                if(ms.claimed) {
+                    btnHtml = `<span class="text-success text-small">COMPLETED</span>`;
+                } else if(isDone) {
+                    btnHtml = `<button class="btn btn-gold btn-sm" onclick="app.claimMissionReward('${m.id}')">CLAIM ${m.reward} R</button>`;
+                } else {
+                    btnHtml = `<span class="text-muted text-small">${this.formatNumber(ms.progress)} / ${this.formatNumber(m.max)}</span>`;
+                }
+
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="flex:1;">
+                            <div style="font-weight:bold; font-size:0.9rem;">${m.title}</div>
+                            <div class="text-small text-muted">${m.desc}</div>
+                        </div>
+                        <div style="text-align:right; min-width:80px;">
+                            ${btnHtml}
+                        </div>
+                    </div>
+                    ${!ms.claimed ? `
+                    <div class="progress-container" style="height:4px; margin-top:8px;">
+                        <div class="progress-bar" style="width:${pct}%"></div>
+                    </div>` : ''}
+                `;
+                container.appendChild(card);
+            });
+        }
+        
+        if(tab === 'achievements') {
+            const grid = document.createElement('div');
+            grid.className = 'achievement-grid';
+            ACHIEVEMENTS.forEach(ach => {
+                const unlocked = this.state.user.achievements.includes(ach.id);
+                const item = document.createElement('div');
+                item.className = `achievement-badge ${unlocked ? 'unlocked' : 'locked'}`;
+                item.style.width = '60px';
+                item.style.height = '60px';
+                item.style.fontSize = '1.5rem';
+                item.innerHTML = `
+                    ${ach.icon}
+                    <div class="achievement-tooltip" style="width:120px;">${ach.title}<br><span style="color:#aaa;">${ach.desc}</span></div>
+                `;
+                grid.appendChild(item);
+            });
+            container.appendChild(grid);
+            
+            // Also show list details
+            ACHIEVEMENTS.forEach(ach => {
+                const unlocked = this.state.user.achievements.includes(ach.id);
+                if(unlocked) {
+                    const row = document.createElement('div');
+                    row.style.padding = "5px 0";
+                    row.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
+                    row.innerHTML = `<span style="font-size:1.2rem; margin-right:10px;">${ach.icon}</span> <b>${ach.title}</b> - <span class="text-muted">${ach.desc}</span>`;
+                    container.appendChild(row);
+                }
+            });
+        }
+
+        if(tab === 'awards') {
+             AWARDS.forEach(a => {
+                const unlocked = this.state.user.awards.includes(a.id);
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.style.padding = '10px';
+                card.style.marginBottom = '8px';
+                if(!unlocked) card.style.opacity = '0.5';
+                else card.style.borderColor = 'var(--gold-primary)';
+
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-weight:bold; color:${unlocked ? 'var(--gold-primary)' : 'inherit'};">${a.title}</div>
+                            <div class="text-small text-muted">${a.desc}</div>
+                        </div>
+                         ${unlocked ? '<div class="text-lg">ðŸ†</div>' : '<div class="text-small text-muted">LOCKED</div>'}
+                    </div>
+                    ${unlocked ? `<div class="text-small text-success" style="margin-top:5px;">Reward Collected: ${a.reward} RWAMP</div>` : ''}
+                `;
+                container.appendChild(card);
+             });
+        }
+    },
+
+    claimMissionReward: function(id) {
+        const m = MISSIONS.find(x => x.id === id);
+        const ms = this.state.user.missions[id];
+        if(ms && ms.progress >= m.max && !ms.claimed) {
+            ms.claimed = true;
+            this.addRwampEarned(m.reward);
+            this.toast(`Claimed +${m.reward} RWAMP!`, 'success');
+            this.saveState();
+            this.renderMissionsModal('missions');
+            this.renderDashboard(); // update header
+        }
+    },
+    
+    formatNumber: function(num) {
+        if(num >= 1000000) return (num/1000000).toFixed(1)+'M';
+        if(num >= 1000) return (num/1000).toFixed(1)+'k';
+        return num;
+    },
+
+    /* EXISTING METHODS UPDATE START */
+    // ... [Original methods below, some modified for missions hooks] ...
+
+    startTutorial: function() {
+        this.tutorialActive = true;
+        this.tutorialStep = 1;
+        this.switchScreen('dashboard'); // Reset view
+        this.closeModal('details');
+        document.getElementById('tutorial-backdrop').style.display = 'block';
+        document.getElementById('tutorial-tooltip').style.display = 'block';
+        this.renderTutorialStep();
+    },
+
+    endTutorial: function() {
+        this.tutorialActive = false;
+        this.tutorialStep = 0;
+        document.getElementById('tutorial-backdrop').style.display = 'none';
+        document.getElementById('tutorial-tooltip').style.display = 'none';
+        
+        // Clear highlights and elevations
+        document.querySelectorAll('.tutorial-highlight').forEach(el => el.classList.remove('tutorial-highlight'));
+        document.querySelectorAll('.tutorial-elevate-relative').forEach(el => el.classList.remove('tutorial-elevate-relative'));
+        document.querySelectorAll('.tutorial-elevate-modal').forEach(el => el.classList.remove('tutorial-elevate-modal'));
+        
+        localStorage.setItem('fopi_tut_complete', 'true');
+    },
+
+    nextTutorialStep: function() {
+        if (!this.tutorialActive) return;
+        this.tutorialStep++;
+        if (this.tutorialStep > tutorialSteps.length) {
+            this.endTutorial();
+        } else {
+            this.renderTutorialStep();
+        }
+    },
+
+    renderTutorialStep: function() {
+        const stepData = tutorialSteps.find(s => s.step === this.tutorialStep);
+        if (!stepData) return;
+
+        // Execute step setup action if defined
+        if (stepData.action) stepData.action();
+
+        // Clear previous highlights and elevations
+        document.querySelectorAll('.tutorial-highlight').forEach(el => el.classList.remove('tutorial-highlight'));
+        document.querySelectorAll('.tutorial-elevate-relative').forEach(el => el.classList.remove('tutorial-elevate-relative'));
+        document.querySelectorAll('.tutorial-elevate-modal').forEach(el => el.classList.remove('tutorial-elevate-modal'));
+        document.querySelector('.bottom-nav').style.zIndex = ''; // Reset Nav Z
+
+        const tooltip = document.getElementById('tutorial-tooltip');
+        tooltip.style.display = 'block'; // Ensure block for measuring
+
+        const title = document.getElementById('tut-title');
+        const desc = document.getElementById('tut-desc');
+        const btn = document.getElementById('tut-next-btn');
+
+        title.innerText = stepData.title;
+        desc.innerHTML = stepData.text;
+
+        if (stepData.nextBtn) {
+            btn.style.display = 'block';
+            btn.innerText = stepData.nextBtn;
+        } else {
+            btn.style.display = 'none';
+        }
+
+        // Reset to Center Default
+        tooltip.style.top = '50%';
+        tooltip.style.bottom = 'auto';
+        tooltip.style.left = '50%';
+        tooltip.style.transform = 'translate(-50%, -50%)';
+
+        if (stepData.target) {
+            const targetEl = document.getElementById(stepData.target);
+            if (targetEl) {
+                targetEl.classList.add('tutorial-highlight');
+                
+                // Helper: Lift parent card if target is inside a card to fix z-index vs backdrop
+                const parentCard = targetEl.closest('.card');
+                if (parentCard) {
+                    parentCard.classList.add('tutorial-elevate-relative');
+                }
+
+                // Helper: Lift parent modal if target is inside a modal
+                const parentModal = targetEl.closest('.modal-overlay');
+                if (parentModal) {
+                    parentModal.classList.add('tutorial-elevate-modal');
+                }
+
+                // Special case for nav bottom
+                if(stepData.target === 'nav-market') {
+                   document.querySelector('.bottom-nav').style.zIndex = '9005';
+                   targetEl.classList.add('tutorial-highlight-transparent');
+                }
+
+                const rect = targetEl.getBoundingClientRect();
+                const viewH = window.innerHeight;
+                
+                // Check if target is in the middle 50% of screen vertically
+                const inMiddle = (rect.bottom > viewH * 0.25 && rect.top < viewH * 0.75);
+
+                if (inMiddle) {
+                    const targetCenterY = rect.top + rect.height/2;
+                    if (targetCenterY < viewH / 2) {
+                        // Target is upper-ish -> Put tooltip at bottom
+                        tooltip.style.top = 'auto';
+                        tooltip.style.bottom = '10%';
+                        tooltip.style.transform = 'translateX(-50%)'; // remove Y centering
+                    } else {
+                        // Target is lower-ish -> Put tooltip at top
+                        tooltip.style.top = '15%';
+                        tooltip.style.bottom = 'auto';
+                        tooltip.style.transform = 'translateX(-50%)';
+                    }
+                }
+            }
+        }
+    },
+    
+    saveState: function() {
+        localStorage.setItem('fopi_v19', JSON.stringify(this.state));
+        this.renderAll();
+    },
+
+    unlockAchievement: function(id) {
+        if (this.state.user.achievements.includes(id)) return;
+        this.state.user.achievements.push(id);
+        const meta = ACHIEVEMENTS.find(a => a.id === id);
+        this.toast(`ðŸ† Achievement Unlocked: ${meta.title}`);
+        this.saveState();
+    },
+
+    // --- UTILS ---
+    toast: function(msg, type='neutral') {
+        const c = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = 'toast';
+        if(type==='error') el.style.borderLeftColor = 'var(--danger)';
+        if(type==='success') el.style.borderLeftColor = 'var(--success)';
+        el.innerText = msg;
+        c.appendChild(el);
+        setTimeout(() => el.remove(), 4000);
+    },
+
+    formatMoney: function(amount) {
+        if (amount >= 1000000000) return (amount / 1000000000).toFixed(2) + 'B';
+        if (amount >= 1000000) return (amount / 1000000).toFixed(2) + 'M';
+        if (amount >= 1000) return (amount / 1000).toFixed(1) + 'k';
+        return amount.toLocaleString();
+    },
+    formatFOPI: function(val) { return "$F " + this.formatMoney(val); },
+    formatRWAMP: function(val) { return "R " + this.formatMoney(val); },
+
+    // No longer used directly for transactions, logic is inline or in updateBuyPreview
+    calculateFee: function(fopiAmount) {
+        return Math.floor((fopiAmount * CONSTANTS.FEE_PERCENT) / 100) * 100; // Rough conversion
+    },
+
+    calculateNetWorth: function() {
+        const cash = this.state.user.fopi;
+        const assets = this.state.holdings.reduce((sum, h) => {
+            const prop = this.state.properties.find(p => p.id === h.propertyId);
+            return sum + (h.sqft * prop.pricePerSqft);
+        }, 0);
+        return cash + assets;
+    },
+
+    // --- RENDERERS ---
+
+    renderAll: function() {
+        this.renderDashboard();
+        this.renderMarket();
+        this.renderPortfolio();
+        this.renderClubs();
+        this.renderLeaderboard();
+        
+        // Update tutorial step if specific state conditions met (backup)
+        if(this.tutorialActive) this.renderTutorialStep();
+    },
+
+    renderDashboard: function() {
+        const u = this.state.user;
+        const nw = this.calculateNetWorth();
+        
+        // Mission Check: NW
+        this.checkMission('nw');
+        this.checkMission('rwamp');
+
+        // Updated Month/Day display
+        document.getElementById('header-month').innerText = u.currentMonth + " | D " + u.gameDay;
+        
+        document.getElementById('dash-fopi').innerText = this.formatFOPI(u.fopi);
+        document.getElementById('dash-rwamp').innerText = this.formatRWAMP(u.rwamp);
+        document.getElementById('dash-rwamp-lifetime').innerText = `Lifetime: R ${this.formatMoney(u.totalRwampEarned)}`;
+        document.getElementById('dash-networth').innerText = this.formatFOPI(nw);
+        
+        // FIX: Display unclaimed rent instead of total collected
+        document.getElementById('dash-rent').innerText = this.formatFOPI(u.unclaimedRent || 0);
+
+        // Treasury
+        const profit = u.generatedRevenue - u.totalRwampMined; // Simplified logic
+        document.getElementById('dash-profit-bal').innerText = this.formatFOPI(Math.max(0, profit));
+        document.getElementById('dash-total-mined').innerText = this.formatRWAMP(Math.floor(u.totalRwampMined / 1000));
+
+        // Burn
+        const b = this.state.burn;
+        document.getElementById('dash-sim-supply').innerText = this.formatMoney(b.rwampSimulatedSupply);
+        document.getElementById('dash-burn-month').innerText = this.formatMoney(b.rwampFeesThisMonth);
+        document.getElementById('dash-burn-total').innerText = this.formatMoney(b.totalRwampBurned);
+
+        // News
+        const latestNews = this.state.news[this.state.news.length - 1];
+        const nEl = document.getElementById('dashboard-news-text');
+        nEl.innerText = latestNews.text;
+        const wEl = document.getElementById('news-widget');
+        if(latestNews.type === 'pos') wEl.style.borderLeftColor = 'var(--success)';
+        else if(latestNews.type === 'neg') wEl.style.borderLeftColor = 'var(--danger)';
+        else wEl.style.borderLeftColor = 'var(--neon-purple)';
+
+        // Trophies
+        const ag = document.getElementById('dashboard-achievements');
+        ag.innerHTML = '';
+        ACHIEVEMENTS.forEach(ach => {
+            const unlocked = u.achievements.includes(ach.id);
+            const d = document.createElement('div');
+            d.className = `achievement-badge ${unlocked ? 'unlocked' : 'locked'}`;
+            d.innerHTML = `
+                ${ach.icon}
+                <div class="achievement-tooltip">${ach.title}<br>${ach.desc}</div>
+            `;
+            ag.appendChild(d);
+        });
+
+        // Top holdings
+        const hl = document.getElementById('dash-holdings-list');
+        hl.innerHTML = '';
+        if(this.state.holdings.length === 0) hl.innerHTML = '<div class="text-muted text-small">No assets yet.</div>';
+        else {
+            this.state.holdings.slice(0, 3).forEach(h => {
+                const p = this.state.properties.find(x => x.id === h.propertyId);
+                const val = h.sqft * p.pricePerSqft;
+                const d = document.createElement('div');
+                d.className = 'card';
+                d.style.padding = '10px';
+                d.style.marginBottom = '5px';
+                d.innerHTML = `
+                    <div style="display:flex; justify-content:space-between;">
+                        <span class="text-small text-gold">${p.name}</span>
+                        <span class="text-small">${this.formatFOPI(val)}</span>
+                    </div>
+                `;
+                hl.appendChild(d);
+            });
+        }
+        
+        // Tags
+        let tag = "Novice";
+        if(nw > 1000000) tag = "Millionaire";
+        if(nw > 10000000) tag = "Whale";
+        if(nw > 100000000) tag = "Tycoon";
+        document.getElementById('player-tag').innerText = tag;
+        if(tag !== "Novice" && tag !== u.playerTag) {
+            this.toast(`Rank Up! You are now a ${tag}`);
+            u.playerTag = tag;
+        }
+
+        // Achievement checks (Tycoon, Whale)
+        if(this.state.holdings.length >= 3) this.unlockAchievement('tycoon');
+        if(nw >= 1000000) this.unlockAchievement('millionaire'); // Early Whale
+    },
+
+    renderMarket: function() {
+        const list = document.getElementById('marketplace-list');
+        list.innerHTML = '';
+        
+        const filtered = this.state.properties.filter(p => p.region === this.currentMarketRegion);
+        
+        filtered.forEach((p, index) => {
+            const isAffordable = this.state.user.rwamp >= (p.minRwamp || 0);
+            const canAffordClass = isAffordable ? '' : 'opacity:0.5;';
+            const statusBadge = p.status === 'READY' ? 'badge-ready' : 'badge-uc';
+            
+            // Tutorial ID hook
+            const tutId = (index === 0) ? 'id="tutorial-market-item-1"' : '';
+
+            const el = document.createElement('div');
+            el.className = 'card';
+            el.style = canAffordClass;
+            el.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
+                    <div>
+                        <h3 style="margin:0;">${p.name}</h3>
+                        <span class="badge ${statusBadge}">${p.status}</span>
+                        ${p.status === 'UC' ? `<span class="badge">HO: ${p.handoverMonth}m</span>` : ''}
+                    </div>
+                    <div style="text-align:right;">
+                        <div class="text-gold text-lg">$F ${p.pricePerSqft.toLocaleString()}</div>
+                        <div class="text-small text-muted">/sqft</div>
+                    </div>
+                </div>
+                
+                <div class="stat-grid" style="margin-bottom:0.5rem;">
+                    <div style="text-align:left;">
+                        <div class="text-muted text-small">Growth</div>
+                        <div class="text-success">+${p.annualAppreciationPct}%</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div class="text-muted text-small">Yield</div>
+                        <div class="text-success">${p.annualYieldPct}%</div>
+                    </div>
+                </div>
+
+                ${!isAffordable ? `<div class="text-danger text-small" style="margin-bottom:5px;">Req: ${p.minRwamp} RWAMP</div>` : ''}
+
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-outline btn-sm" onclick="app.openModal('analytics', '${p.id}')">Analyze</button>
+                    <button ${tutId} class="btn btn-primary btn-sm" onclick="app.openDetails('${p.id}')" ${!isAffordable ? 'disabled' : ''}>VIEW</button>
+                </div>
+            `;
+            list.appendChild(el);
+        });
+    },
+
+    renderPortfolio: function() {
+        const list = document.getElementById('portfolio-list');
+        const queueList = document.getElementById('sell-queue-list');
+        const plansList = document.getElementById('plans-list');
+        list.innerHTML = '';
+        queueList.innerHTML = '';
+        plansList.innerHTML = '';
+
+        let totalVal = 0;
+        let totalCost = 0;
+
+        // Holdings
+        if(this.state.holdings.length === 0) list.innerHTML = '<div class="text-muted text-small" style="text-align:center;">No active properties owned.</div>';
+        
+        this.state.holdings.forEach(h => {
+            const p = this.state.properties.find(x => x.id === h.propertyId);
+            const currentVal = h.sqft * p.pricePerSqft;
+            const costBasis = h.totalInvested;
+            const gain = currentVal - costBasis;
+            const gainPct = ((gain / costBasis) * 100).toFixed(1);
+            
+            totalVal += currentVal;
+            totalCost += costBasis;
+
+            const el = document.createElement('div');
+            el.className = 'card';
+            el.innerHTML = `
+                <div style="display:flex; justify-content:space-between;">
+                    <div style="font-weight:bold;">${p.name}</div>
+                    <div class="text-cyan">$F ${currentVal.toLocaleString()}</div>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-top:5px;">
+                    <span class="text-muted">${h.sqft} sqft @ $F${(costBasis/h.sqft).toFixed(0)}</span>
+                    <span class="${gain >= 0 ? 'text-success' : 'text-danger'}">${gain >= 0 ? '+' : ''}${gainPct}%</span>
+                </div>
+                <div style="text-align:right; margin-top:5px;">
+                    <button class="btn btn-mini btn-outline" onclick="app.openDetails('${p.id}')">Manage</button>
+                </div>
+            `;
+            list.appendChild(el);
+        });
+
+        // Stats
+        document.getElementById('port-total-value').innerText = this.formatFOPI(totalVal);
+        const totalGain = totalVal - totalCost;
+        const plEl = document.getElementById('port-pl');
+        plEl.innerText = this.formatFOPI(totalGain);
+        plEl.className = totalGain >= 0 ? 'text-lg text-success' : 'text-lg text-danger';
+
+        // RWAMP PNL (Valuation - Initial Investment)
+        const totalRwampVal = totalVal / CONSTANTS.EXCHANGE_RATE; // hypothetical if liquidated
+        const cashRwamp = this.state.user.fopi / CONSTANTS.EXCHANGE_RATE;
+        const totalRwampWealth = this.state.user.rwamp + totalRwampVal + cashRwamp;
+        const rwampPnl = totalRwampWealth - this.state.user.initialRwamp;
+        const rpEl = document.getElementById('port-rwamp-pnl');
+        rpEl.innerText = (rwampPnl >= 0 ? '+' : '') + this.formatRWAMP(rwampPnl);
+        rpEl.className = rwampPnl >= 0 ? 'text-lg text-success' : 'text-lg text-danger';
+
+        // Sell Queue
+        if(this.state.sellQueue.length === 0) queueList.innerHTML = '<div class="text-muted text-small">No pending sales.</div>';
+        this.state.sellQueue.forEach(sq => {
+            const p = this.state.properties.find(x => x.id === sq.propertyId);
+            const el = document.createElement('div');
+            el.className = 'card';
+            el.style.border = '1px solid var(--danger)';
+            el.innerHTML = `
+                <div class="text-small text-danger" style="margin-bottom:2px;">LIQUIDATING</div>
+                <div style="font-weight:bold;">${p.name}</div>
+                <div class="text-small text-muted">Amount: ${sq.sqft} sqft</div>
+                <div class="text-small text-gold">Cash in: ${sq.monthsLeft} months</div>
+            `;
+            queueList.appendChild(el);
+        });
+
+        // Installments
+        if(this.state.installmentPlans.length === 0) plansList.innerHTML = '<div class="text-muted text-small">No active plans.</div>';
+        this.state.installmentPlans.forEach((plan, idx) => {
+             const p = this.state.properties.find(x => x.id === plan.propertyId);
+             const el = document.createElement('div');
+             el.className = 'card';
+             el.style.border = '1px dashed var(--neon-blue)';
+             el.innerHTML = `
+                <div style="font-weight:bold;">${p.name}</div>
+                <div class="text-small text-muted">Auto-Buy: ${plan.monthlySqft} sqft/mo</div>
+                <button class="btn btn-mini btn-danger" style="margin-top:5px;" onclick="app.cancelPlan(${idx})">Stop</button>
+             `;
+             plansList.appendChild(el);
+        });
+    },
+
+    renderClubs: function() {
+        // Buyout Card
+        const clubProp = this.state.properties.find(p => p.id === 'club1');
+        const userShare = this.state.user.syndicateStaked;
+        const poolPct = Math.min(100, (this.state.club.committed / this.state.club.target) * 100).toFixed(1);
+        
+        const cc = document.getElementById('club-buyout-card');
+        cc.innerHTML = `
+            <div style="display:flex; justify-content:space-between;">
+                <h3 style="color:var(--gold-primary);">Active Syndicate: ${clubProp.name}</h3>
+                <span class="badge badge-rwamp">Pool</span>
+            </div>
+            <p class="text-small text-muted" style="margin-bottom:1rem;">
+                Crowdfund this luxury asset with other whales. 100% committed triggers buyout distribution.
+            </p>
+            
+            <div class="text-small text-muted">Funding Progress</div>
+            <div class="progress-container">
+                <div class="progress-bar" style="width:${poolPct}%"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:1rem; font-size:0.8rem;">
+                <span>${this.formatRWAMP(this.state.club.committed)}</span>
+                <span>Target: ${this.formatRWAMP(this.state.club.target)}</span>
+            </div>
+
+            <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:8px; margin-bottom:1rem;">
+                <div class="text-small text-muted">Your Stake</div>
+                <div class="text-lg text-gold">${this.formatRWAMP(userShare)}</div>
+                <button class="btn btn-gold btn-sm" style="margin-top:5px;" onclick="app.contributeSyndicate()">+ Contribute 500 R</button>
+            </div>
+        `;
+
+        // Resale (Private Equity) - Simplified as static placeholder for now
+        document.getElementById('club-resale-container').innerHTML = `
+            <div class="card" style="opacity:0.6;">
+                <h3 style="color:var(--text-muted);">Secondary Market</h3>
+                <p class="text-small text-muted">Unlock 'Tycoon' status to access private equity deals.</p>
+            </div>
+        `;
+    },
+
+    renderLeaderboard: function() {
+        const lb = document.getElementById('leaderboard-list');
+        lb.innerHTML = '';
+        
+        // Mock data mixed with user
+        const players = [
+            { name: "CryptoKing", nw: 50000000 },
+            { name: "SatoshiLand", nw: 25000000 },
+            { name: "BaronHarkonnen", nw: 12000000 },
+            { name: this.state.user.playerTag === 'Novice' ? 'You' : 'You ('+this.state.user.playerTag+')', nw: this.calculateNetWorth(), isUser: true },
+            { name: "ElonMars", nw: 800000 },
+            { name: "PaperHands", nw: 50000 }
+        ];
+
+        players.sort((a,b) => b.nw - a.nw);
+
+        players.forEach((p, i) => {
+            const el = document.createElement('div');
+            el.className = 'card';
+            el.style.marginBottom = '5px';
+            el.style.padding = '10px';
+            if(p.isUser) el.style.border = '1px solid var(--gold-primary)';
+            
+            el.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <span class="text-gold" style="font-weight:bold; margin-right:10px;">#${i+1}</span>
+                        <span>${p.name}</span>
+                    </div>
+                    <div class="text-cyan">${this.formatFOPI(p.nw)}</div>
+                </div>
+            `;
+            lb.appendChild(el);
+        });
+    },
+
+    // --- GAME LOOP ---
+
+    // Manual Jump Button Logic
+    jumpMonth: function() {
+        this.processMonth(true); // Is Manual = true
+        // Reset timer anchor immediately as per requirement
+        this.state.user.gameDay = 1;
+        this.state.sys.lastTick = Date.now(); 
+        
+        this.saveState();
+        this.renderAll();
+    },
+
+    // Core Logic extracted for reuse by manual and auto month jumps
+    processMonth: function(isManual) {
+        this.state.user.currentMonth++;
+        if(isManual) this.state.user.stats.jumps++;
+        
+        // 1. Market Movements
+        const newsRng = Math.random();
+        let news = { month: this.state.user.currentMonth, text: "Market Stable.", type: 'neu' };
+        
+        if(newsRng > 0.7) {
+            news = NEWS_SCENARIOS[Math.floor(Math.random() * NEWS_SCENARIOS.length)];
+        }
+        this.state.news.push(news);
+
+        this.state.properties.forEach(p => {
+            // Price Change
+            let change = (p.annualAppreciationPct / 12);
+            if(news.id === 'crash') change -= 8;
+            if(news.id === 'rally') change += 2;
+            if(news.id === 'mena_boom' && p.region === 'AE') change += 5;
+
+            // Random fluctuation
+            const flux = (Math.random() * 2) - 1; // -1 to +1%
+            const newPrice = p.pricePerSqft * (1 + (change + flux)/100);
+            p.pricePerSqft = Math.floor(newPrice);
+            p.history.push(p.pricePerSqft);
+            if(p.history.length > CONSTANTS.MAX_HISTORY) p.history.shift();
+
+            // Construction Progress
+            if(p.status === 'UC') {
+                if(news.id === 'delay' && Math.random() > 0.5) {
+                    p.handoverMonth += 2; // delay
+                } else if(p.handoverMonth > 0) {
+                    p.handoverMonth--;
+                }
+                
+                if(p.handoverMonth === 0) {
+                    p.status = 'READY';
+                    p.annualYieldPct = 6; // Base yield on completion
+                    this.toast(`${p.name} Construction Completed!`, 'success');
+                    this.unlockAchievement('first_handover');
+                }
+            }
+        });
+
+        // Holdings Aging for missions
+        this.state.holdings.forEach(h => {
+           if(h.monthsHeld === undefined) h.monthsHeld = 0;
+           h.monthsHeld++;
+        });
+
+        // 2. Rent Collection Accumulation (Not auto-added to cash, goes to claimable)
+        let monthlyRent = 0;
+        this.state.holdings.forEach(h => {
+            const p = this.state.properties.find(x => x.id === h.propertyId);
+            let yieldPct = p.annualYieldPct;
+            if(p.status === 'UC' && p.hasUcYield) yieldPct = p.ucAnnualYieldPct;
+            
+            if(yieldPct > 0) {
+                const rent = (h.sqft * p.pricePerSqft * (yieldPct/100)) / 12;
+                monthlyRent += rent;
+            }
+        });
+        
+        // Accumulate uncollected rent
+        if(!this.state.user.totalRentCollected) this.state.user.totalRentCollected = 0; 
+        if(this.state.user.unclaimedRent === undefined) this.state.user.unclaimedRent = 0;
+        this.state.user.unclaimedRent += monthlyRent;
+        
+        // Also generated revenue stat for mining cap
+        this.state.user.generatedRevenue += monthlyRent; 
+
+        // 3. Installment Plans
+        this.state.installmentPlans.forEach(plan => {
+            const p = this.state.properties.find(x => x.id === plan.propertyId);
+            const cost = plan.monthlySqft * p.pricePerSqft;
+            // Plans default to RWAMP fee for auto-invest if available, else fail?
+            // To keep simple, plans pay fee in RWAMP (1%)
+            const feeFopi = cost * 0.01;
+            const feeRwamp = Math.floor(feeFopi / 100);
+            
+            if(this.state.user.fopi >= cost && this.state.user.rwamp >= feeRwamp) {
+                this.state.user.fopi -= cost;
+                this.addRwampSpent(feeRwamp);
+                this.state.burn.rwampFeesThisMonth += feeRwamp;
+                
+                let h = this.state.holdings.find(x => x.propertyId === plan.propertyId);
+                if(h) {
+                    h.sqft += plan.monthlySqft;
+                    h.totalInvested += cost;
+                } else {
+                    this.state.holdings.push({ propertyId: plan.propertyId, sqft: plan.monthlySqft, totalInvested: cost, monthsHeld: 0 });
+                }
+            }
+        });
+
+        // 4. Sell Queue Processing
+        this.state.sellQueue = this.state.sellQueue.filter(sq => {
+            sq.monthsLeft--;
+            if(sq.monthsLeft <= 0) {
+                const p = this.state.properties.find(x => x.id === sq.propertyId);
+                const cash = sq.sqft * p.pricePerSqft;
+                this.state.user.fopi += cash;
+                
+                // Profit Calculation for achievements
+                const profit = cash - sq.costBasis;
+                const profitPct = (profit / sq.costBasis);
+                this.state.user.stats.totalRealizedPL += profit;
+                
+                if(profitPct >= 0.20) this.unlockAchievement('flipper');
+                
+                this.toast(`Sold ${p.name} for ${this.formatFOPI(cash)}`, 'success');
+                this.unlockAchievement('sell_complete');
+                return false; // remove
+            }
+            return true;
+        });
+
+        // 5. Syndicate Logic (Simulated others investing)
+        if(!this.state.club.completed) {
+            const externalInflow = Math.floor(Math.random() * 2000); // Random R added
+            this.state.club.committed += externalInflow;
+            if(this.state.club.committed >= this.state.club.target) {
+                this.state.club.committed = this.state.club.target;
+                this.state.club.completed = true;
+                this.processSyndicateReward();
+            }
+        }
+
+        // 6. RWAMP Burn
+        const burnAmount = Math.floor(this.state.burn.rwampFeesThisMonth);
+        this.state.burn.totalRwampBurned += burnAmount;
+        this.state.burn.rwampSimulatedSupply -= burnAmount;
+        this.state.burn.lastBurnAmount = burnAmount;
+        
+        // Log history
+        if(burnAmount > 0) {
+             if(!this.state.burn.history) this.state.burn.history = [];
+             this.state.burn.history.push({ month: this.state.user.currentMonth, amount: burnAmount });
+        }
+        
+        this.state.burn.rwampFeesThisMonth = 0; // Reset for next month
+
+        // Missions Check
+        if(isManual) this.checkMission('jump'); // Only manual jumps count for mission
+        else this.checkMission('jump'); // Wait, mission says 'hold property for 12 months', that happens on ANY jump.
+        // The specific 'Jump 3 Months' mission implies manual action. So:
+        if(isManual) this.checkMission('jump', 'manual'); 
+        else this.checkMission('jump', 'auto'); 
+        
+        // Actually, checkMission logic handles sub-types internally, but let's just run generic check
+        // and fix logic inside checkMission if needed. For now simple call is fine as hold_12 checks holdings.
+        
+        this.checkMission('burn', burnAmount); // Burn mission
+        this.checkMission('nw'); // Passive check for NW growth
+    },
+
+    claimAllRent: function() {
+        if(this.state.user.unclaimedRent > 0) {
+            const amt = this.state.user.unclaimedRent;
+            this.state.user.fopi += amt;
+            this.state.user.totalRentCollected += amt;
+            this.state.user.unclaimedRent = 0;
+            this.state.user.stats.claims++;
+            
+            this.toast(`Claimed ${this.formatFOPI(amt)} Yield`, 'success');
+            this.unlockAchievement('first_rent');
+            if(this.state.user.stats.claims >= 10) this.unlockAchievement('landlord');
+            
+            this.checkMission('claim');
+
+            this.saveState();
+            this.renderAll();
+
+            // Tutorial Next
+            if(this.tutorialActive && this.tutorialStep === 7) {
+                this.nextTutorialStep();
+            }
+        } else {
+            this.toast('No yield to claim yet.', 'neutral');
+        }
+    },
+
+    convertFopiToRwamp: function() {
+        const input = document.getElementById('dash-convert-input');
+        const fopiAmt = parseInt(input.value);
+        if(!fopiAmt || fopiAmt <= 0) return;
+
+        // Cap logic: Can only convert Profit
+        const profit = Math.max(0, this.state.user.generatedRevenue - this.state.user.totalRwampMined);
+        
+        if(fopiAmt > profit) {
+            this.toast('Can only convert realized profits (Revenue)', 'error');
+            return;
+        }
+
+        if(this.state.user.fopi < fopiAmt) {
+            this.toast('Insufficient FOPI cash', 'error');
+            return;
+        }
+
+        const rwampAmt = Math.floor(fopiAmt / CONSTANTS.FOPI_PER_RWAMP);
+        
+        this.state.user.fopi -= fopiAmt;
+        this.state.user.totalRwampMined += fopiAmt; // Track amount converted in $F terms
+        this.addRwampEarned(rwampAmt);
+        
+        this.state.user.stats.conversions++;
+
+        this.toast(`Minted ${rwampAmt} RWAMP`, 'success');
+        this.checkMission('convert');
+        this.checkMission('rwamp');
+
+        input.value = '';
+        this.saveState();
+        this.renderAll();
+
+        // Tutorial Next
+        if(this.tutorialActive && this.tutorialStep === 8) {
+            this.nextTutorialStep();
+        }
+    },
+
+    withdrawRwamp: function() {
+        alert("Withdrawal to Wallet functionality coming in Phase 2.");
+    },
+
+    openExchange: function() {
+        document.getElementById('ex-rwamp-bal').innerText = `Bal: ${this.state.user.rwamp}`;
+        document.getElementById('ex-fopi-bal').innerText = `Bal: ${Math.floor(this.state.user.fopi)}`;
+        this.openModal('exchange');
+    },
+
+    swapTokens: function(direction) {
+        if(direction === 'RtoF') {
+            const r = parseInt(document.getElementById('swap-rwamp-input').value);
+            if(!r || r > this.state.user.rwamp) return this.toast('Invalid RWAMP amount', 'error');
+            this.addRwampSpent(r);
+            this.state.user.fopi += (r * CONSTANTS.EXCHANGE_RATE);
+            this.toast(`Swapped ${r} R for $F`, 'success');
+        } else {
+            const f = parseInt(document.getElementById('swap-fopi-input').value);
+            if(!f || f > this.state.user.fopi) return this.toast('Invalid FOPI amount', 'error');
+            const r = Math.floor(f / CONSTANTS.EXCHANGE_RATE);
+            this.state.user.fopi -= f;
+            this.addRwampEarned(r);
+            this.toast(`Swapped $F for ${r} R`, 'success');
+        }
+        this.openExchange(); // update UI
+        this.saveState();
+        this.renderAll();
+    },
+
+    contributeSyndicate: function() {
+        const amount = 500;
+        if(this.state.user.rwamp < amount) {
+            this.toast('Insufficient RWAMP', 'error');
+            return;
+        }
+        if(this.state.club.completed) {
+            this.toast('Pool already filled!', 'neutral');
+            return;
+        }
+
+        this.addRwampSpent(amount);
+        this.state.user.syndicateStaked += amount;
+        this.state.club.committed += amount;
+
+        this.unlockAchievement('syndicate_join');
+        this.checkMission('club'); // Award check
+
+        this.toast('Staked 500 R in Syndicate', 'success');
+        this.saveState();
+        this.renderAll();
+    },
+
+    processSyndicateReward: function() {
+        const totalPool = this.state.club.target;
+        const userStake = this.state.user.syndicateStaked;
+        
+        if(userStake > 0) {
+            const clubProp = this.state.properties.find(p => p.id === 'club1');
+            const userSharePct = userStake / totalPool;
+            const stakeValueFopi = userStake * CONSTANTS.EXCHANGE_RATE;
+            const discountedPrice = clubProp.pricePerSqft * 0.7; // 30% discount for club members
+            const sqftWon = Math.floor(stakeValueFopi / discountedPrice);
+            const refund = Math.floor(stakeValueFopi * 0.03); 
+            
+            this.state.user.fopi += refund;
+            this.state.holdings.push({
+                propertyId: 'club1',
+                sqft: sqftWon,
+                totalInvested: stakeValueFopi,
+                monthsHeld: 0
+            });
+
+            document.getElementById('reward-name').innerText = clubProp.name;
+            document.getElementById('reward-sqft').innerText = sqftWon + " sqft";
+            document.getElementById('reward-refund').innerText = "$F " + refund;
+            document.getElementById('modal-reward').classList.add('active');
+
+            this.state.user.syndicateStaked = 0;
+            this.saveState();
+        }
+    },
+    
+    renderAnalyticsModal: function() {
+        const p = this.state.properties.find(x => x.id === this.selectedPropertyId);
+        document.getElementById('analytics-title').innerText = "Analysis: " + p.name;
+        document.getElementById('analytics-region').innerText = p.region;
+        document.getElementById('analytics-status').innerText = p.status;
+
+        const ast = document.getElementById('analytics-stats');
+        ast.innerHTML = `
+            <div class="stat-grid">
+                 <div class="stat-box">
+                    <div class="text-muted text-small">Current Price</div>
+                    <div class="text-lg">$F ${p.pricePerSqft.toLocaleString()}</div>
+                 </div>
+                 <div class="stat-box">
+                    <div class="text-muted text-small">Volatility Risk</div>
+                    <div class="${p.region === 'PK' ? 'text-danger' : 'text-success'} text-lg">${p.region === 'PK' ? 'HIGH' : 'LOW'}</div>
+                 </div>
+            </div>
+            <p class="text-small text-muted" style="margin-top:5px;">
+                ${p.status === 'UC' ? 
+                `Construction on schedule. Delays possible (${(p.delayRiskPct*100).toFixed(0)}% chance).` : 
+                `Generating steady yield. Market demand is stable.`}
+            </p>
+        `;
+
+        const ctx = document.getElementById('analytics-chart').getContext('2d');
+        const W = ctx.canvas.width = 300;
+        const H = ctx.canvas.height = 150;
+        ctx.clearRect(0,0,W,H);
+        
+        ctx.strokeStyle = '#00f3ff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        
+        const data = p.history;
+        const min = Math.min(...data) * 0.95;
+        const max = Math.max(...data) * 1.05;
+        const range = max - min;
+        
+        data.forEach((val, i) => {
+            const x = (i / (data.length - 1)) * W;
+            const y = H - ((val - min) / range) * H;
+            if(i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        const el = document.getElementById('analytics-events');
+        el.innerHTML = '';
+        this.state.news.slice().reverse().forEach(n => {
+            const div = document.createElement('div');
+            div.className = 'event-item';
+            let color = '#999';
+            if(n.type === 'pos') color = 'var(--success)';
+            if(n.type === 'neg') color = 'var(--danger)';
+            div.innerHTML = `<div class="event-dot" style="background:${color}"></div> Mth ${n.month}: ${n.text}`;
+            el.appendChild(div);
+        });
+    },
+
+    // --- ACTIONS ---
+
+    switchScreen: function(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById('screen-' + screenId).classList.add('active');
+        
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        const navId = screenId === 'leaderboard' ? 'rank' : 
+                      screenId === 'marketplace' ? 'market' : 
+                      screenId === 'portfolio' ? 'port' : 
+                      screenId === 'clubs' ? 'clubs' : 'dash';
+        const navEl = document.getElementById('nav-' + navId);
+        if(navEl) navEl.classList.add('active');
+
+        // Tutorial Logic
+        if (this.tutorialActive && this.tutorialStep === 3 && screenId === 'marketplace') {
+            this.nextTutorialStep();
+        }
+        
+        window.scrollTo(0,0);
+    },
+
+    setMarketRegion: function(region) {
+        this.currentMarketRegion = region;
+        const buttons = document.querySelectorAll('.btn-group .btn-tab');
+        buttons.forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+        this.renderMarket();
+    },
+
+    openModal: function(modalId, propId = null) {
+        if(propId) {
+            this.selectedPropertyId = propId;
+            if(modalId === 'analytics') this.renderAnalyticsModal();
+        }
+        document.getElementById('modal-' + modalId).classList.add('active');
+    },
+
+    closeModal: function(modalId) {
+        document.getElementById('modal-' + modalId).classList.remove('active');
+    },
+
+    openDetails: function(propId) {
+        this.selectedPropertyId = propId;
+        const p = this.state.properties.find(x => x.id === propId);
+        
+        document.getElementById('modal-title').innerText = p.name;
+        document.getElementById('modal-price').innerText = this.formatFOPI(p.pricePerSqft);
+        document.getElementById('modal-yield').innerText = p.annualYieldPct + "%";
+        document.getElementById('modal-badge').innerText = p.status;
+        document.getElementById('modal-badge').className = `badge ${p.status === 'READY' ? 'badge-ready' : 'badge-uc'}`;
+        document.getElementById('modal-rwamp-req').innerText = `Req: ${p.minRwamp} R`;
+
+        document.getElementById('buy-fee-method').value = 'RWAMP';
+        document.getElementById('sell-fee-method').value = 'RWAMP';
+
+        if(p.status === 'UC') {
+            document.getElementById('modal-uc-info').style.display = 'block';
+            document.getElementById('modal-handover').innerText = p.handoverMonth;
+            document.getElementById('modal-installment-opt').style.display = 'block';
+        } else {
+            document.getElementById('modal-uc-info').style.display = 'none';
+            document.getElementById('modal-installment-opt').style.display = 'none';
+        }
+
+        const h = this.state.holdings.find(x => x.propertyId === propId);
+        document.getElementById('modal-owned').innerText = h ? h.sqft : 0;
+        document.getElementById('modal-avail').innerText = h ? h.sqft : 0; 
+
+        const chartEl = document.getElementById('modal-chart');
+        chartEl.innerHTML = '';
+        const maxPrice = Math.max(...p.history);
+        p.history.forEach(price => {
+            const hPct = (price / maxPrice) * 100;
+            const bar = document.createElement('div');
+            bar.className = 'chart-bar';
+            bar.style.height = hPct + '%';
+            chartEl.appendChild(bar);
+        });
+
+        document.getElementById('modal-buy-input').value = '';
+        document.getElementById('modal-buy-cost').innerText = '$F 0';
+        document.getElementById('modal-buy-fee').innerText = 'R 0';
+        document.getElementById('modal-sell-input').value = '';
+
+        this.openModal('details');
+
+        if (this.tutorialActive && this.tutorialStep === 4) {
+            this.nextTutorialStep();
+        }
+    },
+
+    updateBuyPreview: function() {
+        const sqft = parseInt(document.getElementById('modal-buy-input').value) || 0;
+        const prop = this.state.properties.find(p => p.id === this.selectedPropertyId);
+        if(!prop) return;
+        
+        const costFopi = sqft * prop.pricePerSqft;
+        const method = document.getElementById('buy-fee-method').value;
+        
+        let feeString = "";
+        
+        if(method === 'RWAMP') {
+            const feeFopi = costFopi * 0.01;
+            const feeRwamp = Math.floor(feeFopi / 100);
+            feeString = this.formatRWAMP(feeRwamp);
+        } else {
+            const feeFopi = Math.floor(costFopi * 0.02);
+            feeString = this.formatFOPI(feeFopi);
+        }
+        
+        document.getElementById('modal-buy-cost').innerText = this.formatFOPI(costFopi);
+        document.getElementById('modal-buy-fee').innerText = feeString;
+    },
+
+    setMaxBuy: function() {
+        const p = this.state.properties.find(x => x.id === this.selectedPropertyId);
+        const maxSqft = Math.floor(this.state.user.fopi / p.pricePerSqft);
+        document.getElementById('modal-buy-input').value = maxSqft;
+        this.updateBuyPreview();
+    },
+
+    setMaxSell: function() {
+        const h = this.state.holdings.find(x => x.propertyId === this.selectedPropertyId);
+        if(h) document.getElementById('modal-sell-input').value = h.sqft;
+    },
+
+    buyFromModal: function() {
+        const sqft = parseInt(document.getElementById('modal-buy-input').value);
+        if(!sqft || sqft <= 0) return;
+
+        const p = this.state.properties.find(x => x.id === this.selectedPropertyId);
+        const cost = sqft * p.pricePerSqft;
+        const method = document.getElementById('buy-fee-method').value;
+        
+        let feeRwampToDeduct = 0;
+        let feeFopiToDeduct = 0;
+        let burnAmount = 0;
+
+        if (method === 'RWAMP') {
+            const feeFopi = cost * 0.01;
+            feeRwampToDeduct = Math.floor(feeFopi / 100);
+            burnAmount = feeRwampToDeduct;
+        } else {
+            feeFopiToDeduct = Math.floor(cost * 0.02);
+            burnAmount = Math.floor(feeFopiToDeduct / 100);
+        }
+
+        if(this.state.user.fopi < (cost + feeFopiToDeduct)) {
+            this.toast('Insufficient FOPI Cash', 'error');
+            return;
+        }
+        if(this.state.user.rwamp < feeRwampToDeduct) {
+            this.toast('Insufficient RWAMP for Fee', 'error');
+            return;
+        }
+        if(this.state.user.rwamp < (p.minRwamp || 0)) {
+            this.toast(`Requires ${p.minRwamp} RWAMP holding`, 'error');
+            return;
+        }
+
+        this.state.user.fopi -= (cost + feeFopiToDeduct);
+        this.addRwampSpent(feeRwampToDeduct);
+
+        this.state.burn.rwampFeesThisMonth += burnAmount;
+
+        let holding = this.state.holdings.find(x => x.propertyId === p.id);
+        if(holding) {
+            holding.sqft += sqft;
+            holding.totalInvested += cost;
+        } else {
+            this.state.holdings.push({ propertyId: p.id, sqft: sqft, totalInvested: cost, monthsHeld: 0 });
+        }
+
+        this.toast(`Acquired ${sqft} sqft of ${p.name}`, 'success');
+        this.unlockAchievement('first_buy');
+        this.checkMission('buy'); 
+        this.saveState();
+        this.openDetails(p.id); 
+        this.renderAll();
+
+        if(this.tutorialActive && this.tutorialStep === 5) {
+            this.nextTutorialStep();
+        }
+    },
+
+    scheduleSell: function() {
+        const sqft = parseInt(document.getElementById('modal-sell-input').value);
+        if(!sqft || sqft <= 0) return;
+
+        const h = this.state.holdings.find(x => x.propertyId === this.selectedPropertyId);
+        if(!h || h.sqft < sqft) {
+            this.toast('Insufficient holdings', 'error');
+            return;
+        }
+
+        const p = this.state.properties.find(x => x.id === this.selectedPropertyId);
+        const estVal = sqft * p.pricePerSqft;
+        const method = document.getElementById('sell-fee-method').value;
+
+        let feeRwampToDeduct = 0;
+        let feeFopiToDeduct = 0;
+        let burnAmount = 0;
+
+        if (method === 'RWAMP') {
+            const feeFopi = estVal * 0.01;
+            feeRwampToDeduct = Math.floor(feeFopi / 100);
+            burnAmount = feeRwampToDeduct;
+        } else {
+            feeFopiToDeduct = Math.floor(estVal * 0.02);
+            burnAmount = Math.floor(feeFopiToDeduct / 100);
+        }
+
+        if (this.state.user.rwamp < feeRwampToDeduct) {
+            this.toast('Insufficient RWAMP for Exit Fee', 'error');
+            return;
+        }
+        if (this.state.user.fopi < feeFopiToDeduct) {
+            this.toast('Insufficient FOPI for Exit Fee', 'error');
+            return;
+        }
+
+        this.addRwampSpent(feeRwampToDeduct);
+        this.state.user.fopi -= feeFopiToDeduct;
+        
+        this.state.burn.rwampFeesThisMonth += burnAmount;
+
+        h.sqft -= sqft;
+        const soldCostBasis = (h.totalInvested / (h.sqft + sqft)) * sqft;
+        h.totalInvested -= soldCostBasis; 
+
+        if(h.sqft === 0) {
+            this.state.holdings = this.state.holdings.filter(x => x.propertyId !== this.selectedPropertyId);
+        }
+
+        this.state.sellQueue.push({
+            propertyId: p.id,
+            sqft: sqft,
+            costBasis: soldCostBasis,
+            monthsLeft: CONSTANTS.BASE_SELL_DELAY
+        });
+
+        this.toast(`Sell Order Placed. Cash in ${CONSTANTS.BASE_SELL_DELAY} months.`, 'success');
+        this.saveState();
+        this.openDetails(p.id);
+        this.renderAll();
+    },
+
+    startInstallmentPlan: function() {
+        const amt = parseInt(document.getElementById('modal-installment-input').value);
+        if(!amt || amt <= 0) return;
+        
+        if(this.state.installmentPlans.some(p => p.propertyId === this.selectedPropertyId)) {
+            this.toast('Plan already exists for this property', 'error');
+            return;
+        }
+
+        this.state.installmentPlans.push({
+            propertyId: this.selectedPropertyId,
+            monthlySqft: amt
+        });
+        this.toast('Auto-Invest Plan Started', 'success');
+        this.saveState();
+    },
+
+    cancelPlan: function(idx) {
+        this.state.installmentPlans.splice(idx, 1);
+        this.saveState();
+    },
+
+    liquidateAll: function() {
+        if(!confirm("Sell everything? 5% Emergency Penalty applies.")) return;
+        let totalCash = 0;
+        this.state.holdings.forEach(h => {
+            const p = this.state.properties.find(x => x.id === h.propertyId);
+            totalCash += (h.sqft * p.pricePerSqft * 0.95);
+        });
+        this.state.holdings = [];
+        this.state.user.fopi += totalCash;
+        this.toast('Emergency Liquidation Complete', 'error');
+        this.saveState();
+    }
+};
+// ðŸ” Password Protection â€” Gate access on every load
+window.addEventListener("load", function () {
+  const gate = document.getElementById("passwordGate");
+  const input = document.getElementById("passwordInput");
+  const btn = document.getElementById("unlockBtn");
+  const msg = document.getElementById("wrongMsg");
+
+  // ðŸ”‘ Set your own strong password here (e.g., "FOPI2025")
+  // Then compute SHA-256 once: CryptoJS.SHA256("FOPI2025").toString()
+  const CORRECT_PASSWORD_HASH = "ca6d5ef625c0dabeabdab886a245d55ec2677c168f331d1304263146aea2f557"; // â† REPLACE WITH YOUR HASH
+
+  function tryUnlock() {
+    const val = input.value.trim();
+    if (!val) {
+      msg.textContent = "âš ï¸ Please enter the access code.";
+      input.focus();
+      return;
+    }
+
+    // Hash input and compare
+    const hash = CryptoJS.SHA256(val).toString();
+    if (hash === CORRECT_PASSWORD_HASH) {
+      // âœ… Hide gate and initialize game
+      gate.style.display = "none";
+      app.init(); // â† your existing init function
+    } else {
+      // âŒ Show error
+      msg.textContent = "âŒ Invalid access code.";
+      input.value = "";
+      input.focus();
+    }
+  }
+
+  btn.addEventListener("click", tryUnlock);
+  input.addEventListener("keypress", e => {
+    if (e.key === "Enter") tryUnlock();
+  });

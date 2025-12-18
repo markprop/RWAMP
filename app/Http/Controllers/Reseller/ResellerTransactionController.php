@@ -16,6 +16,10 @@ class ResellerTransactionController extends Controller
     {
         $reseller = Auth::user();
         
+        if (!$reseller || !$reseller->id) {
+            abort(403, 'Unauthorized');
+        }
+        
         $query = Transaction::where('user_id', $reseller->id);
 
         // Filter by type
@@ -44,20 +48,45 @@ class ResellerTransactionController extends Controller
 
     /**
      * View transaction details
+     * Supports both ULID and numeric ID for backward compatibility
      */
-    public function show(Transaction $transaction)
+    public function show($transaction)
     {
         $reseller = Auth::user();
         
+        // Resolve transaction by ULID or numeric ID
+        if ($transaction instanceof Transaction) {
+            $transactionModel = $transaction;
+        } else {
+            // Try ULID first (26 characters, alphanumeric)
+            if (is_string($transaction) && strlen($transaction) === 26 && ctype_alnum($transaction)) {
+                $transactionModel = Transaction::where('ulid', $transaction)->first();
+            } 
+            // Try numeric ID
+            elseif (is_numeric($transaction)) {
+                $transactionModel = Transaction::find((int) $transaction);
+            } 
+            // Last attempt: try both
+            else {
+                $transactionModel = Transaction::where('ulid', $transaction)
+                    ->orWhere('id', $transaction)
+                    ->first();
+            }
+            
+            if (!$transactionModel) {
+                abort(404, 'Transaction not found.');
+            }
+        }
+        
         // Verify transaction belongs to reseller
-        if ($transaction->user_id !== $reseller->id) {
+        if ($transactionModel->user_id !== $reseller->id) {
             abort(403, 'Unauthorized');
         }
 
         // Eager load related users so we can show clean sender/receiver info
-        $transaction->loadMissing(['sender', 'recipient']);
+        $transactionModel->loadMissing(['sender', 'recipient']);
 
-        return view('dashboard.reseller-transaction-view', compact('transaction'));
+        return view('dashboard.reseller-transaction-view', ['transaction' => $transactionModel]);
     }
 }
 

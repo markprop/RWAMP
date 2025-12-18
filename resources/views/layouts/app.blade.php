@@ -128,6 +128,9 @@
     @php
         // Check if current route is a dashboard page (has sidebar, no navbar)
         // Pages with sidebars should not show navbar
+        $currentRoute = request()->route();
+        $routeName = $currentRoute ? $currentRoute->getName() : null;
+        
         $isDashboardPage = request()->routeIs('dashboard.investor') 
             || request()->routeIs('dashboard.admin') 
             || request()->routeIs('dashboard.reseller')
@@ -143,10 +146,10 @@
             || request()->routeIs('game.*')
             || request()->routeIs('profile.*')
             || request()->routeIs('user.history')
-            || str_starts_with(request()->route()->getName() ?? '', 'dashboard.')
-            || str_starts_with(request()->route()->getName() ?? '', 'reseller.')
-            || str_starts_with(request()->route()->getName() ?? '', 'admin.')
-            || (auth()->check() && in_array(request()->route()->getName() ?? '', ['game.select', 'game.index']));
+            || ($routeName && str_starts_with($routeName, 'dashboard.'))
+            || ($routeName && str_starts_with($routeName, 'reseller.'))
+            || ($routeName && str_starts_with($routeName, 'admin.'))
+            || (auth()->check() && $routeName && in_array($routeName, ['game.select', 'game.index']));
     @endphp
     
     @if(!$isDashboardPage)

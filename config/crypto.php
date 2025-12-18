@@ -46,7 +46,7 @@ return [
     'presale' => [
         'stage' => (int) env('PRESALE_STAGE', 2), // Default to Stage 2
         'bonus_percentage' => (float) env('PRESALE_BONUS_PERCENTAGE', 10), // Default 10% bonus
-        'max_supply' => (int) env('PRESALE_MAX_SUPPLY', 300000000), // Default 10M tokens
+        'max_supply' => (int) env('PRESALE_MAX_SUPPLY', 30000000), // Default 3M tokens
         'min_purchase_usd' => (float) env('PRESALE_MIN_PURCHASE_USD', 55), // Default $55 minimum
     ],
 ];

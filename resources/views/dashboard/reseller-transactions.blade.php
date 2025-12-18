@@ -122,12 +122,20 @@
                                     <td class="py-3 px-4 sm:px-6 text-xs sm:text-sm text-gray-600">{{ $transaction->created_at->format('M d, Y H:i') }}</td>
                                     <td class="py-3 px-4 sm:px-6">
                                         <div class="flex flex-wrap gap-2">
-                                            <a href="{{ route('reseller.transactions.view', $transaction) }}" class="btn-primary btn-small">
-                                                View
-                                            </a>
-                                            <button type="button" onclick="shareTransactionDetails({{ $transaction->id }})" class="btn-secondary btn-small">
-                                                Share
-                                            </button>
+                                            @if($transaction && $transaction->id)
+                                                @php
+                                                    // Use ULID if available, otherwise fallback to ID
+                                                    $transactionParam = $transaction->ulid ?? $transaction->id;
+                                                @endphp
+                                                <a href="{{ route('reseller.transactions.view', $transactionParam) }}" class="btn-primary btn-small">
+                                                    View
+                                                </a>
+                                                <button type="button" onclick="shareTransactionDetails({{ $transaction->id }})" class="btn-secondary btn-small">
+                                                    Share
+                                                </button>
+                                            @else
+                                                <span class="text-gray-400 text-sm">N/A</span>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>

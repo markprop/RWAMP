@@ -150,9 +150,17 @@
                                     <td class="py-3 px-4 text-sm text-gray-600">{{ $transaction->reference ?? '—' }}</td>
                                     <td class="py-3 px-4 text-sm text-gray-600">{{ $transaction->created_at->format('M d, Y H:i') }}</td>
                                     <td class="py-3 px-4">
-                                        <a href="{{ route('reseller.transactions.view', $transaction) }}" class="text-blue-600 hover:underline text-sm">
-                                            View
-                                        </a>
+                                        @if($transaction && $transaction->id)
+                                            @php
+                                                // Use ULID if available, otherwise fallback to ID
+                                                $transactionParam = $transaction->ulid ?? $transaction->id;
+                                            @endphp
+                                            <a href="{{ route('reseller.transactions.view', $transactionParam) }}" class="text-blue-600 hover:underline text-sm">
+                                                View
+                                            </a>
+                                        @else
+                                            <span class="text-gray-400 text-sm">N/A</span>
+                                        @endif
                                     </td>
                                 </tr>
                             @endforeach

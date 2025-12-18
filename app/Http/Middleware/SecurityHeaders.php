@@ -18,9 +18,10 @@ class SecurityHeaders
 
         $isLocal = config('app.env') === 'local';
 
-        // Allow embedding for whitepaper and receipt assets (used inside iframes/modals)
+        // Allow embedding for whitepaper, secure receipt routes, and legacy storage assets (used inside iframes/modals)
         if (
             $request->routeIs('whitepaper.pdf') ||
+            $request->routeIs('receipts.payment') ||
             $request->is('storage/payment-receipts/*') ||
             $request->is('storage/withdrawal-receipts/*')
         ) {
@@ -47,9 +48,10 @@ class SecurityHeaders
 
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         
-        // Allow SAMEORIGIN for whitepaper PDF and receipt assets (so we can show them in modals)
+        // Allow SAMEORIGIN for whitepaper PDF, secure receipt routes, and storage receipt assets
         if (
             $request->routeIs('whitepaper.pdf') ||
+            $request->routeIs('receipts.payment') ||
             $request->is('storage/payment-receipts/*') ||
             $request->is('storage/withdrawal-receipts/*')
         ) {

@@ -82,7 +82,7 @@ class PageController extends Controller
         // Presale configuration
         $presaleStage = config('crypto.presale.stage', 2); // Default to Stage 2
         $presaleBonus = config('crypto.presale.bonus_percentage', 10); // Default 10% bonus
-        $maxSupply = config('crypto.presale.max_supply', 1000000000); // Default 1B tokens (1,000,000,000)
+        $maxSupply = config('crypto.presale.max_supply', 30000000); // Default 3M tokens (30,000,000)
         $minPurchaseUsd = config('crypto.presale.min_purchase_usd', 55); // Default $55 minimum
         
         // Calculate supply progress - ensure accurate calculation

@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\PaymentSubmission;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class PaymentSubmissionController extends Controller
 {
@@ -64,5 +66,42 @@ class PaymentSubmissionController extends Controller
         return redirect()
             ->route('user.history')
             ->with('status', 'Payment receipt submitted. Waiting for review.');
+    }
+
+    /**
+     * Stream the stored receipt file for a given PaymentSubmission.
+     * This avoids relying on public storage paths differing between environments.
+     */
+    public function showReceipt(Request $request, PaymentSubmission $submission)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            abort(403);
+        }
+
+        // Authorization: owner of submission, assigned reseller, or admin
+        $isOwner    = $submission->user_id === $user->id;
+        $isReseller = $submission->recipient_type === 'reseller' && $submission->recipient_id === $user->id;
+        $isAdmin    = method_exists($user, 'hasRole')
+            ? $user->hasRole('admin')
+            : ($user->role ?? null) === 'admin';
+
+        if (!($isOwner || $isReseller || $isAdmin)) {
+            abort(403);
+        }
+
+        if (empty($submission->receipt_path)) {
+            abort(404);
+        }
+
+        $path = $submission->receipt_path;
+
+        // Our uploads use the 'public' disk by default
+        if (!Storage::disk('public')->exists($path)) {
+            abort(404);
+        }
+
+        return Storage::disk('public')->response($path);
     }
 }

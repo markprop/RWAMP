@@ -221,7 +221,7 @@
                                                     <button 
                                                         type="button"
                                                         class="btn-secondary btn-small"
-                                                        @click="openReceipt('{{ '/storage/' . ltrim($submission->receipt_path, '/') }}')"
+                                                        @click="openReceipt('{{ route('receipts.payment', $submission) }}')"
                                                     >
                                                         View Receipt
                                                     </button>

@@ -671,6 +671,10 @@ Route::middleware('auth')->group(function () {
     // User-facing KYC document download (current authenticated user only)
     Route::get('/profile/kyc/download/{type}', [KycController::class, 'downloadFile'])
         ->name('kyc.profile.download');
+
+    // Secure receipt streaming endpoint for bank/manual payment submissions
+    Route::get('/receipts/payment/{submission}', [PaymentSubmissionController::class, 'showReceipt'])
+        ->name('receipts.payment');
 });
 
 // Game Routes (KYC-approved investors and resellers)

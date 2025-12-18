@@ -1,0 +1,412 @@
+﻿
+
+  </div>
+
+    <h1 class="text-xl" style="font-size: 2rem; margin-bottom:0.5rem;">FOPI</h1>
+        <p class="text-muted" style="margin-bottom:2rem; letter-spacing: 2px;">FUTURE OF PROPERTY INVESTMENT</p>
+        
+        <div class="card" style="width:100%; max-width:350px; text-align:center;">
+            <h3>Initialize Wallet</h3>
+            <p class="text-small text-muted" style="margin-bottom:1rem;">Enter your initial RWAMP (Master Token) investment.</p>
+            <input type="number" id="intro-rwamp" placeholder="e.g. 5000" value="5000" style="text-align:center; font-size:1.2rem; margin-bottom:1rem;">
+            <p class="text-small text-info" style="margin-bottom:1rem;">
+                1 RWAMP = 100 $F<br>
+                Grants initial $F liquidity automatically.
+            </p>
+            <button class="btn btn-gold" onclick="app.startGame()">ENTER RWAMP METAVERSE</button>
+        </div>
+    </div>
+
+    <!-- TUTORIAL ELEMENTS (Separated for correct stacking) -->
+    <div id="tutorial-backdrop"></div>
+    
+    <div id="tutorial-tooltip">
+        <h4 id="tut-title">Tutorial</h4>
+        <p id="tut-desc">Instructions go here.</p>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:0.8rem; color:var(--text-muted); text-decoration:underline; cursor:pointer;" onclick="app.endTutorial()">Skip</span>
+            <button id="tut-next-btn" class="btn btn-gold btn-sm" style="width:auto; padding:6px 16px;">NEXT</button>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+        <div style="display:flex; align-items:center;">
+            <div style="width:24px; height:24px; background:var(--gold-primary); border-radius:50%; margin-right:8px; box-shadow: 0 0 10px var(--gold-primary);"></div>
+            <div style="line-height:1;">
+                <h1 style="font-size:1.1rem; margin:0;">FOPI</h1>
+                <span id="player-tag" class="badge" style="background:rgba(255,255,255,0.1); color:#fff; font-weight:normal; font-size:0.6rem;">NOVICE</span>
+            </div>
+        </div>
+        <div style="text-align:right;">
+            <div class="text-gold text-small" style="font-weight:bold;">MTH <span id="header-month">1 | D 1</span></div>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <div class="text-muted text-small" style="font-size:0.7rem; cursor:pointer;" onclick="app.openExchange()">ðŸ’± Exchange</div>
+                <div class="text-muted text-small" style="font-size:1.2rem; cursor:pointer;" onclick="app.startTutorial()" title="Replay Tutorial">â“</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <div class="container">
+        <!-- DASHBOARD SCREEN -->
+        <div id="screen-dashboard" class="screen active">
+            <h2>Command Center</h2>
+            <!-- Balances -->
+            <div class="card" id="dash-main-stats">
+                <div class="stat-grid">
+                    <div class="stat-box">
+                        <div class="info-tooltip">Liquid FOPI cash available for trading and investing.</div>
+                        <div class="text-muted text-small">FOPI (Liquid)</div>
+                        <div class="text-lg text-cyan glow-text" id="dash-fopi">$F 0</div>
+                    </div>
+                    <div class="stat-box" style="border-color:rgba(255,215,0,0.2);">
+                        <div class="info-tooltip">Premium RWAMP tokens. Used for fees and exclusive syndicates.</div>
+                        <div class="text-muted text-small">RWAMP Balance</div>
+                        <div class="text-lg text-gold" id="dash-rwamp">R 0</div>
+                        <div class="text-small text-muted" id="dash-rwamp-lifetime" style="margin-top:2px; font-size:0.7rem;">Lifetime: R 0</div>
+                    </div>
+                </div>
+                <button class="btn btn-outline btn-sm" style="margin-bottom:0.8rem;" onclick="app.withdrawRwamp()">Withdraw RWAMP</button>
+                <div class="stat-grid">
+                    <div class="stat-box">
+                        <div class="info-tooltip">Total combined value of your cash and property assets.</div>
+                        <div class="text-muted text-small">Net Worth</div>
+                        <div class="text-lg" id="dash-networth">$F 0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="info-tooltip">Yield accumulated from properties. Click 'Claim' to withdraw.</div>
+                        <div class="text-muted text-small">Unclaimed Rent</div>
+                        <div class="text-lg text-success" id="dash-rent">$F 0</div>
+                    </div>
+                </div>
+                <button id="btn-claim-yield" class="btn btn-primary" onclick="app.claimAllRent()">Claim Yield ($F)</button>
+                <!-- CONVERT / MINE SECTION -->
+                <div id="treasury-section" class="treasury-box">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <span class="text-small text-gold">Mint RWAMP</span>
+                        <span class="text-small text-muted">Rate: 1000 $F = 1 R</span>
+                    </div>
+                    <div class="text-small text-info" style="margin-bottom:5px;">
+                        Profit Available to Convert: <span id="dash-profit-bal" class="text-white">$F 0</span>
+                    </div>
+                    <div class="input-group">
+                        <input type="number" id="dash-convert-input" placeholder="Enter FOPI Amount">
+                        <button id="btn-mint-rwamp" class="btn btn-gold btn-sm" onclick="app.convertFopiToRwamp()">MINT</button>
+                    </div>
+                    <div style="margin-top:5px; font-size:0.8rem; text-align:right; color:var(--text-muted);">
+                        You receive: <span id="mint-preview" class="text-gold">0 R</span>
+                    </div>
+                    <div style="margin-top:5px; font-size:0.8rem; text-align:right;">
+                         <span class="text-muted">Total Mined: <span id="dash-total-mined" class="text-gold">0</span></span>
+                    </div>
+                </div>
+                <!-- BURN STATS SECTION -->
+                <div id="burn-section" class="treasury-box" style="border-top-color: rgba(255,0,85,0.3);">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span class="text-small text-danger">ðŸ”¥ RWAMP Burn</span>
+                        <span class="text-small text-muted">Supply: <span id="dash-sim-supply">100B</span></span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-top:5px; font-size:0.8rem;">
+                        <span class="text-muted">This Month: <span id="dash-burn-month" class="text-danger">0</span></span>
+                        <span class="text-muted">Total: <span id="dash-burn-total" class="text-danger">0</span></span>
+                    </div>
+                </div>
+            </div>
+            <!-- Achievements -->
+            <div id="achievement-section">
+                <div class="text-small text-muted" style="margin-bottom:5px;">TROPHIES</div>
+                <div id="dashboard-achievements" class="achievement-grid"></div>
+            </div>
+            <!-- News Ticker -->
+            <div id="news-widget" class="card" style="padding:0.8rem; background:rgba(0,0,0,0.3); border-left:3px solid var(--neon-purple); transition: border-color 0.3s;">
+                <div class="text-small text-muted" style="margin-bottom:5px;">MARKET FEED</div>
+                <div id="dashboard-news-text" style="font-size:0.9rem;">No updates...</div>
+            </div>
+            
+            <div style="display:flex; gap:10px; margin-bottom: 0.8rem;">
+                <button class="btn btn-gold" style="flex:1;" onclick="app.openMissions()">ðŸ“œ MISSIONS</button>
+                <button class="btn btn-primary" style="flex:1;" onclick="app.openTokenomics()">ðŸ“Š TOKENOMICS</button>
+            </div>
+            <button id="btn-jump-month" class="btn btn-outline" style="width:100%; margin-bottom: 1.5rem;" onclick="app.jumpMonth()">
+                Jump Month &#9658;
+            </button>
+            
+            <h3>Top Assets</h3>
+            <div id="dash-holdings-list"></div>
+        </div>
+
+        <!-- MARKETPLACE SCREEN -->
+        <div id="screen-marketplace" class="screen">
+            <h2>Global Market</h2>
+            <div class="btn-group">
+                <button class="btn btn-tab active" onclick="app.setMarketRegion('PK')">ASIA</button>
+                <button class="btn btn-tab" onclick="app.setMarketRegion('AE')">MENA</button>
+                <button class="btn btn-tab" onclick="app.setMarketRegion('INTL')">WEST</button>
+            </div>
+            <div id="marketplace-list"></div>
+        </div>
+
+        <!-- PORTFOLIO SCREEN -->
+        <div id="screen-portfolio" class="screen">
+            <h2>Portfolio</h2>
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                    <span class="text-muted">Total Asset Value</span>
+                    <span class="text-xl text-cyan" id="port-total-value">$F 0</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="text-muted">Unrealized P/L</span>
+                    <span id="port-pl" class="text-lg">$F 0</span>
+                </div>
+            </div>
+            <!-- RWAMP P/L CARD -->
+            <div class="card" style="border-top:1px solid rgba(255,215,0,0.2);">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="text-muted">Total RWAMP P/L</span>
+                    <span id="port-rwamp-pnl" class="text-lg">R 0</span>
+                </div>
+                <div class="text-small text-muted" style="text-align:right;">Current Valuation vs Initial</div>
+            </div>
+            <h3 style="margin-top:1.5rem;">Active Holdings</h3>
+            <button class="btn btn-danger btn-sm" style="margin-bottom:1rem; width:auto;" onclick="app.liquidateAll()">âš  LIQUIDATE ALL ASSETS</button>
+            <div id="portfolio-list"></div>
+            <h3 style="margin-top:1.5rem;">My Installment Plans</h3>
+            <div id="plans-list"></div>
+            <h3 style="margin-top:1.5rem;">Pending Exits</h3>
+            <div id="sell-queue-list"></div>
+        </div>
+
+        <!-- CLUBS SCREEN -->
+        <div id="screen-clubs" class="screen">
+            <h2>Syndicates</h2>
+            <p class="text-muted text-small" style="margin-bottom:1rem;">Pool RWAMP resources for premium acquisitions.</p>
+            <div class="card" id="club-buyout-card"></div>
+            <h2>Private Equity</h2>
+            <div id="club-resale-container"></div>
+        </div>
+
+        <!-- LEADERBOARD SCREEN -->
+        <div id="screen-leaderboard" class="screen">
+            <h2>Whale Rankings</h2>
+            <div id="leaderboard-list"></div>
+        </div>
+    </div>
+
+    <!-- TOKENOMICS MODAL -->
+    <div id="modal-tokenomics" class="modal-overlay" onclick="if(event.target===this) app.closeModal('tokenomics')">
+        <div class="modal-content" style="max-width:500px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h2 style="margin:0; border:none;">RWAMP Tokenomics</h2>
+            </div>
+            
+            <div id="tokenomics-content" style="max-height:70vh; overflow-y:auto; padding-right:5px;">
+                <!-- Content injected via JS -->
+            </div>
+            
+            <button class="btn btn-outline" onclick="app.closeModal('tokenomics')" style="margin-top:1.5rem;">Close</button>
+        </div>
+    </div>
+
+    <!-- MISSIONS MODAL -->
+    <div id="modal-missions" class="modal-overlay" onclick="if(event.target===this) app.closeModal('missions')">
+        <div class="modal-content" style="max-width:500px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h2 style="margin:0; border:none;">Missions</h2>
+                <div class="text-gold text-lg" style="font-size:1rem;">RWAMP: <span id="mission-rwamp-bal">0</span></div>
+            </div>
+            
+            <div class="btn-group">
+                <button id="tab-missions" class="btn btn-tab active" onclick="app.renderMissionsModal('missions')">MISSIONS</button>
+                <button id="tab-achievements" class="btn btn-tab" onclick="app.renderMissionsModal('achievements')">ACHIEVEMENTS</button>
+                <button id="tab-awards" class="btn btn-tab" onclick="app.renderMissionsModal('awards')">AWARDS</button>
+            </div>
+
+            <div id="missions-content" style="max-height:60vh; overflow-y:auto; padding-right:5px;"></div>
+            
+            <button class="btn btn-outline" onclick="app.closeModal('missions')" style="margin-top:1.5rem;">Close</button>
+        </div>
+    </div>
+
+    <!-- ANALYTICS MODAL -->
+    <div id="modal-analytics" class="modal-overlay" onclick="if(event.target===this) app.closeModal('analytics')">
+        <div class="modal-content" style="max-width:500px;">
+            <h2 id="analytics-title" style="border:none; margin-bottom:0.5rem;">Analytics</h2>
+            <div style="display:flex; justify-content:space-between; margin-bottom:1rem;">
+                <span id="analytics-region" class="badge">REGION</span>
+                <span id="analytics-status" class="badge">STATUS</span>
+            </div>
+            <div class="text-small text-muted" style="margin-bottom:5px;">Price History ($F/sqft)</div>
+            <div class="chart-wrapper">
+                <canvas id="analytics-chart"></canvas>
+            </div>
+            <div id="analytics-stats" class="card" style="padding:0.8rem; background:rgba(255,255,255,0.03);"></div>
+            <h3 style="margin-top:1.5rem; font-size:0.9rem;">Market Event Log</h3>
+            <div id="analytics-events" class="event-log"></div>
+            <button class="btn btn-outline" onclick="app.closeModal('analytics')" style="margin-top:1.5rem;">Close Analysis</button>
+        </div>
+    </div>
+
+    <!-- EXCHANGE MODAL -->
+    <div id="modal-exchange" class="modal-overlay" onclick="if(event.target===this) app.closeModal('exchange')">
+        <div class="modal-content">
+            <h2 style="border:none;">Token Exchange</h2>
+            <div class="card" style="text-align:center; padding:1rem; margin-bottom:1rem;">
+                <div class="text-muted text-small">Rate</div>
+                <div class="text-lg"><span class="text-gold">1 R</span> = <span class="text-cyan">100 $F</span></div>
+            </div>
+            <div style="margin-bottom:1.5rem;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span class="text-small">Sell RWAMP</span>
+                    <span class="text-small text-gold" id="ex-rwamp-bal">Bal: 0</span>
+                </div>
+                <div class="input-group">
+                    <input type="number" id="swap-rwamp-input" placeholder="Amount RWAMP">
+                    <button class="btn btn-gold btn-sm" onclick="app.swapTokens('RtoF')">SWAP &#8595;</button>
+                </div>
+            </div>
+            <div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span class="text-small">Buy RWAMP</span>
+                    <span class="text-small text-cyan" id="ex-fopi-bal">Bal: 0</span>
+                </div>
+                <div class="input-group">
+                    <input type="number" id="swap-fopi-input" placeholder="Amount FOPI">
+                    <button class="btn btn-primary btn-sm" onclick="app.swapTokens('FtoR')">SWAP &#8593;</button>
+                </div>
+            </div>
+            <button class="btn btn-outline" style="margin-top:1.5rem;" onclick="app.closeModal('exchange')">Close</button>
+        </div>
+    </div>
+
+    <!-- REWARD MODAL -->
+    <div id="modal-reward" class="modal-overlay" style="z-index:2000;">
+        <div class="modal-content" style="border-color:var(--gold-primary); text-align:center; background: radial-gradient(circle, #2a2a10 0%, #050505 100%);">
+            <div style="width:60px; height:60px; background:var(--gold-primary); border-radius:50%; margin:0 auto 1rem auto; display:flex; align-items:center; justify-content:center; box-shadow:0 0 20px var(--gold-primary);">
+                <span style="font-size:30px;">ðŸ†</span>
+            </div>
+            <h2 class="text-gold" style="border:none; margin-bottom:0.5rem;">SYNDICATE COMPLETED!</h2>
+            <p class="text-muted" style="margin-bottom:1.5rem;">The investment pool has reached 100%.</p>
+            <div class="card" style="margin-bottom:1.5rem; text-align:left;">
+                <div style="margin-bottom:10px;">
+                    <span class="text-muted text-small">Acquired Asset</span>
+                    <div class="text-lg" id="reward-name">Property Name</div>
+                </div>
+                <div class="stat-grid">
+                    <div class="stat-box">
+                        <div class="text-muted text-small">Your Share</div>
+                        <div class="text-cyan text-lg" id="reward-sqft">0</div>
+                    </div>
+                    <div class="stat-box" style="border-color:var(--gold-primary);">
+                        <div class="text-muted text-small">3% Discount Refund</div>
+                        <div class="text-gold text-lg" id="reward-refund">$F 0</div>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-gold" onclick="document.getElementById('modal-reward').classList.remove('active')">COLLECT ASSET</button>
+        </div>
+    </div>
+
+    <!-- PROPERTY DETAILS MODAL -->
+    <div id="modal-details" class="modal-overlay" onclick="if(event.target===this) app.closeModal('details')">
+        <div class="modal-content">
+            <h2 id="modal-title" style="border:none; margin-bottom:0.2rem; font-size:1.3rem;">Property Name</h2>
+            <div style="margin-bottom:1rem; display:flex; gap:5px;">
+                <span id="modal-badge" class="badge">STATUS</span>
+                <span id="modal-rwamp-req" class="badge badge-rwamp">Req: 0 R</span>
+            </div>
+            <div class="stat-grid">
+                <div class="stat-box">
+                    <div class="text-muted text-small">Price/Sqft</div>
+                    <div class="text-cyan" id="modal-price">$F 0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="text-muted text-small">Yield</div>
+                    <div class="text-success" id="modal-yield">0%</div>
+                </div>
+            </div>
+            <div id="modal-uc-info" style="display:none; background:rgba(255,165,0,0.1); padding:0.5rem; border-radius:4px; margin-bottom:1rem; text-align:center; border:1px dashed orange;">
+                <div class="text-gold" style="font-weight:bold;">UNDER CONSTRUCTION</div>
+                <div class="text-small text-muted">Handover: <span id="modal-handover" style="color:white;">0</span> months</div>
+            </div>
+            <p class="text-muted text-small">Trend (6 Months)</p>
+            <div id="modal-chart" class="mini-chart"></div>
+
+            <!-- BUY SECTION -->
+            <div id="modal-buy-interface" style="background:rgba(255,255,255,0.02); padding:10px; border-radius:6px; margin-top:1rem; border:1px solid rgba(255,255,255,0.05);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <h3 style="margin:0;">Acquire</h3>
+                    <select id="buy-fee-method" class="text-small" style="background:rgba(0,0,0,0.5); color:var(--text-muted); border:1px solid rgba(255,255,255,0.1); border-radius:4px; padding:2px;">
+                        <option value="RWAMP">Fee: RWAMP (1%)</option>
+                        <option value="FOPI">Fee: FOPI (2%)</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <input type="number" id="modal-buy-input" placeholder="Sqft Amount">
+                    <button class="btn btn-gold btn-sm" onclick="app.setMaxBuy()">MAX</button>
+                    <button id="btn-modal-buy" class="btn btn-primary btn-sm" onclick="app.buyFromModal()">BUY</button>
+                </div>
+                <p class="text-muted text-small" style="margin-top:5px;">
+                    Cost: <span id="modal-buy-cost" class="text-cyan">$F 0</span> + <span id="modal-buy-fee" class="text-gold">R 0</span>
+                </p>
+                <div id="modal-installment-opt" style="display:none; margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
+                    <div class="text-small text-info" style="margin-bottom:5px;">Construct: Installment Plan</div>
+                    <div class="input-group">
+                        <input type="number" id="modal-installment-input" placeholder="Monthly Sqft" value="10">
+                        <button class="btn btn-outline btn-sm" onclick="app.startInstallmentPlan()">Auto-Invest</button>
+                    </div>
+                    <p class="text-muted text-small" style="font-size:0.7rem; margin-top:4px;">
+                        Auto-buys this amount every month until completion.
+                    </p>
+                </div>
+            </div>
+
+            <!-- SELL SECTION -->
+            <div id="modal-sell-section" style="margin-top:1rem; background:rgba(255,255,255,0.02); padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <h3 style="margin:0;">Liquidation</h3>
+                    <select id="sell-fee-method" class="text-small" style="background:rgba(0,0,0,0.5); color:var(--text-muted); border:1px solid rgba(255,255,255,0.1); border-radius:4px; padding:2px;">
+                        <option value="RWAMP">Fee: RWAMP (1%)</option>
+                        <option value="FOPI">Fee: FOPI (2%)</option>
+                    </select>
+                </div>
+                <p class="text-muted text-small">Owned: <span id="modal-owned" class="text-cyan">0</span> | Available: <span id="modal-avail" class="text-success">0</span></p>
+                <div class="input-group">
+                    <input type="number" id="modal-sell-input" placeholder="Amount to Sell">
+                    <button class="btn btn-gold btn-sm" onclick="app.setMaxSell()">MAX</button>
+                    <button class="btn btn-outline btn-sm" onclick="app.scheduleSell()">INITIATE SELL</button>
+                </div>
+                <p class="text-danger text-small" style="margin-top:5px; font-size:0.7rem;">
+                    Fee deducted immediately. Cash realized in ~2 months.
+                </p>
+            </div>
+            <button class="btn btn-outline" onclick="app.closeModal('details')" style="margin-top:1rem; border-color:#333; color:#666;">Close</button>
+        </div>
+    </div>
+    <!-- Bottom Nav -->
+    <div class="bottom-nav">
+        <div id="nav-dash" class="nav-item active" onclick="app.switchScreen('dashboard')">
+            <span class="nav-icon">â˜—</span>Dash
+        </div>
+        <div id="nav-market" class="nav-item" onclick="app.switchScreen('marketplace')">
+            <span class="nav-icon">âš–</span>Market
+        </div>
+        <div id="nav-port" class="nav-item" onclick="app.switchScreen('portfolio')">
+            <span class="nav-icon">ðŸ’¼</span>Assets
+        </div>
+        <div id="nav-jump" class="nav-item" onclick="app.jumpMonth()">
+            <span class="nav-icon" style="color:var(--neon-blue);">â–¶</span>
+            <span style="color:var(--neon-blue);">Jump</span>
+        </div>
+        <div id="nav-clubs" class="nav-item" onclick="app.switchScreen('clubs')">
+            <span class="nav-icon">â™›</span>Clubs
+        </div>
+        <div id="nav-rank" class="nav-item" onclick="app.switchScreen('leaderboard')">
+            <span class="nav-icon">ðŸ†</span>Rank
+        </div>
+    </div>
+
+<script type="module" src="/index.tsx"></script>
+
+
