@@ -32,15 +32,30 @@ import Pusher from 'pusher-js';
 })();
 
 // -------------------------------------------------------------------------
-// CSRF token auto-refresh for long-lived pages
+// CSRF token auto-refresh for long-lived pages + safe form submission
 // -------------------------------------------------------------------------
 (function () {
     try {
         const meta = document.querySelector('meta[name="csrf-token"]');
         if (!meta) return;
 
+        const applyTokenToDocument = (token) => {
+            if (!token) return;
+
+            // Update meta tag used by JS (e.g. Echo, axios, fetch helpers)
+            meta.setAttribute('content', token);
+
+            // Update all hidden _token inputs so existing forms submit with
+            // the latest token (critical for long-lived pages like /become-partner)
+            document
+                .querySelectorAll('input[name="_token"]')
+                .forEach((input) => {
+                    input.value = token;
+                });
+        };
+
         const refreshCsrf = () => {
-            fetch('/csrf-token', {
+            return fetch('/csrf-token', {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
@@ -51,17 +66,65 @@ import Pusher from 'pusher-js';
                 .then((r) => (r.ok ? r.json() : null))
                 .then((data) => {
                     if (data && data.token) {
-                        meta.setAttribute('content', data.token);
+                        applyTokenToDocument(data.token);
+                        return data.token;
                     }
+                    return null;
                 })
                 .catch(() => {
                     // Non-critical; ignore network errors here
+                    return null;
                 });
         };
 
-        // Initial refresh after page load, then every 15 minutes
+        // Initial refresh after page load, then every 15 minutes to keep
+        // session and token fresh while user stays on the page.
         setTimeout(refreshCsrf, 1000 * 30);
         setInterval(refreshCsrf, 15 * 60 * 1000);
+
+        // Intercept state-changing form submissions and ensure we have a fresh
+        // token right before submit. This prevents "CSRF token expired" on
+        // long-lived pages even if the periodic refresh failed.
+        document.addEventListener('DOMContentLoaded', () => {
+            document.body.addEventListener(
+                'submit',
+                async (event) => {
+                    const form = event.target;
+                    if (!(form instanceof HTMLFormElement)) {
+                        return;
+                    }
+
+                    // Skip idempotent/GET forms
+                    const method = (form.getAttribute('method') || 'GET').toUpperCase();
+                    if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+                        return;
+                    }
+
+                    // Avoid infinite loops when we re-submit programmatically
+                    if (form.dataset.csrfRefreshed === '1') {
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    const newToken = await refreshCsrf();
+
+                    if (!newToken) {
+                        // If we couldn't refresh the token, let the user know instead
+                        // of submitting a request that is guaranteed to fail.
+                        // This should be very rare (e.g. network completely offline).
+                        // You can replace alert() with a toast if desired.
+                        // eslint-disable-next-line no-alert
+                        alert('Your session may have expired. Please refresh the page and try again.');
+                        return;
+                    }
+
+                    form.dataset.csrfRefreshed = '1';
+                    form.submit();
+                },
+                true
+            );
+        });
     } catch (e) {
         // Fail silently
     }

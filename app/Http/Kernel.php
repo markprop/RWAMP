@@ -35,7 +35,8 @@ class Kernel extends HttpKernel
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Session\Middleware\StartSession::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-            \App\Http\Middleware\VerifyCsrfToken::class,
+            // Wrap CSRF verification so we can gracefully handle expired tokens (419)
+            \App\Http\Middleware\HandleExpiredCsrf::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\TabSessionAuth::class,
             \App\Http\Middleware\ForceReauthInNewTabs::class,

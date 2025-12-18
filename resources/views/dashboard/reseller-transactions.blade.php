@@ -122,11 +122,11 @@
                                     <td class="py-3 px-4 sm:px-6 text-xs sm:text-sm text-gray-600">{{ $transaction->created_at->format('M d, Y H:i') }}</td>
                                     <td class="py-3 px-4 sm:px-6">
                                         <div class="flex flex-wrap gap-2">
-                                            @if($transaction && $transaction->id)
-                                                @php
-                                                    // Use ULID if available, otherwise fallback to ID
-                                                    $transactionParam = $transaction->ulid ?? $transaction->id;
-                                                @endphp
+                                            @php
+                                                // Prefer ULID when present; fall back to numeric ID
+                                                $transactionParam = $transaction->ulid ?? $transaction->id;
+                                            @endphp
+                                            @if($transaction && $transactionParam)
                                                 <a href="{{ route('reseller.transactions.view', $transactionParam) }}" class="btn-primary btn-small">
                                                     View
                                                 </a>

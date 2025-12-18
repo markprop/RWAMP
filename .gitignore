@@ -16,6 +16,7 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+Live_env
 
 # Laravel specific
 /bootstrap/cache/*
