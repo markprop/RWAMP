@@ -195,33 +195,42 @@ class EmailVerificationController extends Controller
             ]);
         }
 
-        // Get OTP from cache - ensure it's a string and normalized
+        // Get OTP from cache using the configured store, with soft fallback to session
         $cacheKey = "otp:{$normalizedEmail}";
-        $cachedOtpRaw = Cache::get($cacheKey);
-        
+        $cachedOtpRaw = null;
+
+        try {
+            $cache = $this->otpCache();
+            $cachedOtpRaw = $cache->get($cacheKey);
+
+            Log::info("OTP Verification - Cache Lookup", [
+                'cache_key'         => $cacheKey,
+                'cached_otp_raw'    => $cachedOtpRaw,
+                'cached_otp_type'   => gettype($cachedOtpRaw),
+                'cached_otp_exists' => $cachedOtpRaw !== null,
+                'cache_driver'      => config('cache.default'),
+                'store_class'       => get_class($cache->getStore()),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning("OTP cache lookup failed, using session fallback", [
+                'cache_key'    => $cacheKey,
+                'error'        => $e->getMessage(),
+                'cache_driver' => config('cache.default'),
+            ]);
+        }
+
         // Fallback: Check session if cache is empty.
-        // This provides resilience if the cache driver is misconfigured (e.g. 'array')
-        // or if the OTP was only stored in the session.
         if ($cachedOtpRaw === null) {
             $debugData = session()->get("otp_debug_{$normalizedEmail}");
             if ($debugData && isset($debugData['otp'])) {
-                Log::warning("OTP not found in cache, using session fallback", [
-                    'cache_key' => $cacheKey,
-                    'session_otp' => $debugData['otp'],
-                    'session_timestamp' => $debugData['timestamp'] ?? null,
+                Log::info("OTP not found in cache, using session fallback", [
+                    'cache_key'        => $cacheKey,
+                    'session_otp'      => $debugData['otp'],
+                    'session_timestamp'=> $debugData['timestamp'] ?? null,
                 ]);
-                // Use session OTP as fallback
                 $cachedOtpRaw = $debugData['otp'];
             }
         }
-        
-        Log::info("OTP Verification - Cache Lookup", [
-            'cache_key' => $cacheKey,
-            'cached_otp_raw' => $cachedOtpRaw,
-            'cached_otp_type' => gettype($cachedOtpRaw),
-            'cached_otp_exists' => $cachedOtpRaw !== null,
-            'cache_driver' => config('cache.default'),
-        ]);
         
         // Convert to string and ensure it's exactly 6 digits
         $cachedOtp = $cachedOtpRaw ? str_pad((string) $cachedOtpRaw, 6, '0', STR_PAD_LEFT) : null;
@@ -479,51 +488,56 @@ class EmailVerificationController extends Controller
         // Generate new 6-digit OTP (ensure it's always a string)
         $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        // Store OTP in cache for 10 minutes
-        $cacheKey = "otp:{$normalizedEmail}";
-        
-        // Store in cache with explicit expiration
+        // Store OTP in cache for 10 minutes using configured store, with session fallback
+        $cacheKey  = "otp:{$normalizedEmail}";
         $expiresAt = now()->addMinutes(10);
-        Cache::put($cacheKey, $otp, $expiresAt);
-        
-        // Also store in session as backup so OTP verification still works
-        // even if the cache driver is non-persistent (e.g. 'array' in production).
-        session()->put("otp_debug_{$normalizedEmail}", [
-            'otp' => $otp,
-            'timestamp' => now()->toIso8601String(),
-            'email' => $normalizedEmail,
-            'expires_at' => $expiresAt->toIso8601String(),
-        ]);
-        
-        // Verify it was stored correctly - try multiple times to ensure cache is working
-        $storedOtp = Cache::get($cacheKey);
-        $cacheExists = Cache::has($cacheKey);
-        
-        Log::info("OTP generated and stored - DETAILED", [
-            'email' => $normalizedEmail,
-            'otp' => $otp,
-            'otp_length' => strlen($otp),
-            'otp_type' => gettype($otp),
-            'cache_key' => $cacheKey,
-            'cache_driver' => config('cache.default'),
-            'expires_at' => $expiresAt->toIso8601String(),
-            'stored_otp' => $storedOtp,
-            'stored_otp_type' => gettype($storedOtp),
-            'cache_exists' => $cacheExists,
-            'storage_verified' => $storedOtp === $otp,
-            'storage_verified_loose' => $storedOtp == $otp,
-        ]);
-        
-        // If cache storage failed, log warning
-        if (!$cacheExists || $storedOtp !== $otp) {
-            Log::error("OTP cache storage verification failed!", [
+
+        try {
+            $cache = $this->otpCache();
+            $cache->put($cacheKey, $otp, $expiresAt);
+
+            $storedOtp   = $cache->get($cacheKey);
+            $cacheExists = $storedOtp !== null;
+
+            Log::info("OTP generated and stored - DETAILED", [
+                'email'              => $normalizedEmail,
+                'otp'                => $otp,
+                'otp_length'         => strlen($otp),
+                'otp_type'           => gettype($otp),
+                'cache_key'          => $cacheKey,
+                'cache_driver'       => config('cache.default'),
+                'store_class'        => get_class($cache->getStore()),
+                'expires_at'         => $expiresAt->toIso8601String(),
+                'stored_otp'         => $storedOtp,
+                'stored_otp_type'    => gettype($storedOtp),
+                'cache_exists'       => $cacheExists,
+                'storage_verified'   => $storedOtp === $otp,
+                'storage_verified_loose' => $storedOtp == $otp,
+            ]);
+
+            if (!$cacheExists || $storedOtp !== $otp) {
+                Log::warning("OTP cache storage verification did not match expected value", [
+                    'cache_key'    => $cacheKey,
+                    'expected_otp' => $otp,
+                    'stored_otp'   => $storedOtp,
+                    'cache_driver' => config('cache.default'),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning("OTP cache storage failed, using session fallback", [
                 'cache_key' => $cacheKey,
-                'expected_otp' => $otp,
-                'stored_otp' => $storedOtp,
-                'cache_exists' => $cacheExists,
-                'cache_driver' => config('cache.default'),
+                'otp'       => $otp,
+                'error'     => $e->getMessage(),
             ]);
         }
+        
+        // Always store in session as backup so OTP verification still works even if cache fails
+        session()->put("otp_debug_{$normalizedEmail}", [
+            'otp'        => $otp,
+            'timestamp'  => now()->toIso8601String(),
+            'email'      => $normalizedEmail,
+            'expires_at' => $expiresAt->toIso8601String(),
+        ]);
 
         // Send OTP email
         try {
@@ -569,6 +583,26 @@ class EmailVerificationController extends Controller
         }
 
         return $otp;
+    }
+
+    /**
+     * Get the cache store to use for OTP storage.
+     * Defaults to the configured driver, falls back to default store on error.
+     */
+    protected function otpCache()
+    {
+        try {
+            $driver = config('cache.default') ?: null;
+            return $driver
+                ? \Illuminate\Support\Facades\Cache::store($driver)
+                : \Illuminate\Support\Facades\Cache::store();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('OTP cache store selection failed, falling back to default store', [
+                'configured_driver' => config('cache.default'),
+                'error'             => $e->getMessage(),
+            ]);
+            return \Illuminate\Support\Facades\Cache::store();
+        }
     }
 }
 

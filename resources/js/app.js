@@ -39,6 +39,9 @@ import Pusher from 'pusher-js';
         const meta = document.querySelector('meta[name="csrf-token"]');
         if (!meta) return;
 
+        let isRefreshing = false;
+        let refreshTimeout = null;
+
         const applyTokenToDocument = (token) => {
             if (!token) return;
 
@@ -52,35 +55,58 @@ import Pusher from 'pusher-js';
                 .forEach((input) => {
                     input.value = token;
                 });
+
+            // Update Axios default header if available
+            if (window.axios && window.axios.defaults) {
+                window.axios.defaults.headers.common['X-CSRF-TOKEN'] = token;
+            }
         };
 
-        const refreshCsrf = () => {
-            return fetch('/csrf-token', {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'same-origin',
-            })
-                .then((r) => (r.ok ? r.json() : null))
-                .then((data) => {
-                    if (data && data.token) {
-                        applyTokenToDocument(data.token);
-                        return data.token;
-                    }
-                    return null;
-                })
-                .catch(() => {
-                    // Non-critical; ignore network errors here
-                    return null;
+        const refreshCsrf = async () => {
+            // Prevent concurrent refresh calls
+            if (isRefreshing) {
+                return null;
+            }
+
+            isRefreshing = true;
+            try {
+                const response = await fetch('/csrf-token', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                    cache: 'no-cache',
                 });
+
+                if (!response.ok) {
+                    return null;
+                }
+
+                const data = await response.json();
+                if (data && data.token) {
+                    applyTokenToDocument(data.token);
+                    return data.token;
+                }
+                return null;
+            } catch (error) {
+                // Non-critical; ignore network errors here
+                console.warn('CSRF token refresh failed:', error);
+                return null;
+            } finally {
+                isRefreshing = false;
+            }
         };
 
-        // Initial refresh after page load, then every 15 minutes to keep
+        // Initial refresh after page load (30 seconds), then every 10 minutes to keep
         // session and token fresh while user stays on the page.
-        setTimeout(refreshCsrf, 1000 * 30);
-        setInterval(refreshCsrf, 15 * 60 * 1000);
+        // Reduced interval to prevent expiration issues
+        refreshTimeout = setTimeout(() => {
+            refreshCsrf();
+            // Refresh every 10 minutes (reduced from 15 to prevent expiration)
+            setInterval(refreshCsrf, 10 * 60 * 1000);
+        }, 30 * 1000);
 
         // Intercept state-changing form submissions and ensure we have a fresh
         // token right before submit. This prevents "CSRF token expired" on
@@ -125,8 +151,55 @@ import Pusher from 'pusher-js';
                 true
             );
         });
+
+        // Setup Axios interceptor for CSRF token refresh
+        if (window.axios) {
+            window.axios.interceptors.request.use(
+                async (config) => {
+                    // Refresh CSRF token before each request if it's been more than 5 minutes
+                    const lastRefresh = window.lastCsrfRefresh || 0;
+                    const now = Date.now();
+                    if (now - lastRefresh > 5 * 60 * 1000) {
+                        const token = await refreshCsrf();
+                        if (token) {
+                            window.lastCsrfRefresh = now;
+                        }
+                    }
+                    
+                    // Ensure CSRF token is in headers
+                    const meta = document.querySelector('meta[name="csrf-token"]');
+                    if (meta && meta.getAttribute('content')) {
+                        config.headers['X-CSRF-TOKEN'] = meta.getAttribute('content');
+                    }
+                    
+                    return config;
+                },
+                (error) => {
+                    return Promise.reject(error);
+                }
+            );
+
+            // Handle 419 errors by refreshing token and retrying
+            window.axios.interceptors.response.use(
+                (response) => response,
+                async (error) => {
+                    if (error.response && error.response.status === 419) {
+                        // CSRF token expired, refresh and retry once
+                        const token = await refreshCsrf();
+                        if (token && error.config) {
+                            // Update the request config with new token
+                            error.config.headers['X-CSRF-TOKEN'] = token;
+                            // Retry the request
+                            return window.axios.request(error.config);
+                        }
+                    }
+                    return Promise.reject(error);
+                }
+            );
+        }
     } catch (e) {
         // Fail silently
+        console.warn('CSRF token refresh setup failed:', e);
     }
 })();
 

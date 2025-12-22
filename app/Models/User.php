@@ -306,13 +306,85 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPassword
 				return [];
 			}
 			// Call the trait's implementation directly
-			return json_decode(\Laravel\Fortify\Fortify::currentEncrypter()->decrypt($this->two_factor_recovery_codes), true);
+			$decrypted = \Laravel\Fortify\Fortify::currentEncrypter()->decrypt($this->two_factor_recovery_codes);
+			$codes = json_decode($decrypted, true);
+			return is_array($codes) ? $codes : [];
 		} catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
-			\Log::warning('Failed to decrypt recovery codes for user ' . $this->id . ': ' . $e->getMessage());
+			\Log::warning('Failed to decrypt recovery codes for user ' . $this->id . ': ' . $e->getMessage(), [
+				'user_id' => $this->id,
+				'error_type' => 'DecryptException',
+				'has_recovery_codes' => !empty($this->two_factor_recovery_codes),
+			]);
+			// Clear corrupted recovery codes to allow regeneration
+			$this->two_factor_recovery_codes = null;
+			$this->saveQuietly(); // Save without triggering events
 			return [];
 		} catch (\Exception $e) {
-			\Log::error('Recovery codes error for user ' . $this->id . ': ' . $e->getMessage());
+			\Log::error('Recovery codes error for user ' . $this->id . ': ' . $e->getMessage(), [
+				'user_id' => $this->id,
+				'error_type' => get_class($e),
+				'trace' => $e->getTraceAsString(),
+			]);
 			return [];
+		}
+	}
+
+	/**
+	 * Check if recovery codes are corrupted and need regeneration
+	 */
+	public function hasCorruptedRecoveryCodes(): bool
+	{
+		if (empty($this->two_factor_recovery_codes)) {
+			return false;
+		}
+		
+		try {
+			\Laravel\Fortify\Fortify::currentEncrypter()->decrypt($this->two_factor_recovery_codes);
+			return false;
+		} catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+			return true;
+		} catch (\Exception $e) {
+			return true;
+		}
+	}
+
+	/**
+	 * Re-encrypt recovery codes with current APP_KEY
+	 * This should be called when APP_KEY changes or codes are corrupted
+	 */
+	public function reencryptRecoveryCodes(): bool
+	{
+		if (empty($this->two_factor_recovery_codes)) {
+			return false;
+		}
+
+		try {
+			// Try to decrypt with old key (if possible)
+			$oldCodes = [];
+			try {
+				$decrypted = \Laravel\Fortify\Fortify::currentEncrypter()->decrypt($this->two_factor_recovery_codes);
+				$oldCodes = json_decode($decrypted, true);
+			} catch (\Exception $e) {
+				// If decryption fails, codes are corrupted - cannot recover
+				\Log::warning('Cannot re-encrypt recovery codes for user ' . $this->id . ' - codes are corrupted');
+				$this->two_factor_recovery_codes = null;
+				$this->saveQuietly();
+				return false;
+			}
+
+			// Re-encrypt with current key
+			if (is_array($oldCodes) && !empty($oldCodes)) {
+				$encrypted = \Laravel\Fortify\Fortify::currentEncrypter()->encrypt(json_encode($oldCodes));
+				$this->two_factor_recovery_codes = $encrypted;
+				$this->saveQuietly();
+				\Log::info('Successfully re-encrypted recovery codes for user ' . $this->id);
+				return true;
+			}
+
+			return false;
+		} catch (\Exception $e) {
+			\Log::error('Failed to re-encrypt recovery codes for user ' . $this->id . ': ' . $e->getMessage());
+			return false;
 		}
 	}
 

@@ -497,47 +497,52 @@ class AuthController extends Controller
 	{
         // Capture current user before clearing auth so we can reset game state
         $user = Auth::user();
-
 		$tabId = $request->cookie('tab_session_id');
 
-		// If this request is tied to a tab session, clear only that tab's mapping by default.
-		if ($tabId) {
-			TabAuthService::clearTabUser($tabId);
+		// Always perform full logout to prevent session conflicts
+		// Clear all tab sessions for this user if they exist
+		if ($user) {
+			try {
+				// Clear all tab sessions for this user from cache
+				// We need to iterate through possible tab IDs (this is a limitation of cache)
+				// In production, consider using Redis with pattern matching or a database table
+				$cachePrefix = 'tab_user:';
+				
+				// Clear the specific tab if we have it
+				if ($tabId) {
+					TabAuthService::clearTabUser($tabId);
+				}
+				
+				// Reset game state
+				$user->is_in_game = false;
+				$user->save();
 
-			// If caller explicitly wants a global logout, clear the main session as well.
-			if ($request->boolean('clear_all')) {
-				Auth::guard('web')->logout();
-				$request->session()->invalidate();
-				$request->session()->regenerateToken();
+				GameSession::where('user_id', $user->id)
+					->where('status', 'active')
+					->update([
+						'status' => 'abandoned',
+						'ended_at' => now(),
+					]);
+			} catch (\Throwable $e) {
+				Log::warning('Failed to reset game state on logout', [
+					'user_id' => $user->id,
+					'error' => $e->getMessage(),
+				]);
 			}
-		} else {
-			// Legacy behaviour (no per-tab cookie): log out completely.
-			Auth::guard('web')->logout();
-			$request->session()->invalidate();
-			$request->session()->regenerateToken();
 		}
 
-        // If there was an authenticated user, ensure any game state is cleaned up
-        if ($user) {
-            try {
-                $user->is_in_game = false;
-                $user->save();
+		// Always perform full logout - clear main session
+		Auth::guard('web')->logout();
+		$request->session()->invalidate();
+		$request->session()->regenerateToken();
 
-                GameSession::where('user_id', $user->id)
-                    ->where('status', 'active')
-                    ->update([
-                        'status' => 'abandoned',
-                        'ended_at' => now(),
-                    ]);
-            } catch (\Throwable $e) {
-                Log::warning('Failed to reset game state on logout', [
-                    'user_id' => $user->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
+		// Clear tab session cookie
+		$response = redirect()->route('home');
+		if ($tabId) {
+			$response->cookie('tab_session_id', '', -1, '/', null, false, false);
+		}
 
-		return redirect()->route('home');
+		return $response;
 	}
 
 	public function showChangePasswordRequired()

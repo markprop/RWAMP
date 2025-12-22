@@ -700,5 +700,8 @@ Route::middleware(['auth', 'kyc.approved'])->prefix('game')->name('game.')->grou
         Route::post('/claim-rent', [GameController::class, 'fopiClaimRent'])->name('claim-rent');
         Route::post('/convert', [GameController::class, 'fopiConvert'])->name('convert');
         Route::post('/mission/claim', [GameController::class, 'fopiClaimMission'])->name('mission.claim');
+        Route::post('/event', [GameController::class, 'fopiLogEvent'])->name('event');
+        Route::post('/exit', [GameController::class, 'fopiExit'])->name('exit');
+        Route::get('/history', [GameController::class, 'fopiHistory'])->name('history');
     });
 });

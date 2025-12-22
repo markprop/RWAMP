@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\FopiGameEvent;
 use App\Models\GameSession;
 use App\Models\GameTrade;
 use App\Models\GamePriceHistory;
@@ -803,6 +804,10 @@ class GameController extends Controller
             // Remove any embedded <style> and <script> blocks to avoid duplication in Laravel.
             $fopiHtml = preg_replace('/<style\b[^>]*>[\s\S]*?<\/style>/i', '', $fopiHtml);
             $fopiHtml = preg_replace('/<script\b[^>]*>[\s\S]*?<\/script>/i', '', $fopiHtml);
+
+            // Strip the password gate container if present, so players coming from
+            // RWAMP dashboards don't see an extra "access code" step.
+            $fopiHtml = preg_replace('/<div[^>]+id="passwordGate"[^>]*>[\s\S]*?<\/div>/i', '', $fopiHtml);
         }
 
         return view('game.fopi', [
@@ -816,6 +821,89 @@ class GameController extends Controller
                 'token_balance'=> $user->token_balance,
                 'email'        => $user->email,
             ],
+        ]);
+    }
+
+    /**
+     * Exit FOPI game session and settle balance back to RWAMP
+     */
+    public function fopiExit(Request $request)
+    {
+        $user = Auth::user();
+        $session = $user->activeGameSession;
+
+        if (!$session || !$session->isFopi()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No active FOPI session',
+            ], 404);
+        }
+
+        try {
+            $state = $this->fopiEngine->exitSession($session);
+
+            return response()->json([
+                'success' => true,
+                'state' => $state,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('FOPI: Exit failed', [
+                'user_id' => $user->id,
+                'session_id' => $session->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to exit FOPI game. Please try again.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Log a FOPI game event (optional client-side analytics)
+     */
+    public function fopiLogEvent(Request $request)
+    {
+        $user = Auth::user();
+        $session = $user->activeGameSession;
+
+        if (!$session || !$session->isFopi()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No active FOPI session',
+            ], 404);
+        }
+
+        $data = $request->validate([
+            'event_type' => 'required|string|max:50',
+            'details' => 'nullable|array',
+        ]);
+
+        FopiGameEvent::create([
+            'user_id' => $user->id,
+            'session_id' => $session->id,
+            'event_type' => $data['event_type'],
+            'details' => $data['details'] ?? [],
+        ]);
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Show FOPI game history for the authenticated user
+     */
+    public function fopiHistory()
+    {
+        $user = Auth::user();
+
+        $events = FopiGameEvent::with('session')
+            ->where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->paginate(100);
+
+        return view('game.fopi-history', [
+            'events' => $events,
         ]);
     }
 

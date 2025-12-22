@@ -142,7 +142,7 @@
                                     <p class="text-sm text-gray-500">Future of Property Investment</p>
                                 </div>
                             </div>
-                            <span class="px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">Available</span>
+                            <span class="px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">Unavailable</span>
                         </div>
                         
                         @php

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\FopiGameEvent;
 use App\Models\GameSession;
 use App\Models\User;
 use App\Models\GameSetting;
@@ -61,6 +62,17 @@ class FopiGameEngine
             // Mark user as in game
             $user->is_in_game = true;
             $user->save();
+
+            // Log entry event
+            FopiGameEvent::create([
+                'user_id' => $user->id,
+                'session_id' => $session->id,
+                'event_type' => 'enter',
+                'details' => [
+                    'stake_rwamp' => $stakeRwamp,
+                    'initial_fopi' => $initialFopi,
+                ],
+            ]);
 
             DB::commit();
             return $session;
@@ -264,6 +276,16 @@ class FopiGameEngine
         $state = $this->loadState($session);
         $this->processMonth($state, true);
         $this->saveState($session, $state);
+
+        FopiGameEvent::create([
+            'user_id' => $session->user_id,
+            'session_id' => $session->id,
+            'event_type' => 'jump_month',
+            'details' => [
+                'current_month' => $state['user']['currentMonth'] ?? null,
+            ],
+        ]);
+
         return $state;
     }
 
@@ -376,6 +398,18 @@ class FopiGameEngine
         $state = $this->loadState($session);
         $this->buyPropertyInternal($state, $propertyId, $sqft, $feeMethod, true);
         $this->saveState($session, $state);
+
+        FopiGameEvent::create([
+            'user_id' => $session->user_id,
+            'session_id' => $session->id,
+            'event_type' => 'buy',
+            'details' => [
+                'property_id' => $propertyId,
+                'sqft' => $sqft,
+                'fee_method' => $feeMethod,
+            ],
+        ]);
+
         return $state;
     }
 
@@ -455,6 +489,16 @@ class FopiGameEngine
         }
 
         $this->saveState($session, $state);
+
+        FopiGameEvent::create([
+            'user_id' => $session->user_id,
+            'session_id' => $session->id,
+            'event_type' => 'claim_rent',
+            'details' => [
+                'claimed_rent' => $rent,
+            ],
+        ]);
+
         return $state;
     }
 
@@ -485,6 +529,17 @@ class FopiGameEngine
         $state['user']['stats']['conversions']++;
 
         $this->saveState($session, $state);
+
+        FopiGameEvent::create([
+            'user_id' => $session->user_id,
+            'session_id' => $session->id,
+            'event_type' => 'convert',
+            'details' => [
+                'fopi_amount' => $fopiAmount,
+                'rwamp_amount' => $rwampAmount,
+            ],
+        ]);
+
         return $state;
     }
 
@@ -537,6 +592,17 @@ class FopiGameEngine
         $session->game_balance_end = $remainingFopi;
         $session->real_balance_end = $rwampReturned;
         $session->save();
+
+        FopiGameEvent::create([
+            'user_id' => $session->user_id,
+            'session_id' => $session->id,
+            'event_type' => 'exit',
+            'details' => [
+                'remaining_fopi' => $remainingFopi,
+                'rwamp_returned' => $rwampReturned,
+                'exit_fee_rate' => $gameSettings->exit_fee_rate ?? 0,
+            ],
+        ]);
 
         return $state;
     }

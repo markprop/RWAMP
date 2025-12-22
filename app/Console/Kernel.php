@@ -29,6 +29,9 @@ class Kernel extends ConsoleKernel
             $engine->getUsdPkrRate();
             $engine->getBtcUsdPrice();
         })->everyFiveMinutes();
+
+        // Prune old session records from the database daily to keep the sessions table small
+        $schedule->command('session:prune')->daily();
     }
 
     /**

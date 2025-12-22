@@ -9,6 +9,11 @@ return [
         // Use PriceHelper functions to get current prices
         'usdt_usd'  => (float) env('USDT_USD_RATE', 1.0),     // Default, overridden by cache (auto-fetched from API)
         'usdt_pkr'  => (float) env('USDT_PKR_RATE', env('USD_PKR_RATE', 278)),  // Default, overridden by cache (auto-calculated)
+        // Validation bounds for external FX rates
+        'pkr_min'   => (float) env('USD_PKR_MIN', 100),       // Min allowed USD→PKR rate
+        'pkr_max'   => (float) env('USD_PKR_MAX', 10000),     // Max allowed USD→PKR rate
+        'aed_min'   => (float) env('USD_AED_MIN', 1),          // Min allowed USD→AED rate
+        'aed_max'   => (float) env('USD_AED_MAX', 10),         // Max allowed USD→AED rate
     ],
     'wallets' => [
         'TRC20' => env('CRYPTO_WALLET_TRC20', ''),
